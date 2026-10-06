@@ -1,0 +1,130 @@
+# Two (and three) players through the real page on the local dev server: make a room, join by password, by invite
+# link, pick, ready, play a match, emote, leave, and check the leaderboard.
+import asyncio, json, os, sys, urllib.request
+from playwright.async_api import async_playwright
+B = os.environ.get("BOTBATTLE_URL", "http://localhost:5173/games/botbattle/")   # the local dev server (npm run dev)
+OUT = os.environ.get("BOTBATTLE_SHOTS", "/tmp")
+def api(path, body=None, token=None):
+    req = urllib.request.Request(B + "api/" + path, data=json.dumps(body).encode() if body else None,
+        headers={"content-type": "application/json", **({"authorization": f"Bearer {token}"} if token else {})})
+    try: return json.loads(urllib.request.urlopen(req).read())
+    except urllib.error.HTTPError as e: return json.loads(e.read())
+results = []
+def check(name, ok, detail=""):
+    results.append((name, bool(ok))); print(("PASS " if ok else "FAIL ") + name, detail)
+
+async def main():
+    async with async_playwright() as p:
+        browser = await p.chromium.launch(args=["--use-gl=angle", "--use-angle=swiftshader", "--enable-unsafe-swiftshader"])
+        async def page(user, extra=""):
+            ctx = await browser.new_context(viewport={"width": 1100, "height": 760})
+            pg = await ctx.new_page()
+            pg.errors = []; pg.snaps = 0; pg.ins = 0
+            pg.on("pageerror", lambda e: pg.errors.append(str(e)))
+            def on_ws(ws):
+                def frame(payload):
+                    if '"t":"snap"' in payload: pg.snaps += 1
+                    if '"t":"in"' in payload: pg.ins += 1
+                ws.on("framereceived", frame)
+            pg.on("websocket", on_ws)
+            await pg.goto(B + f"?dev={user}{extra}")
+            return pg
+        alice = await page("alice")
+        await alice.click('.mode[data-mode="online"]')
+        await alice.wait_for_selector("#rooms:not([hidden])", timeout=8000)
+        await alice.fill("#createName", "Test Room")
+        await alice.fill("#createPass", "pw1")
+        await alice.click("#createForm button[type=submit]")
+        await alice.wait_for_selector("#lobby:not([hidden])", timeout=8000)
+        check("alice makes a room and lands in its lobby", True)
+        await alice.wait_for_selector("#qr svg", timeout=8000)
+        check("the lobby shows a QR code", await alice.locator("#qr svg").count() == 1)
+
+        bob = await page("bob")
+        await bob.click('.mode[data-mode="online"]')
+        await bob.wait_for_selector("#rooms:not([hidden])", timeout=8000)
+        await bob.fill("#joinName", "test room"); await bob.fill("#joinPass", "nope")
+        await bob.click("#joinForm button[type=submit]")
+        await bob.wait_for_function("document.getElementById('onlineMsg').textContent.includes('Wrong password')", timeout=8000)
+        check("a wrong password is refused", True)
+        await bob.fill("#joinName", "test room"); await bob.fill("#joinPass", "pw1")
+        await bob.click("#joinForm button[type=submit]")
+        await bob.wait_for_selector("#lobby:not([hidden])", timeout=8000)
+        await alice.wait_for_function("document.querySelectorAll('#roster li').length === 2", timeout=8000)
+        check("bob joins with the password; alice sees two players", True)
+
+        # an invite link: a second room made through the API, opened as #join/<key>/<invite>
+        made = api("rooms", {"name": "Invite Test", "password": "secret"}, "dev:carol")
+        carol = await page("carol", f"#join/{made['key'].replace(' ', '%20')}/{made['invite']}")
+        await carol.wait_for_selector("#lobby:not([hidden])", timeout=8000)
+        check("an invite link joins a password room without the password", await carol.evaluate("location.hash") == "")
+        await carol.close()
+
+        # picks: one fighter each
+        await alice.click('#picks button[data-kind="so"]')
+        await bob.wait_for_function("document.querySelector('#picks button[data-kind=so]').disabled", timeout=5000)
+        check("a fighter someone picked is greyed out for the others", True)
+        await bob.click('#picks button[data-kind="gpt"]')
+        await alice.click("#readyBtn"); await bob.click("#readyBtn")
+        await alice.wait_for_function("!document.getElementById('startBtn').disabled", timeout=5000)
+        check("start unlocks for the host when everyone is ready", await bob.locator("#startBtn").is_hidden())
+        await alice.screenshot(path=f"{OUT}/0-lobby-alice.png")
+        await bob.click('#lobbyEmotes button >> nth=1')
+        await alice.wait_for_selector("#roster .pop", timeout=3000)
+        check("an emote from bob shows on alice's roster", True)
+        await alice.click('#lobbyLives button[data-lives="1"]')
+        await alice.click("#startBtn")
+        await alice.wait_for_selector("#online", state="hidden", timeout=5000)
+        await bob.wait_for_selector("#versus:not([hidden])", timeout=5000)
+        check("the match opens on the versus screen for both", await alice.locator("#versus").is_visible())
+        await alice.screenshot(path=f"{OUT}/1-versus-alice.png")
+        await alice.wait_for_function("!window.__bb()[0].versus", timeout=30000)
+        await bob.wait_for_function("!window.__bb()[0].versus", timeout=30000)
+        before = await bob.evaluate("window.__bb()")
+        # bob walks right, alice walks left, then both attack
+        await bob.keyboard.down("KeyD"); await alice.keyboard.down("KeyA")
+        await asyncio.sleep(1.5)
+        await bob.keyboard.up("KeyD"); await alice.keyboard.up("KeyA")
+        await asyncio.sleep(1.5)
+        a, b = await alice.evaluate("window.__bb()"), await bob.evaluate("window.__bb()")
+        print("   before (bob's view):", [round(f["x"], 2) for f in before])
+        print("   alice's view:", [(round(f["x"], 2), f["hp"]) for f in a], " bob's view:", [(round(f["x"], 2), f["hp"]) for f in b])
+        check("bob moved right, as both screens show", b[1]["x"] > before[1]["x"] + 0.5 and a[1]["x"] > before[1]["x"] + 0.5)
+        check("alice moved left, as both screens show", a[0]["x"] < before[0]["x"] - 0.5 and b[0]["x"] < before[0]["x"] - 0.5)
+        check("both screens agree on positions (within 0.6)", all(abs(p["x"] - q["x"]) < 0.6 for p, q in zip(a, b)))
+        for _ in range(6):
+            await bob.keyboard.press("KeyJ"); await alice.keyboard.press("KeyJ"); await asyncio.sleep(0.9)
+        await asyncio.sleep(1.5)
+        a, b = await alice.evaluate("window.__bb()"), await bob.evaluate("window.__bb()")
+        print("   after attacks, alice's view:", [(round(f["x"], 2), f["hp"]) for f in a], " bob's view:", [(round(f["x"], 2), f["hp"]) for f in b])
+        check("someone took damage", any(f["hp"] < 100 for f in a))
+        check("both screens agree on health", all(abs(p["hp"] - q["hp"]) < 0.5 for p, q in zip(a, b)))
+        await alice.screenshot(path=f"{OUT}/2-match-alice.png"); await bob.screenshot(path=f"{OUT}/2-match-bob.png")
+        check("bob gets the host's state (snapshots)", bob.snaps > 40, f"{bob.snaps} snapshots")
+        check("alice gets bob's controls", alice.ins > 2, f"{alice.ins} input messages")
+        await bob.click("#emoteToggle"); await bob.click("#emoteList button >> nth=4")
+        await alice.wait_for_selector(".emote-pop", timeout=3000)
+        check("an emote in a match pops over bob's fighter on alice's screen", True)
+        await alice.screenshot(path=f"{OUT}/3-emote-alice.png")
+        # bob leaves mid-match: alice is the last one standing, and the result is recorded
+        await bob.close()
+        await alice.wait_for_selector("#result:not([hidden])", timeout=8000)
+        title = await alice.text_content("#resultTitle")
+        check("when bob leaves, alice wins", title == "alice wins", title)
+        await alice.screenshot(path=f"{OUT}/4-result-alice.png")
+        await asyncio.sleep(0.5)
+        board = api("leaderboard")
+        rows = {r["name"]: r for r in board["players"]}
+        check("the leaderboard has both players, by name", rows.get("alice", {}).get("wins", 0) >= 1 and rows.get("bob", {}).get("matches", 0) >= 1, json.dumps(board))
+        await alice.click("#roomBtn")
+        await alice.wait_for_selector("#lobby:not([hidden])", timeout=5000)
+        check("back to the room after the match", True)
+        await alice.click("#onlineBack")
+        await alice.click("#boardBtn")
+        await alice.wait_for_selector("#boardTable table", timeout=5000)
+        await alice.screenshot(path=f"{OUT}/5-leaderboard.png")
+        check("the leaderboard screen lists players", await alice.locator("#boardTable tbody tr").count() >= 2)
+        check("no page errors", not alice.errors, alice.errors[:3])
+        await browser.close()
+    print(f"\n{sum(ok for _, ok in results)}/{len(results)} passed")
+asyncio.run(main())

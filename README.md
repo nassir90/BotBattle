@@ -39,6 +39,7 @@ The links at the foot of the menu go to the three real sites. Their logos are 3D
 | Duel | One on one. Pick yourself, then pick your opponent, or press Random opponent (`R`) and let chance choose. |
 | Training | Play-test one fighter against two dummies. Dummies refill their health, knockouts respawn, and you can make the dummies stand still, move around or fight back. |
 | Watch | Three CPUs fight while you watch. |
+| Online | Fight friends in a room: two or three players, each on their own device. See [Online](#online). |
 
 Fighters are picked from a carousel: click a card, or rotate with the arrow buttons, the arrow keys, a drag or the mouse wheel, then press `Enter` (or Play). Clicking a card only selects it, and the card and its fighter give a little hop. The title says which mode you're picking for ("Pick your fighter · Free-for-all"). Each card has its fighter standing in its own little window, and the one in the middle works through its moves in turn, using the real game code, with the move it's showing highlighted in the card's list.
 
@@ -49,6 +50,24 @@ Duels and free-for-alls open on a versus screen: a panel for each fighter in its
 ![Versus screen before a duel: Claude and ChatGPT in their panels](docs/screenshots/versus.jpg)
 
 ![Fighter select: Stack Overflow's card firing blocks out of its bent stack, with Block shot highlighted](docs/screenshots/fighter-select.jpg)
+
+## Online
+
+![A room's lobby: two players ready, fighter picks, lives, emotes, and the QR code that joins the room](docs/screenshots/online-lobby.jpg)
+
+On mpts.ie the menu has an **Online** mode and a **Leaderboard**. (The copy published as a Claude artifact stays offline.)
+
+- **Signing in:** online play needs an account, through [Clerk](https://clerk.com) (email, username or Google), so your name and wins follow you between devices. The offline modes don't need one.
+- **Rooms:** make one with a name and an optional password, or join one by name.
+  - Names are 3 to 16 Latin letters, digits or spaces, checked on the server with the [obscenity](https://github.com/jo3-l/obscenity) profanity filter (it catches look-alike spellings such as "sh1t").
+  - Passwords are stored only as a salted PBKDF2 hash. An empty room deletes itself after ten minutes.
+- **Inviting:** every lobby shows a QR code and an invite link (`#join/<room>/<invite>`). Opening it joins straight away, without the password. The invite sits after the `#`, so it never reaches a server log.
+- **The lobby:** up to three players. Each picks a different fighter and presses Ready; the host (whoever made the room) sets the lives and starts.
+- **Emotes:** six of them, sent as a number from 0 to 5, so there's no free text to moderate. They pop next to your name in the lobby, and over your fighter in a match (the smiley button on the right).
+- **Matches:** they open on the versus screen with everyone's names. The host's browser runs the match and decides knockouts, comebacks and the result. Every browser plays the match out with everyone's controls, and the host's positions, health and lives correct the others about 20 times a second. Keep the host's tab in front: a background tab pauses the match for everyone.
+- **Leaderboard:** wins, matches, knockouts and parries per player, across every room, recorded by the room when a match ends.
+
+The server is the same Worker that serves the page: each room is a Durable Object, and the leaderboard is a D1 database (both on Cloudflare's free plan).
 
 ## Controls
 
@@ -214,4 +233,13 @@ npm run dev      # build the page and serve it locally
 npm run deploy   # build the page and deploy the worker to mpts.ie/games/botbattle
 ```
 
-`npm run build:page` wraps `game/stick-standoff.html` into a full page at `public/games/botbattle/index.html`. A small Cloudflare Worker ([`src/index.ts`](src/index.ts)) serves it at `mpts.ie/games/botbattle` and redirects the bare path to the trailing-slash URL.
+`npm run build:page` wraps `game/stick-standoff.html` into a full page at `public/games/botbattle/index.html`. The Cloudflare Worker ([`src/index.ts`](src/index.ts)) serves it at `mpts.ie/games/botbattle`, redirects the bare path to the trailing-slash URL, and runs the online API under `/games/botbattle/api`: rooms (the `Room` Durable Object), their WebSockets, and the leaderboard (D1). `npm run deploy` creates the database and the Durable Object class the first time.
+
+Locally, `npm run dev` runs the same API against a local Durable Object and database. There, `?dev=<name>` signs you in as a test player without Clerk (the server accepts that only on localhost), which is how the end-to-end tests play two and three players at once:
+
+```bash
+BOTBATTLE_URL=http://localhost:5173/games/botbattle/ ~/projects/ShadowKit/.venv/bin/python tests/online_test.py
+BOTBATTLE_URL=http://localhost:5173/games/botbattle/ ~/projects/ShadowKit/.venv/bin/python tests/ko_test.py
+```
+
+`online_test.py` makes a room, refuses a wrong password, joins by password and by invite link, picks, readies, plays (both screens agree on positions and health), emotes, has a player leave, and checks the leaderboard. `ko_test.py` checks that only the host knocks anyone out, that comebacks and the result reach every screen, and that the win is recorded.

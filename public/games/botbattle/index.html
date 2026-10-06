@@ -317,6 +317,53 @@ button[aria-pressed="true"] { background: var(--ink); color: var(--paper); }
 @keyframes vsStamp { from { transform: translate(-50%, -50%) rotate(-8deg) scale(2.4); opacity: 0; } }
 #vsCanvas { position: absolute; inset: 0; width: 100%; height: 100%; z-index: 2; pointer-events: none; }
 .vs-skip { position: absolute; bottom: 12px; left: 0; right: 0; z-index: 3; margin: 0; text-align: center; font: 500 11px/1 var(--mono); color: var(--ink-soft); }
+/* online: sign in, rooms, the lobby, the leaderboard */
+.mode-links { display: flex; gap: 10px; flex-wrap: wrap; }
+.online.panel, .board.panel { width: min(860px, 100%); }
+.online .toprow, .board .toprow { display: flex; align-items: center; gap: 12px; flex-wrap: wrap; }
+.who { margin-left: auto; font-size: 12px; color: var(--ink-soft); display: flex; gap: 8px; align-items: center; }
+.who button { padding: 6px 10px; box-shadow: 2px 2px 0 var(--ink); }
+.online .sub.err { color: var(--hurt); }
+.rooms { display: grid; grid-template-columns: repeat(auto-fit, minmax(260px, 1fr)); gap: 16px; }
+.roomform { display: grid; gap: 10px; align-content: start; border: 2px solid var(--ink); padding: 16px; background: var(--paper); box-shadow: 4px 4px 0 var(--ink); }
+.roomform h2, .lobby h2 { margin: 0; font: 400 16px var(--display); }
+.roomform label { display: grid; gap: 4px; font-size: 12px; color: var(--ink-soft); }
+.roomform input { font: 500 15px var(--mono); color: var(--ink); background: var(--paper); border: 2px solid var(--ink); padding: 8px 10px; min-width: 0; }
+.roomform input:focus { outline: 3px solid color-mix(in srgb, var(--gpt) 50%, transparent); outline-offset: 1px; }
+.roomform button { justify-self: start; }
+.lobby { display: grid; grid-template-columns: minmax(0, 1fr) auto; gap: 20px; align-items: start; }
+.lobby-main { display: grid; gap: 14px; min-width: 0; }
+.roster { list-style: none; margin: 0; padding: 0; display: grid; gap: 8px; }
+.roster li { display: grid; grid-template-columns: 14px minmax(0, 1fr) auto; gap: 10px; align-items: center; border: 2px solid var(--ink); padding: 8px 12px; background: var(--paper); position: relative; }
+.roster .sw { width: 14px; height: 14px; border: 2px solid var(--ink); background: var(--c, var(--paper-2)); }
+.roster .nm { font-weight: 600; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.roster .nm small { font-weight: 400; color: var(--ink-soft); margin-left: 6px; }
+.roster .st { font-size: 11px; text-transform: uppercase; letter-spacing: .06em; color: var(--ink-soft); }
+.roster .st.ok { color: var(--ink); background: color-mix(in srgb, var(--gpt) 22%, var(--paper)); padding: 3px 6px; }
+.roster .pop { position: absolute; right: -10px; top: -18px; font-size: 26px; animation: pop 2s ease-out both; pointer-events: none; }
+@keyframes pop { 0% { transform: scale(.3); opacity: 0; } 12% { transform: scale(1.15); opacity: 1; } 20% { transform: scale(1); } 80% { opacity: 1; } 100% { opacity: 0; } }
+.picks { display: flex; gap: 8px; flex-wrap: wrap; }
+.picks button { display: flex; gap: 8px; align-items: center; }
+.picks button i { width: 12px; height: 12px; border: 2px solid var(--ink); background: var(--c); }
+.picks button[aria-pressed="true"] { background: color-mix(in srgb, var(--c) 30%, var(--paper)); }
+.picks button:disabled, .lobby-actions button:disabled { opacity: .4; cursor: not-allowed; transform: none; box-shadow: 3px 3px 0 var(--ink); }
+.lobby-actions { display: flex; gap: 10px; flex-wrap: wrap; align-items: center; }
+.lobby-note { font-size: 12px; color: var(--ink-soft); margin: 0; }
+.emote-row { display: flex; gap: 6px; flex-wrap: wrap; }
+.emote-row button, .emote-tray button { font: 400 22px/1 system-ui, "Apple Color Emoji", "Segoe UI Emoji", sans-serif; padding: 6px 8px; text-transform: none; }
+.invite { display: grid; gap: 8px; justify-items: center; text-align: center; width: 200px; }
+.qr { width: 180px; aspect-ratio: 1; border: 2px solid var(--ink); background: #fff; padding: 6px; box-sizing: border-box; }
+.qr svg { display: block; width: 100%; height: 100%; }
+.invite small { font-size: 11px; color: var(--ink-soft); }
+@media (max-width: 640px) { .lobby { grid-template-columns: minmax(0, 1fr); } .invite { justify-self: center; } }
+.emote-tray { position: fixed; right: 16px; top: 50%; transform: translateY(-50%); display: grid; gap: 6px; justify-items: end; z-index: 5; }
+.emote-tray .tray { display: grid; gap: 6px; }
+.emote-pop { position: absolute; font: 400 34px/1 system-ui, "Apple Color Emoji", "Segoe UI Emoji", sans-serif; transform: translate(-50%, -100%); pointer-events: none; }
+.emote-pop span { display: block; animation: pop 2.2s ease-out both; }
+.board table { width: 100%; border-collapse: collapse; font-variant-numeric: tabular-nums; }
+.board th, .board td { text-align: left; padding: 7px 10px; border-bottom: 1.5px solid color-mix(in srgb, var(--ink) 18%, transparent); font-size: 13px; }
+.board th { font: 400 11px var(--display); color: var(--ink-soft); }
+.board .n { text-align: right; }
 .fight-call {
   position: fixed; inset: 0; z-index: 35; display: grid; place-items: center; pointer-events: none;
   font: 400 clamp(48px, 11vw, 140px)/1 var(--display); color: var(--ink); animation: fightCall 1s ease-out both;
@@ -373,7 +420,9 @@ button[aria-pressed="true"] { background: var(--ink); color: var(--paper); }
       <button type="button" class="mode" data-mode="duel"><h2>Duel</h2><span>One on one against a CPU you pick.</span></button>
       <button type="button" class="mode" data-mode="training"><h2>Training</h2><span>Play-test one fighter against dummies. Health refills and knockouts respawn.</span></button>
       <button type="button" class="mode" data-mode="watch"><h2>Watch</h2><span>Three CPUs fight it out while you watch.</span></button>
+      <button type="button" class="mode" data-mode="online" hidden><h2>Online</h2><span>Fight your friends. Make a room, share its code, and play.</span></button>
     </div>
+    <div class="mode-links" id="modeLinks" hidden><button type="button" id="boardBtn">Leaderboard</button></div>
     <p class="keys">Move <kbd>A</kbd> <kbd>D</kbd> or <kbd>&larr;</kbd> <kbd>&rarr;</kbd>, double-tap to dash &middot; Jump <kbd>W</kbd> <kbd>&uarr;</kbd> <kbd>Space</kbd> &middot; Crouch <kbd>S</kbd> &middot; Shot <kbd>J</kbd> &middot; Melee <kbd>K</kbd> &middot; Power <kbd>L</kbd> &middot; Special <kbd>I</kbd> &middot; Parry <kbd>Backspace</kbd> toward the way you face or press, <kbd>W</kbd> + <kbd>Backspace</kbd> overhead &middot; Fall past an edge and you grab it; press toward the stage to climb up</p>
   </div>
   <nav class="brands" id="brands" aria-label="The real ones">
@@ -405,6 +454,63 @@ button[aria-pressed="true"] { background: var(--ink); color: var(--paper); }
   </div>
 </div>
 
+<div class="overlay" id="online" hidden>
+  <div class="panel online">
+    <div class="toprow"><button type="button" id="onlineBack">&larr; Modes</button><span class="who" id="who"></span></div>
+    <h1 id="onlineTitle">Online</h1>
+    <p class="sub" id="onlineMsg" role="status"></p>
+    <div id="signedOut" hidden><button type="button" id="signInBtn">Sign in to play online</button></div>
+    <div class="rooms" id="rooms" hidden>
+      <form class="roomform" id="createForm" autocomplete="off">
+        <h2>Make a room</h2>
+        <label>Room name<input id="createName" maxlength="16" required placeholder="Paper Arena"></label>
+        <label>Password (optional)<input id="createPass" type="password" maxlength="64" autocomplete="new-password"></label>
+        <button type="submit">Make room</button>
+      </form>
+      <form class="roomform" id="joinForm" autocomplete="off">
+        <h2>Join a room</h2>
+        <label>Room name<input id="joinName" maxlength="16" required></label>
+        <label>Password (if it has one)<input id="joinPass" type="password" maxlength="64" autocomplete="off"></label>
+        <button type="submit">Join</button>
+      </form>
+    </div>
+    <div class="lobby" id="lobby" hidden>
+      <div class="lobby-main">
+        <ul class="roster" id="roster"></ul>
+        <h2>Your fighter</h2>
+        <div class="picks" id="picks"></div>
+        <div class="lobby-actions">
+          <button type="button" id="readyBtn">Ready</button>
+          <button type="button" id="startBtn" hidden>Start match</button>
+          <div class="lives" id="lobbyLives" role="group" aria-label="Lives"><span>Lives</span><button type="button" data-lives="1">1</button><button type="button" data-lives="2">2</button><button type="button" data-lives="3">3</button><button type="button" data-lives="5">5</button></div>
+          <button type="button" id="leaveBtn">Leave room</button>
+        </div>
+        <p class="lobby-note" id="lobbyNote"></p>
+        <div class="emote-row" id="lobbyEmotes" aria-label="Emotes"></div>
+      </div>
+      <aside class="invite">
+        <div class="qr" id="qr" role="img" aria-label="QR code that joins this room"></div>
+        <button type="button" id="copyLink">Copy invite link</button>
+        <small>Scan it or share the link to join without the password.</small>
+      </aside>
+    </div>
+  </div>
+</div>
+
+<div class="overlay" id="board" hidden>
+  <div class="panel board">
+    <div class="toprow"><button type="button" id="boardBack">&larr; Back</button></div>
+    <h1>Leaderboard</h1>
+    <p class="sub" id="boardMsg">Online wins, across every room.</p>
+    <div class="bench-wrap" id="boardTable"></div>
+  </div>
+</div>
+
+<div class="emote-tray" id="emoteTray" hidden>
+  <div class="tray" id="emoteList" hidden></div>
+  <button type="button" class="toggle" id="emoteToggle" aria-expanded="false" aria-label="Emotes">&#x1F642;</button>
+</div>
+
 <div class="overlay" id="result" hidden>
   <div class="panel result">
     <h1 id="resultTitle">You win</h1>
@@ -412,6 +518,7 @@ button[aria-pressed="true"] { background: var(--ink); color: var(--paper); }
     <div class="bench-wrap" id="benchWrap"></div>
     <p class="bench-note">Scores from this match. Best result in each row is highlighted.</p>
     <div class="row">
+      <button type="button" id="roomBtn" hidden>Back to the room</button>
       <button type="button" id="rematchBtn">Rematch</button>
       <button type="button" id="changeBtn">Change fighter</button>
       <button type="button" id="homeBtn">Main menu</button>
@@ -1325,7 +1432,8 @@ button[aria-pressed="true"] { background: var(--ink); color: var(--paper); }
     return 'hit';
   }
   function die(h, ringOut = false) {
-    if (h.dead) return;
+    if (h.dead || (guestOnline() && !netSays)) return;      // online, only the host knocks anyone out
+    if (isHost()) net.match.ev.push(['die', fighters.indexOf(h), ringOut ? 1 : 0]);
     h.dead = true; h.deadT = 0; h.stun = 0; h.guard = null;
     if (Number.isFinite(h.stocks)) { h.stocks = Math.max(0, h.stocks - 1); if (h.stocks === 0) h.out = true; }
     if (h.lastHitBy && h.lastHitBy !== h) h.lastHitBy.stats.kos++;
@@ -2561,6 +2669,7 @@ button[aria-pressed="true"] { background: var(--ink); color: var(--paper); }
     if (f.launch && f.launch.length) { f.bars += f.launch.length; f.launch = []; }   // blocks on their way up go back
   }
   function ringOut(f) {
+    if (guestOnline()) return;
     f.hp = 0;
     floatText(THREE.MathUtils.clamp(f.x, -STAGE_HALF, STAGE_HALF), 0.5, 'Ring out', 'info');
     die(f, true);
@@ -2777,7 +2886,7 @@ button[aria-pressed="true"] { background: var(--ink); color: var(--paper); }
   }
   addEventListener('keydown', e => {
     if (versus && (e.code === 'Enter' || e.code === 'Space')) { e.preventDefault(); skipVersus(); return; }
-    if (e.code === 'Escape' && inMatch()) { openMenu(); return; }
+    if (e.code === 'Escape' && inMatch()) { if (mode.kind !== 'online' || matchOver) openMenu(); return; }
     if (e.code === 'Escape' && !selectEl.hidden) { document.getElementById('backBtn').click(); return; }
     if (!GAME_KEYS.has(e.code) || !player) return;
     if (document.activeElement && document.activeElement.tagName === 'BUTTON' && e.code === 'Space') document.activeElement.blur();
@@ -2939,7 +3048,7 @@ button[aria-pressed="true"] { background: var(--ink); color: var(--paper); }
       el.style.setProperty('--c', f.kit.color);
       el.setAttribute('role', 'group');
       el.setAttribute('aria-label', f.kit.name);
-      const tag = f.isPlayer ? 'YOU' : f.dummy ? 'DUMMY' : 'CPU';
+      const tag = f.isPlayer ? 'YOU' : f.netName ? esc(f.netName).toUpperCase() : f.dummy ? 'DUMMY' : 'CPU';
       el.innerHTML = `<div class="plate-logo"><span class="badge"></span></div>
         <div class="plate-info">
           <div class="plate-top"><span class="stock"></span><span class="plate-tag${f.isPlayer ? ' you' : ''}">${tag} <span class="plate-hp"></span></span></div>
@@ -3060,7 +3169,10 @@ button[aria-pressed="true"] { background: var(--ink); color: var(--paper); }
   const resultEl = document.getElementById('result');
   const trainEl = document.getElementById('trainbar');
   const cornerEl = document.getElementById('corner');
-  const inMatch = () => menuEl.hidden && selectEl.hidden;
+  const onlineEl = document.getElementById('online');
+  const boardEl = document.getElementById('board');
+  const emoteTray = document.getElementById('emoteTray');
+  const inMatch = () => menuEl.hidden && selectEl.hidden && onlineEl.hidden && boardEl.hidden;
 
   function clearMatch() {
     for (const f of fighters) scene.remove(f.root);
@@ -3081,10 +3193,15 @@ button[aria-pressed="true"] { background: var(--ink); color: var(--paper); }
     if (m.kind === 'ffa') { const o = order.filter(k => k !== m.pick); placement = [[m.pick, -6, true], [o[0], 0.5], [o[1], 6]]; }
     else if (m.kind === 'duel') placement = [[m.pick, -4, true], [m.opponent, 4]];
     else if (m.kind === 'training') { const o = order.filter(k => k !== m.pick); placement = [[m.pick, -4, true], [o[0], 1], [o[1], 5]]; }
+    else if (m.kind === 'online') {      // the room's players, in the order the room lists them
+      const xs = m.players.length === 2 ? [-4, 4] : [-6, 0.5, 6];
+      placement = m.players.map((p, i) => [p.kind, xs[i], p.id === net.me, p]);
+    }
     else placement = [['so', -6], ['gpt', 0], ['claude', 6]];
     if (m.kind !== 'training') m.lives = m.lives || 3;
-    fighters = placement.map(([k, x, me]) => {
+    fighters = placement.map(([k, x, me, who]) => {
       const f = buildFighter(k, x, !!me);
+      if (who) { f.netId = who.id; f.netName = who.name; }
       if (m.kind === 'training' && !me) f.dummy = true;
       f.stocks = m.kind === 'training' ? Infinity : m.lives;
       return f;
@@ -3098,17 +3215,19 @@ button[aria-pressed="true"] { background: var(--ink); color: var(--paper); }
     trainEl.hidden = m.kind !== 'training';
     keys.clear(); pressed.clear();
     stopVersus();
-    if (m.kind === 'duel' || m.kind === 'ffa') startVersus();
+    if (m.kind === 'duel' || m.kind === 'ffa' || m.kind === 'online') startVersus();
+    emoteTray.hidden = m.kind !== 'online';
   }
   // back for another life: the body vanishes in a puff, and a fresh fighter drops in from above,
   // blinking and unhurtable for a moment
   function respawn(f, drop = false) {
     const i = fighters.indexOf(f);
+    if (isHost()) net.match.ev.push(['respawn', i]);
     if (drop && f.rag) { const h = f.rag.pts.hip; if (h.y > -3) { burst(V(h.x, h.y + 0.6, 0), f.kit.color); ring(V(h.x, h.y + 0.6, 0), '#141414', 0.9); } }
     scene.remove(f.root);
     springs = springs.filter(sp => sp !== f.spring);
     const nf = buildFighter(f.kind, f.spawnX, f.isPlayer);
-    nf.dummy = f.dummy; nf.stocks = f.stocks; nf.stats = f.stats;
+    nf.dummy = f.dummy; nf.stocks = f.stocks; nf.stats = f.stats; nf.netId = f.netId; nf.netName = f.netName;
     if (drop) {
       nf.y = 4; nf.onGround = false; nf.invuln = 2;
       nf.feet.forEach(ft => { ft.y = nf.y; ft.air = true; });
@@ -3159,10 +3278,16 @@ button[aria-pressed="true"] { background: var(--ink); color: var(--paper); }
     const living = fighters.filter(f => !f.out);
     const winner = living.length === 1 ? living[0] : [...living].sort((a, b) => (b.stocks - a.stocks) || (b.hp - a.hp))[0] || null;
     renderBench(winner, living.length > 1);
+    const online = mode.kind === 'online';
+    document.getElementById('roomBtn').hidden = !online;
+    document.getElementById('rematchBtn').hidden = online;
+    document.getElementById('changeBtn').hidden = online;
+    document.getElementById('homeBtn').textContent = online ? 'Leave room' : 'Main menu';
+    emoteTray.hidden = true;
     setTimeout(() => {
       resultEl.hidden = false;
       document.getElementById('touch').hidden = true;     // the touch pad would show through under the buttons
-      document.getElementById('rematchBtn').focus();
+      document.getElementById(online ? 'roomBtn' : 'rematchBtn').focus();
     }, 1100);
   }
   function checkResult(dt) {
@@ -3174,6 +3299,12 @@ button[aria-pressed="true"] { background: var(--ink); color: var(--paper); }
         else if (f.dummy && !f.dead && f.hp < 100 && f.lastHitT > 1.5) { f.hp = Math.min(100, f.hp + dt * 120); updateHud(); }
       }
       document.getElementById('trainStat').textContent = `Damage dealt: ${Math.round(trainDamage)}`;
+      return;
+    }
+    if (mode.kind === 'online') {
+      if (!isHost()) return;
+      if (living.length > 1) { for (const f of [...fighters]) if (f.dead && !f.out && f.deadT > 1.8) respawn(f, true); }
+      else finishOnline(living[0] || null);
       return;
     }
     // a knocked-out fighter with lives left comes back
@@ -3195,12 +3326,14 @@ button[aria-pressed="true"] { background: var(--ink); color: var(--paper); }
   // menu, mode and fighter select
   let pending = null;   // the mode being set up
   function openMenu() {
-    resultEl.hidden = true; selectEl.hidden = true; menuEl.hidden = false; cornerEl.hidden = true;
+    leaveRoom();
+    resultEl.hidden = true; selectEl.hidden = true; onlineEl.hidden = true; boardEl.hidden = true; menuEl.hidden = false; cornerEl.hidden = true;
     if (mode.kind !== 'watch') startMatch({ kind: 'watch' });
   }
   document.querySelectorAll('.mode').forEach(b => b.addEventListener('click', () => {
     const kind = b.dataset.mode;
     if (kind === 'watch') { menuEl.hidden = true; cornerEl.hidden = false; startMatch({ kind: 'watch' }); return; }
+    if (kind === 'online') { openOnline(); return; }
     pending = { kind, step: 'pick' };
     showSelect();
   }));
@@ -3504,7 +3637,7 @@ button[aria-pressed="true"] { background: var(--ink); color: var(--paper); }
       el.className = 'vs-panel';
       el.style.setProperty('--c', mf.kit.color);
       el.style.setProperty('--i', i);
-      el.innerHTML = `<div class="vs-tag">${mf.isPlayer ? 'You' : 'CPU'}</div><div class="vs-floor"></div>
+      el.innerHTML = `<div class="vs-tag">${mf.isPlayer ? 'You' : mf.netName ? esc(mf.netName) : 'CPU'}</div><div class="vs-floor"></div>
         <div class="vs-caption"><h2 class="vs-name">${mf.kit.name}</h2><p class="vs-line">“${VS_LINES[mf.kind]}”</p></div>`;
       versusEl.insertBefore(el, versusEl.querySelector('.vs-skip'));
       return { w, f, el, line: el.querySelector('.vs-line'), started: false };
@@ -3515,6 +3648,7 @@ button[aria-pressed="true"] { background: var(--ink); color: var(--paper); }
       versusEl.appendChild(mark);
     }
     versus = { t: 0, panels, skipped: false };
+    versusEl.querySelector('.vs-skip').hidden = mode.kind === 'online';
     versusEl.classList.remove('leaving');
     versusEl.hidden = false;
     fightCallEl.hidden = true;
@@ -3526,7 +3660,7 @@ button[aria-pressed="true"] { background: var(--ink); color: var(--paper); }
     versusEl.hidden = true;
     versusEl.classList.remove('leaving');
   }
-  function skipVersus() { if (versus && versus.t < VS_LEN - VS_FADE) versus.t = VS_LEN - VS_FADE; }
+  function skipVersus() { if (versus && mode.kind !== 'online' && versus.t < VS_LEN - VS_FADE) versus.t = VS_LEN - VS_FADE; }   // online, everyone starts together
   versusEl.addEventListener('pointerdown', e => { e.preventDefault(); skipVersus(); });
   addEventListener('resize', () => { if (versus) vsRenderer.setSize(innerWidth, innerHeight, false); });
   // where a gesture puts each hand, in the fighter's own frame (facing +x), and how firmly
@@ -3595,6 +3729,427 @@ button[aria-pressed="true"] { background: var(--ink); color: var(--paper); }
     }
   }
 
+  // ================= Online: sign-in, rooms, and matches the host runs =================
+  // Only on the real site (and a local dev server); the copy of the game published elsewhere stays offline.
+  // Players sign in with Clerk. A room is a Durable Object on the server (src/index.ts): it checks the password or
+  // invite, keeps the lobby, and relays a match. In a match the host's browser runs the game as usual and is the
+  // only one that decides knockouts, comebacks and the result; everyone's controls go to everyone, so each
+  // browser plays the match out too, and the host's state (positions, health, lives) corrects the guests ~20
+  // times a second.
+  const LOCAL = location.hostname === 'localhost' || location.hostname === '127.0.0.1';
+  const ONLINE = location.hostname === 'mpts.ie' || LOCAL;
+  const API_BASE = '/games/botbattle/api';
+  const CLERK_HOST = 'merry-filly-2600.clerk.accounts.dev';
+  const CLERK_KEY = 'pk_test_bWVycnktZmlsbHktMjYwMC5jbGVyay5hY2NvdW50cy5kZXYk';
+  const DEV_USER = LOCAL ? new URLSearchParams(location.search).get('dev') : null;   // local testing without Clerk
+  const EMOTES = [['\u{1F44D}', 'Thumbs up'], ['\u{1F602}', 'Laughing'], ['\u{1F62D}', 'Crying'], ['\u{1F621}', 'Angry'], ['\u{1F525}', 'Fire'], ['\u{1F91D}', 'Good game']];
+  // controls as bits: held ones, then ones pressed since the last message
+  const IN = { left: 1, right: 2, down: 4, up: 8, fire: 16, jump: 32, parry: 64, dashL: 128, dashR: 256, a1: 512, a2: 1024, a3: 2048, a4: 4096 };
+  const HELD = 31;
+  const esc = s => String(s).replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' })[c]);
+  const net = { ws: null, me: null, room: null, lobby: null, match: null, remote: new Map(), frame: 0, error: null, ping: 0, pendingJoin: null, view: null };
+  let netSays = false;               // set while a knockout the host reported is played out on a guest
+  function isHost() { return mode.kind === 'online' && !!net.match && net.match.host === net.me; }
+  function guestOnline() { return mode.kind === 'online' && !!net.match && net.match.host !== net.me; }
+  function sendNet(msg) { if (net.ws && net.ws.readyState === 1) net.ws.send(JSON.stringify(msg)); }
+
+  // ---------- signing in ----------
+  let clerkLoading = null;
+  function addScript(src, attrs = {}) {
+    return new Promise((resolve, reject) => {
+      const el = document.createElement('script');
+      el.src = src; el.async = true; el.crossOrigin = 'anonymous';
+      for (const [k, v] of Object.entries(attrs)) el.setAttribute(k, v);
+      el.onload = resolve; el.onerror = () => reject(new Error('Sign-in could not load. Check your connection and try again.'));
+      document.head.appendChild(el);
+    });
+  }
+  function loadClerk() {
+    if (!clerkLoading) {
+      clerkLoading = addScript(`https://${CLERK_HOST}/npm/@clerk/ui@1/dist/ui.browser.js`)
+        .then(() => addScript(`https://${CLERK_HOST}/npm/@clerk/clerk-js@6/dist/clerk.browser.js`, { 'data-clerk-publishable-key': CLERK_KEY }))
+        .then(() => window.Clerk.load({ ui: { ClerkUI: window.__internal_ClerkUICtor } }))
+        .then(() => {
+          window.Clerk.addListener(() => { if (!onlineEl.hidden && !net.ws) showOnline(); });
+          return window.Clerk;
+        });
+      clerkLoading.catch(() => { clerkLoading = null; });
+    }
+    return clerkLoading;
+  }
+  // who's playing: a name, and a fresh token that proves it to the server; null when signed out
+  async function account() {
+    if (DEV_USER) return { name: DEV_USER, token: async () => 'dev:' + DEV_USER };
+    const clerk = await loadClerk();
+    const u = clerk.user;
+    if (!u) return null;
+    return { name: u.username || u.firstName || 'Player', token: () => clerk.session.getToken(), signOut: () => clerk.signOut() };
+  }
+
+  // ---------- the online screen: signed out, rooms, or a room's lobby ----------
+  const onlineMsg = document.getElementById('onlineMsg');
+  const say = (text, err = false) => { onlineMsg.textContent = text; onlineMsg.classList.toggle('err', err); };
+  function showView(view) {
+    net.view = view;
+    document.getElementById('signedOut').hidden = view !== 'signin';
+    document.getElementById('rooms').hidden = view !== 'rooms';
+    document.getElementById('lobby').hidden = view !== 'lobby';
+    document.getElementById('onlineTitle').textContent = view === 'lobby' && net.room ? net.room.name : 'Online';
+  }
+  function openOnline(message, err = false) {
+    menuEl.hidden = true; selectEl.hidden = true; resultEl.hidden = true; boardEl.hidden = true; cornerEl.hidden = true;
+    onlineEl.hidden = false;
+    showOnline(message, err);
+  }
+  async function showOnline(message, err = false) {
+    if (net.room) { showView('lobby'); renderLobby(); return; }
+    showView(null);
+    say('Loading sign-in…');
+    let acc;
+    try { acc = await account(); } catch (err) { say(err.message, true); return; }
+    const who = document.getElementById('who');
+    if (!acc) {
+      who.textContent = '';
+      showView('signin');
+      say(message || (net.pendingJoin ? 'Sign in to join the room you were invited to.' : 'Sign in to make or join a room. Your wins go on the leaderboard.'));
+      return;
+    }
+    who.innerHTML = `Signed in as <b>${esc(acc.name)}</b>`;
+    if (acc.signOut) {
+      const out = document.createElement('button'); out.type = 'button'; out.textContent = 'Sign out';
+      out.addEventListener('click', async () => { await acc.signOut(); showOnline(); });
+      who.appendChild(out);
+    }
+    if (net.pendingJoin) { const j = net.pendingJoin; net.pendingJoin = null; connect(j.key, { invite: j.invite }); return; }
+    showView('rooms');
+    say(message || 'Make a room and share it, or join one by its name.', err);
+  }
+  document.getElementById('signInBtn').addEventListener('click', async () => {
+    try { (await loadClerk()).openSignIn(); } catch (err) { say(err.message, true); }
+  });
+  document.getElementById('onlineBack').addEventListener('click', openMenu);
+
+  document.getElementById('createForm').addEventListener('submit', async e => {
+    e.preventDefault();
+    const acc = await account().catch(() => null);
+    if (!acc) { showOnline(); return; }
+    say('Making the room…');
+    try {
+      const res = await fetch(`${API_BASE}/rooms`, {
+        method: 'POST', headers: { 'content-type': 'application/json', authorization: `Bearer ${await acc.token()}` },
+        body: JSON.stringify({ name: document.getElementById('createName').value, password: document.getElementById('createPass').value }),
+      });
+      const body = await res.json().catch(() => ({ error: 'The server sent something odd. Try again.' }));
+      if (!res.ok) { say(body.error || 'That didn’t work. Try again.', true); return; }
+      document.getElementById('createPass').value = '';
+      connect(body.key, { invite: body.invite });
+    } catch { say('Couldn’t reach the server. Check your connection and try again.', true); }
+  });
+  document.getElementById('joinForm').addEventListener('submit', e => {
+    e.preventDefault();
+    const name = document.getElementById('joinName').value.trim().replace(/\s+/g, ' ');
+    const pass = document.getElementById('joinPass');
+    if (!/^[A-Za-z0-9 ]{3,16}$/.test(name)) { say('Room names are 3 to 16 letters (A to Z), digits or spaces.', true); return; }
+    connect(name.toLowerCase(), { password: pass.value });
+    pass.value = '';
+  });
+
+  // ---------- a room ----------
+  async function connect(key, auth) {
+    const acc = await account().catch(() => null);
+    if (!acc) { showOnline(); return; }
+    leaveRoom();
+    say('Joining…');
+    const token = await acc.token();
+    const ws = new WebSocket(`${location.protocol === 'https:' ? 'wss' : 'ws'}://${location.host}${API_BASE}/rooms/${encodeURIComponent(key)}/ws`);
+    net.ws = ws; net.error = null;
+    ws.onopen = () => ws.send(JSON.stringify({ t: 'hello', token, name: acc.name, ...auth }));
+    ws.onmessage = e => { let m; try { m = JSON.parse(e.data); } catch { return; } onNet(m); };
+    ws.onclose = () => {
+      if (net.ws !== ws) return;          // a room this page already left
+      const why = net.error;
+      net.ws = null; net.room = null; net.lobby = null;
+      clearInterval(net.ping);
+      if (mode.kind === 'online') { net.match = null; startMatch({ kind: 'watch' }); resultEl.hidden = true; }
+      net.match = null;
+      if (!menuEl.hidden) return;
+      openOnline(why || 'You’ve left the room.', !!why);
+    };
+    clearInterval(net.ping);
+    net.ping = setInterval(() => sendNet({ t: 'ping' }), 25000);
+  }
+  function leaveRoom() {
+    const ws = net.ws;
+    net.ws = null; net.room = null; net.lobby = null; net.match = null;
+    clearInterval(net.ping);
+    if (ws) ws.close(1000);
+  }
+  function onNet(m) {
+    switch (m.t) {
+      case 'error': net.error = m.error; return;
+      case 'welcome':
+        net.me = m.id; net.room = { name: m.room, key: m.key, invite: m.invite };
+        if (location.hash) history.replaceState(null, '', location.pathname + location.search);
+        showView('lobby'); say('');
+        drawInvite();
+        return;
+      case 'lobby': net.lobby = m; if (net.view === 'lobby') renderLobby(); return;
+      case 'start': beginOnline(m); return;
+      case 'in': { const r = net.remote.get(m.id); if (r) { r.held = m.b & HELD; r.pend |= m.b & ~HELD; } return; }
+      case 'snap': applySnap(m); return;
+      case 'emote': showEmote(m.id, m.e); return;
+      case 'left': {
+        const f = fighters.find(q => q.netId === m.id);
+        if (f && mode.kind === 'online') {
+          floatText(f.x, f.y + BOX_H + 1, `${f.netName} left`, 'info');
+          if (isHost() && !f.out) { f.stocks = 1; if (f.dead) { f.stocks = 0; f.out = true; } else die(f); }
+        }
+        return;
+      }
+      case 'abort':
+        if (mode.kind === 'online') { net.match = null; startMatch({ kind: 'watch' }); resultEl.hidden = true; openOnline(m.reason, true); }
+        return;
+    }
+  }
+
+  // ---------- the lobby ----------
+  const picksEl = document.getElementById('picks');
+  ORDER.forEach(kind => {
+    const b = document.createElement('button');
+    b.type = 'button'; b.dataset.kind = kind; b.style.setProperty('--c', KITS[kind].color);
+    b.innerHTML = `<i></i>${KITS[kind].name}`;
+    b.addEventListener('click', () => sendNet({ t: 'pick', kind }));
+    picksEl.appendChild(b);
+  });
+  const emoteButtons = el => EMOTES.forEach(([e, label], i) => {
+    const b = document.createElement('button');
+    b.type = 'button'; b.textContent = e; b.title = label; b.setAttribute('aria-label', label);
+    b.addEventListener('click', () => { sendNet({ t: 'emote', e: i }); if (el.id === 'emoteList') toggleTray(false); });
+    el.appendChild(b);
+  });
+  emoteButtons(document.getElementById('lobbyEmotes'));
+  emoteButtons(document.getElementById('emoteList'));
+  function toggleTray(open) {
+    const list = document.getElementById('emoteList');
+    list.hidden = !open;
+    document.getElementById('emoteToggle').setAttribute('aria-expanded', String(open));
+  }
+  document.getElementById('emoteToggle').addEventListener('click', e => { toggleTray(document.getElementById('emoteList').hidden); e.currentTarget.blur(); });
+  document.getElementById('readyBtn').addEventListener('click', () => {
+    const me = net.lobby && net.lobby.players.find(p => p.id === net.me);
+    if (me) sendNet({ t: 'ready', on: !me.ready });
+  });
+  document.getElementById('startBtn').addEventListener('click', () => sendNet({ t: 'start' }));
+  document.getElementById('leaveBtn').addEventListener('click', () => { leaveRoom(); showView('rooms'); say('You’ve left the room.'); });
+  document.getElementById('lobbyLives').querySelectorAll('button').forEach(b =>
+    b.addEventListener('click', () => sendNet({ t: 'lives', n: Number(b.dataset.lives) })));
+  document.getElementById('copyLink').addEventListener('click', async e => {
+    const btn = e.currentTarget;
+    try { await navigator.clipboard.writeText(inviteLink()); btn.textContent = 'Copied'; }
+    catch { btn.textContent = 'Copy failed: use the QR code'; }
+    setTimeout(() => { btn.textContent = 'Copy invite link'; }, 1600);
+  });
+  const inviteLink = () => `${location.origin}/games/botbattle/#join/${encodeURIComponent(net.room.key)}/${net.room.invite}`;
+  let qrLoading = null;
+  async function drawInvite() {
+    const box = document.getElementById('qr');
+    box.innerHTML = '';
+    try {
+      qrLoading = qrLoading || addScript('https://cdn.jsdelivr.net/npm/qrcode-generator@2.0.4/dist/qrcode.js');
+      await qrLoading;
+      const qr = window.qrcode(0, 'M');
+      qr.addData(inviteLink());
+      qr.make();
+      box.innerHTML = qr.createSvgTag({ cellSize: 4, margin: 0, scalable: true });
+    } catch { qrLoading = null; box.textContent = 'The QR code didn’t load. Copy the link instead.'; }
+  }
+  function renderLobby() {
+    const L = net.lobby;
+    if (!L || !net.room) return;
+    const me = L.players.find(p => p.id === net.me);
+    const host = L.host === net.me;
+    document.getElementById('roster').innerHTML = L.players.map(p => {
+      const kit = p.kind ? KITS[p.kind] : null;
+      const tags = [kit ? kit.name : 'picking a fighter', p.id === net.me ? 'you' : '', p.id === L.host ? 'host' : ''].filter(Boolean).join(' · ');
+      return `<li data-id="${esc(p.id)}" style="${kit ? `--c:${kit.color}` : ''}"><span class="sw"></span>
+        <span class="nm">${esc(p.name)}<small>${tags}</small></span>
+        <span class="st${p.ready ? ' ok' : ''}">${L.playing ? 'playing' : p.ready ? 'ready' : 'not ready'}</span></li>`;
+    }).join('');
+    picksEl.querySelectorAll('button').forEach(b => {
+      const owner = L.players.find(p => p.kind === b.dataset.kind);
+      b.disabled = L.playing || (!!owner && owner.id !== net.me);
+      b.setAttribute('aria-pressed', String(!!me && me.kind === b.dataset.kind));
+    });
+    const ready = document.getElementById('readyBtn');
+    ready.disabled = L.playing || !me || !me.kind;
+    ready.textContent = me && me.ready ? 'Not ready' : 'Ready';
+    const start = document.getElementById('startBtn');
+    const allReady = L.players.length >= 2 && L.players.every(p => p.kind && p.ready);
+    start.hidden = !host; start.disabled = !allReady || L.playing;
+    const lives = document.getElementById('lobbyLives');
+    lives.querySelectorAll('button').forEach(b => { b.disabled = !host || L.playing; b.setAttribute('aria-pressed', String(Number(b.dataset.lives) === L.lives)); });
+    document.getElementById('lobbyNote').textContent =
+      L.playing ? 'A match is on.' :
+      L.players.length < 2 ? 'Waiting for someone to join. Share the QR code or the link.' :
+      !allReady ? 'Pick a fighter and press Ready. Everyone needs a different fighter.' :
+      host ? 'Everyone’s ready. Keep this tab open while you host the match.' : 'Everyone’s ready. Waiting for the host to start.';
+  }
+
+  // ---------- emotes ----------
+  const pops = [];
+  function showEmote(id, e) {
+    const emote = EMOTES[e];
+    if (!emote) return;
+    const row = document.querySelector(`#roster li[data-id="${CSS.escape(id)}"]`);
+    if (row && !onlineEl.hidden) {
+      row.querySelector('.pop')?.remove();
+      const p = document.createElement('span'); p.className = 'pop'; p.textContent = emote[0]; p.setAttribute('aria-label', emote[1]);
+      row.appendChild(p); setTimeout(() => p.remove(), 2000);
+    }
+    const f = mode.kind === 'online' && fighters.find(q => q.netId === id);
+    if (f && !versus) {
+      const el = document.createElement('div'); el.className = 'emote-pop';
+      el.innerHTML = `<span>${emote[0]}</span>`;
+      fxLayer.appendChild(el);
+      pops.push({ el, f, t: 0 });
+    }
+  }
+  function updatePops(dt) {
+    for (let i = pops.length - 1; i >= 0; i--) {
+      const p = pops[i];
+      p.t += dt;
+      const f = fighters.includes(p.f) ? p.f : fighters.find(q => q.netId === p.f.netId);
+      if (p.t > 2.2 || !f) { p.el.remove(); pops.splice(i, 1); continue; }
+      const [x, y] = project(f.dead && f.rag ? f.rag.pts.hip.x : f.x, (f.dead && f.rag ? f.rag.pts.hip.y : f.y) + BOX_H + 0.9);
+      p.el.style.left = x + 'px'; p.el.style.top = y + 'px';
+    }
+  }
+
+  // ---------- a match ----------
+  function beginOnline(m) {
+    net.match = { mid: m.mid, host: m.host, held: 0, pend: 0, lastSent: -1, sendT: 0, snapT: 0, ev: [] };
+    net.remote = new Map(m.players.map(p => [p.id, { held: 0, pend: 0, frame: -1, inp: NO_INPUT }]));
+    onlineEl.hidden = true; menuEl.hidden = true; selectEl.hidden = true; resultEl.hidden = true; boardEl.hidden = true;
+    cornerEl.hidden = false;
+    toggleTray(false);
+    startMatch({ kind: 'online', players: m.players, lives: m.lives });
+  }
+  // another player's controls for this frame (presses count once, however many fighters ask)
+  function remoteInput(id) {
+    const r = net.remote.get(id);
+    if (!r) return NO_INPUT;
+    if (r.frame !== net.frame) {
+      const b = r.held | r.pend;
+      r.inp = {
+        left: !!(b & IN.left), right: !!(b & IN.right), down: !!(b & IN.down), up: !!(b & IN.up),
+        jump: !!(b & IN.jump), parry: !!(b & IN.parry), dash: b & IN.dashL ? -1 : b & IN.dashR ? 1 : 0,
+        a1: !!(b & (IN.a1 | IN.fire)), a2: !!(b & IN.a2), a3: !!(b & IN.a3), a4: !!(b & IN.a4),
+      };
+      r.pend = 0; r.frame = net.frame;
+    }
+    return r.inp;
+  }
+  function encodeInput(p) {
+    return (p.left ? IN.left : 0) | (p.right ? IN.right : 0) | (p.down ? IN.down : 0) | (p.up ? IN.up : 0) | (p.a1 ? IN.fire : 0)
+      | (p.jump ? IN.jump : 0) | (p.parry ? IN.parry : 0) | (p.dash < 0 ? IN.dashL : 0) | (p.dash > 0 ? IN.dashR : 0)
+      | (p.a1 ? IN.a1 : 0) | (p.a2 ? IN.a2 : 0) | (p.a3 ? IN.a3 : 0) | (p.a4 ? IN.a4 : 0);
+  }
+  const r2 = v => Math.round(v * 100) / 100;
+  const snapOf = f => [r2(f.x), r2(f.y), r2(f.vx), r2(f.vy), f.facing, Math.round(f.hp * 10) / 10, Number.isFinite(f.stocks) ? f.stocks : 0,
+    f.dead ? 1 : 0, f.out ? 1 : 0, Math.round(f.context || 0)];
+  // every frame: my controls out (30 times a second at most, and only when they change), and the host's state
+  function netTick(pin, dt) {
+    net.frame++;
+    updatePops(dt);
+    const m = net.match;
+    if (!m || mode.kind !== 'online' || !net.ws) return;
+    if (player && !versus && !matchOver) { const b = encodeInput(pin); m.held = b & HELD; m.pend |= b & ~HELD; }
+    else m.held = 0;
+    m.sendT += dt;
+    const bits = m.held | m.pend;
+    if (m.sendT >= 1 / 30 && (bits !== m.lastSent || m.pend || m.sendT > 0.5)) {
+      sendNet({ t: 'in', b: bits }); m.lastSent = bits; m.pend = 0; m.sendT = 0;
+    }
+    if (isHost()) {
+      m.snapT += dt;
+      if (m.snapT >= 1 / 20 || m.ev.length) { m.snapT = 0; sendNet({ t: 'snap', f: fighters.map(snapOf), ev: m.ev.splice(0) }); }
+    }
+  }
+  function placeAt(f, x, y, vx, vy) {
+    f.x = x; f.y = y; f.vx = vx; f.vy = vy;
+    f.feet.forEach(ft => { ft.x = x + f.facing * ft.s * FOOT_SPREAD; ft.y = y; ft.stepping = false; ft.air = y > 0.05; });
+  }
+  // a guest takes the host's word for where everyone is, and for health and lives
+  function applySnap(s) {
+    if (!guestOnline()) return;
+    for (const ev of s.ev || []) {
+      const f = fighters[ev[1]];
+      if (ev[0] === 'die' && f && !f.dead) { netSays = true; die(f, !!ev[2]); netSays = false; }
+      else if (ev[0] === 'respawn' && f) respawn(f, true);
+      else if (ev[0] === 'end') endMatch(ev[1], ev[2]);
+    }
+    (s.f || []).forEach((d, i) => {
+      const f = fighters[i];
+      if (!f) return;
+      const [x, y, vx, vy, facing, hp, stocks, dead, out, ctx] = d;
+      f.hp = hp; f.stocks = stocks; f.out = !!out;
+      if (f.kind === 'gpt') f.context = ctx;
+      if (f.dead || dead) return;
+      const err = Math.hypot(x - f.x, y - f.y);
+      if (f === player) { if (err > 1.6) placeAt(f, x, y, vx, vy); return; }   // my own fighter only if it's far off
+      if (err > 2.5) { f.facing = facing; placeAt(f, x, y, vx, vy); return; }
+      f.x += (x - f.x) * 0.45; f.y += (y - f.y) * 0.45; f.vx = vx; f.vy = vy; f.facing = facing;
+    });
+    updateHud();
+  }
+  // the host ends the match: everyone sees the same result, and the room records it
+  function finishOnline(w) {
+    const m = net.match;
+    const title = w ? `${w.netName} wins` : 'Nobody wins';
+    const sub = w ? `With ${w.stocks === 1 ? '1 life' : `${w.stocks} lives`} left.` : 'Everyone went down together.';
+    m.ev.push(['end', title, sub]);
+    sendNet({ t: 'snap', f: fighters.map(snapOf), ev: m.ev.splice(0) });
+    sendNet({ t: 'result', mid: m.mid, winner: w ? w.netId : null,
+      stats: fighters.map(f => ({ id: f.netId, kos: f.stats.kos, parries: f.stats.parries })) });
+    endMatch(title, sub);
+  }
+  document.getElementById('roomBtn').addEventListener('click', () => {
+    resultEl.hidden = true;
+    net.match = null;
+    startMatch({ kind: 'watch' });
+    if (net.ws) openOnline(); else openMenu();
+  });
+
+  // ---------- the leaderboard ----------
+  document.getElementById('boardBtn').addEventListener('click', openBoard);
+  document.getElementById('boardBack').addEventListener('click', () => { boardEl.hidden = true; menuEl.hidden = false; });
+  async function openBoard() {
+    menuEl.hidden = true; boardEl.hidden = false;
+    const msg = document.getElementById('boardMsg'), table = document.getElementById('boardTable');
+    msg.textContent = 'Loading…'; table.innerHTML = '';
+    try {
+      const { players } = await fetch(`${API_BASE}/leaderboard`).then(r => r.json());
+      if (!players.length) { msg.textContent = 'Nobody has finished an online match yet. Win one and you’re first.'; return; }
+      msg.textContent = 'Online wins, across every room.';
+      table.innerHTML = `<table><thead><tr><th>#</th><th>Player</th><th class="n">Wins</th><th class="n">Matches</th><th class="n">Knockouts</th><th class="n">Parries</th></tr></thead><tbody>${
+        players.map((p, i) => `<tr><td>${i + 1}</td><td>${esc(p.name)}</td><td class="n">${p.wins}</td><td class="n">${p.matches}</td><td class="n">${p.kos}</td><td class="n">${p.parries}</td></tr>`).join('')
+      }</tbody></table>`;
+    } catch { msg.textContent = 'The leaderboard didn’t load. Try again in a moment.'; }
+  }
+
+  // ---------- the way in: the Online mode, and invite links (#join/<room>/<invite>) ----------
+  if (ONLINE) {
+    document.querySelector('.mode[data-mode="online"]').hidden = false;
+    document.getElementById('modeLinks').hidden = false;
+    const join = location.hash.match(/^#join\/([^/]+)\/([A-Za-z0-9_-]+)$/);
+    if (join) { net.pendingJoin = { key: decodeURIComponent(join[1]), invite: join[2] }; openOnline(); }
+  }
+  // local testing only (?dev=<name> on localhost): where everyone is, as this browser sees it
+  if (DEV_USER) {
+    window.__bb = () => fighters.map(f => ({ id: f.netId, x: f.x, y: f.y, hp: f.hp, dead: f.dead, out: !!f.out, stocks: f.stocks, versus: !!versus }));
+    window.__bbKO = i => { const f = fighters[i]; if (f && !f.dead) { f.hp = 0; die(f); } };   // knocks a fighter out, as this browser
+  }
+
   document.getElementById('backBtn').addEventListener('click', () => {
     if (pending && pending.step === 'opponent') { pending.step = 'pick'; showSelect(); return; }
     openMenu();
@@ -3605,7 +4160,18 @@ button[aria-pressed="true"] { background: var(--ink); color: var(--paper); }
     startMatch({ kind: 'watch' }); showSelect(); cornerEl.hidden = true;
   });
   document.getElementById('homeBtn').addEventListener('click', openMenu);
-  document.getElementById('menuBtn').addEventListener('click', openMenu);
+  // online, the menu button leaves the room: it asks once first, since the match goes on without you
+  const menuBtn = document.getElementById('menuBtn');
+  let leaveSure = 0;
+  menuBtn.addEventListener('click', () => {
+    if (mode.kind === 'online' && !matchOver && !leaveSure) {
+      menuBtn.textContent = 'Leave match?';
+      leaveSure = setTimeout(() => { leaveSure = 0; menuBtn.textContent = 'Menu'; }, 2500);
+      return;
+    }
+    clearTimeout(leaveSure); leaveSure = 0; menuBtn.textContent = 'Menu';
+    openMenu();
+  });
   document.getElementById('resetBtn').addEventListener('click', () => startMatch(mode));
   trainEl.querySelectorAll('[data-dummy]').forEach(b => b.addEventListener('click', () => {
     dummyMode = b.dataset.dummy;
@@ -3909,6 +4475,7 @@ button[aria-pressed="true"] { background: var(--ink); color: var(--paper); }
     lastDt = dt;
     const pin = player ? playerInput() : NO_INPUT;
     pressed.clear();
+    netTick(pin, dt);
 
     for (const f of fighters) {
       let inp;
@@ -3916,6 +4483,7 @@ button[aria-pressed="true"] { background: var(--ink); color: var(--paper); }
       if (f.dead || versus) inp = NO_INPUT;
       else if (ctrl.isPlayer && !matchOver) inp = pin;
       else if (ctrl.isPlayer) inp = NO_INPUT;
+      else if (ctrl.netId) inp = matchOver ? NO_INPUT : remoteInput(ctrl.netId);
       else inp = aiInput(f, dt);
       updateFighter(f, inp, dt);
     }
@@ -3932,7 +4500,7 @@ button[aria-pressed="true"] { background: var(--ink); color: var(--paper); }
     updatePreview(dt);
     updateVersus(dt);
     updateBrands(dt);
-    hud.hidden = !inMatch();          // the plates sit where the menu's logos float
+    hud.hidden = !inMatch() || !resultEl.hidden;     // the plates sit where the menu's logos float, and the results' title
     updateBubble(dt);
     updateMoves();
     checkResult(dt);
