@@ -59,11 +59,13 @@ button[aria-pressed="true"] { background: var(--ink); color: var(--paper); }
 .ctx i { position: absolute; inset: 0; transform-origin: left; background: var(--gpt); }
 .plate.out .stock { color: var(--ink-soft); }
 
-/* move list */
-.moves {
-  position: fixed; left: 16px; top: calc(env(safe-area-inset-top, 0px) + 12px);
-  display: flex; flex-wrap: wrap; gap: 8px; align-items: stretch; pointer-events: none; max-width: calc(100% - 140px);
+/* along the top: the move list, then the takeover status and training bar beneath it (one column, so a move
+   list that wraps onto two rows pushes the training bar down instead of covering it) */
+.topbar {
+  position: fixed; left: 16px; right: 124px; top: calc(env(safe-area-inset-top, 0px) + 12px);
+  display: flex; flex-direction: column; align-items: flex-start; gap: 10px; pointer-events: none;
 }
+.moves { display: flex; flex-wrap: wrap; gap: 8px; align-items: stretch; pointer-events: none; }
 .move {
   position: relative; overflow: hidden; display: flex; gap: 8px; align-items: center;
   border: 2px solid var(--ink); background: var(--paper); padding: 6px 10px 6px 6px; font-size: 11px;
@@ -77,15 +79,13 @@ button[aria-pressed="true"] { background: var(--ink); color: var(--paper); }
 .pips i.on { background: var(--so); }
 .count { font-variant-numeric: tabular-nums; color: var(--ink-soft); }
 .status {
-  position: fixed; left: 50%; top: calc(env(safe-area-inset-top, 0px) + 66px); transform: translateX(-50%);
   font-family: var(--display); font-size: 13px; padding: 4px 10px; background: var(--gpt); color: var(--paper);
   border: 2px solid var(--ink); pointer-events: none; white-space: nowrap;
 }
 .corner { position: fixed; right: 16px; top: calc(env(safe-area-inset-top, 0px) + 12px); }
 .trainbar {
-  position: fixed; left: 50%; top: calc(env(safe-area-inset-top, 0px) + 66px); transform: translateX(-50%);
-  display: flex; flex-wrap: wrap; gap: 6px; align-items: center; justify-content: center; max-width: calc(100% - 32px);
-  font-size: 11px; color: var(--ink-soft);
+  display: flex; flex-wrap: wrap; gap: 6px; align-items: center; pointer-events: auto;
+  font-size: 11px; color: var(--ink-soft); background: var(--paper); padding: 4px 0;
 }
 .trainbar button { padding: 6px 9px; font-size: 11px; box-shadow: 2px 2px 0 var(--ink); }
 .trainbar .label { font-family: var(--display); color: var(--ink); margin-right: 2px; }
@@ -176,7 +176,6 @@ button[aria-pressed="true"] { background: var(--ink); color: var(--paper); }
 .mode .go { font-family: var(--display); font-size: 12px; }
 .cards { display: grid; grid-template-columns: repeat(auto-fit, minmax(230px, 1fr)); gap: 14px; }
 .card h2 { margin: 0; font-family: var(--display); font-weight: 400; font-size: 20px; display: flex; align-items: center; gap: 8px; }
-.card h2::before { content: ""; width: 14px; height: 14px; background: var(--c); border: 2px solid var(--ink); }
 .card ul { margin: 0; padding: 0; list-style: none; display: grid; gap: 5px; }
 .card li { display: grid; grid-template-columns: 34px 1fr; gap: 6px; }
 .card li kbd { font: 600 11px/1.4 var(--mono); }
@@ -216,7 +215,7 @@ button[aria-pressed="true"] { background: var(--ink); color: var(--paper); }
   .hud { bottom: calc(env(safe-area-inset-bottom, 0px) + 216px); left: 12px; right: 12px; gap: 8px; }
   .plate { --sq: 44px; }
   .stock { font-size: 16px; }
-  .trainbar, .status { top: calc(env(safe-area-inset-top, 0px) + 64px); }
+  .topbar { right: 100px; }
   .touch {
     position: fixed; left: 12px; right: 12px; bottom: calc(env(safe-area-inset-bottom, 0px) + 12px);
     display: flex; justify-content: space-between; align-items: flex-end; gap: 12px; pointer-events: none;
@@ -240,6 +239,8 @@ button[aria-pressed="true"] { background: var(--ink); color: var(--paper); }
 <div id="stage"></div>
 
 <div class="hud" id="hud"></div>
+<div class="topbar">
+<div class="moves" id="moves"></div>
 <div class="status" id="status" hidden></div>
 <div class="trainbar" id="trainbar" hidden>
   <span class="label">Training</span>
@@ -250,7 +251,7 @@ button[aria-pressed="true"] { background: var(--ink); color: var(--paper); }
   <button type="button" id="resetBtn">Reset</button>
   <span class="stat" id="trainStat">Damage dealt: 0</span>
 </div>
-<div class="moves" id="moves"></div>
+</div>
 <div class="corner" id="corner" hidden><button type="button" id="menuBtn">Menu</button></div>
 <div id="fx"></div>
 <div class="flash" id="flash"></div>
@@ -303,6 +304,7 @@ button[aria-pressed="true"] { background: var(--ink); color: var(--paper); }
     </div>
     <div class="pickrow">
       <button type="button" id="pickBtn">Play</button>
+      <button type="button" id="randomBtn" hidden>Random opponent <kbd>R</kbd></button>
       <div class="ringdots" id="ringdots"></div>
       <div class="lives" id="livesPick" role="group" aria-label="Lives"><span>Lives</span><button type="button" data-lives="1">1</button><button type="button" data-lives="2">2</button><button type="button" data-lives="3">3</button><button type="button" data-lives="5">5</button></div>
       <span class="hint">Click a card or use &larr; &rarr; to pick &middot; Enter to play</span>
@@ -785,7 +787,7 @@ button[aria-pressed="true"] { background: var(--ink); color: var(--paper); }
       blurb: 'Angry, well-sourced, and already closed your question.',
       abilities: {
         a1: { name: 'Block shot', short: 'Block', cd: 0.06, desc: 'Rapid fire: the stack bends at the enemy like the beam, and blocks thread up it and fly out of the top. Hold to keep firing.' },
-        a2: { name: 'Block whip', short: 'Whip', cd: 0.8, desc: 'The spring stretches out to rod length and lashes the blocks forward.' },
+        a2: { name: 'Block whip', short: 'Whip', cd: 0.8, desc: 'The spring stretches out and lashes the blocks forward and low. Hold W (or jump) to lash straight up. Off the stage, the tip latches onto a ledge and reels you in.' },
         a3: { name: 'Unified beam', short: 'Beam', cd: 1.2, desc: 'Bend the stack at the enemy and feed all five blocks up it into a beam.' },
         a4: { name: 'Correction', short: 'Correct', cd: 7, desc: 'A condescending remark that stuns everyone nearby.' },
       },
@@ -1140,6 +1142,7 @@ button[aria-pressed="true"] { background: var(--ink); color: var(--paper); }
     }
     if (h.guard) h.guard = null;               // a hit from an unguarded side breaks the pose
     if (h.ledge) { h.ledge = null; h.ledgeCd = 0.5; }   // and knocks it off a ledge
+    if (h.tether) { h.tether = null; h.spring.override = null; h.spring.stretch = 1; h.spring.profile = null; }
     const dealt = Math.min(dmg, h.hp);         // damage past zero health doesn't count in the stats
     h.hp = Math.max(0, h.hp - dmg);
     // knockback stacks from rapid fire, up to a limit, so a single burst can't clear the stage
@@ -1171,7 +1174,7 @@ button[aria-pressed="true"] { background: var(--ink); color: var(--paper); }
     if (h.possessedBy) release(h);
     endInhale(h);
     // whatever it was doing stops; the stack and stalk go stiff so they lie on the paper with the body
-    h.whip = null; h.shot = null; h.launch = [];
+    h.whip = null; h.shot = null; h.launch = []; h.tether = null;
     if (h.beam) { if (h.beam.mesh) dropT(h.beam.mesh); h.beam = null; }
     if (h.compaction) { dropT(h.compaction.slab); h.compaction = null; }
     if (h.spring) { h.spring.stretch = 1; h.spring.profile = null; h.spring.override = sp => { sp.theta *= 0.8; sp.omega = 0; }; }
@@ -1375,7 +1378,7 @@ button[aria-pressed="true"] { background: var(--ink); color: var(--paper); }
   // ================= Abilities =================
   function tryAbility(f, slot) {
     const ab = f.kit.abilities[slot];
-    if (!ab || f.cd[slot] > 0 || f.busy > 0 || f.guard || f.ledge) return false;
+    if (!ab || f.cd[slot] > 0 || f.busy > 0 || f.guard || f.ledge || f.tether) return false;
     const ok = ABILITY[f.kind][slot](f);
     if (ok !== false) { f.cd[slot] = ab.cd; f.stats.moves++; }
     return ok !== false;
@@ -1406,17 +1409,27 @@ button[aria-pressed="true"] { background: var(--ink); color: var(--paper); }
         f.shot = null;
         f.spring.override = barrelBend(() => b.aim);
       },
-      a2(f) {       // Block whip: the spring stretches to rod length and lashes the stack forward
+      a2(f) {       // Block whip: the spring stretches out and lashes the stack forward and low,
+                    // or (holding up) straight up; off the stage it can latch onto a ledge
+        const up = !!f.aimUp;
         f.busy = 0.42;
-        f.whip = { t: 0, dur: 0.46, hit: new Set() };
+        f.whip = { t: 0, dur: 0.46, hit: new Set(), up };
         f.spring.override = sp => {
           const p = Math.min(1, f.whip ? f.whip.t / f.whip.dur : 1);
           const s = Math.sin(p * Math.PI);
-          sp.theta = s * 1.75;
-          sp.omega = Math.cos(p * Math.PI) * 1.75 * Math.PI / 0.46;
-          sp.stretch = 1 + s * (WHIP_REACH / 1.2 - 1);
-          // most of the bend sits near the base at first, then evens out as the lash travels up
-          const k = 3.4 - 2.2 * p;
+          if (up) {
+            // straight up, with a little flick forward at the top
+            sp.theta = s * 0.18; sp.omega = 0;
+            sp.stretch = 1 + s * (WHIP_UP_REACH / WHIP_REST - 1);
+            sp.profile = null;
+            return;
+          }
+          sp.theta = s * WHIP_BEND;
+          sp.omega = Math.cos(p * Math.PI) * WHIP_BEND * Math.PI / 0.46;
+          sp.stretch = 1 + s * (WHIP_REACH / WHIP_REST - 1);
+          // it starts as a curl and unfurls into a nearly straight line angled down from the tray, so the
+          // stretched stack strikes out low and long rather than arching over
+          const k = 2 + 10 * s;
           sp.profile = u => 1 - Math.pow(1 - u, k);
         };
       },
@@ -1507,7 +1520,8 @@ button[aria-pressed="true"] { background: var(--ink); color: var(--paper); }
       },
     },
   };
-  const WHIP_REACH = 2.8;   // same length as Claude's fling
+  // the whip reaches out and comes down to about chest height in front; the upward lash goes higher still
+  const WHIP_REACH = 3.6, WHIP_UP_REACH = 3.9, WHIP_REST = 1.2, WHIP_BEND = 2.25;
 
   function takeRod(f) {
     if (!f.rods) { f.rotor.getWorldPosition(wp); return { from: wp.clone() }; }
@@ -1700,10 +1714,11 @@ button[aria-pressed="true"] { background: var(--ink); color: var(--paper); }
       if (f.whip) {
         const w = f.whip; w.t += dt;
         const p = w.t / w.dur;
+        // the stack's own points are the hitbox, so the hit lands wherever the lash actually is
+        const pts = whipPoints(f);
         if (p > 0.25 && p < 0.8) {
-          const y0 = f.y + RIM_Y - 0.6;
           for (const h of enemiesOf(f)) {
-            if (w.hit.has(h) || !overlapsBox(h, f.x, f.x + f.facing * (WHIP_REACH + 0.3), y0, y0 + 2)) continue;
+            if (w.hit.has(h) || !pts.some(q => overlapsBox(h, q.x - 0.35, q.x + 0.35, q.y - 0.35, q.y + 0.35))) continue;
             w.hit.add(h);
             if (isInhaling(h) && (f.x - h.x) * h.facing > 0 && f.bars >= 1) {
               // ChatGPT yanks a block off the end of the whip and swallows it
@@ -1715,10 +1730,22 @@ button[aria-pressed="true"] { background: var(--ink); color: var(--paper); }
               w.t = Math.max(w.t, w.dur * 0.8);
               continue;
             }
-            hurt(h, 10, f.facing * 7, 5, f, { dir: V(f.facing, -0.6, 0) });   // the lash comes over and down
+            if (w.up) hurt(h, 10, f.facing * 1.5, 11, f, { dir: V(f.facing * 0.45, 1, 0) });   // up and away
+            else hurt(h, 10, f.facing * 7, 5, f, { dir: V(f.facing, -0.6, 0) });           // the lash comes over and down
           }
         }
-        if (p >= 1) { f.whip = null; f.spring.override = null; f.spring.stretch = 1; f.spring.profile = null; }
+        // in the air off the stage, the tip catching a ledge's corner latches on
+        if (!f.onGround && p > 0.2 && p < 0.85) {
+          const tip = pts[pts.length - 1];
+          for (const side of [-1, 1]) {
+            if (Math.sign(f.x) !== side || Math.abs(f.x) < STAGE_HALF - 0.2) continue;
+            if (Math.abs(tip.x - side * STAGE_HALF) > 1.1 || tip.y < -1.3 || tip.y > 1.1) continue;
+            if (fighters.some(o => o !== f && o.ledge && o.ledge.side === side)) continue;
+            latchLedge(f, side);
+            break;
+          }
+        }
+        if (f.whip && p >= 1) { f.whip = null; f.spring.override = null; f.spring.stretch = 1; f.spring.profile = null; }
       }
     }
 
@@ -2158,6 +2185,7 @@ button[aria-pressed="true"] { background: var(--ink); color: var(--paper); }
 
     f.ledgeCd = Math.max(0, f.ledgeCd - dt);
     if (f.ledge) hangOnLedge(f, inp, dt);
+    else if (f.tether) reelIn(f, dt);
     else {
       let move = (inp.right ? 1 : 0) - (inp.left ? 1 : 0);
       if (rooted) move = 0;
@@ -2201,6 +2229,7 @@ button[aria-pressed="true"] { background: var(--ink); color: var(--paper); }
     }
     if (f.y < RING_OUT_Y) { ringOut(f); return; }
 
+    f.aimUp = !!inp.up;                       // holding up turns the whip upward
     for (const s of SLOTS) {
       if (inp[s]) {
         if (inp.face) f.facing = inp.face;
@@ -2250,7 +2279,7 @@ button[aria-pressed="true"] { background: var(--ink); color: var(--paper); }
   // the edge. From the ledge: toward the stage climbs up, jump leaps up off it, away or down lets go (and so
   // does waiting too long). Grabbing gives the jumps back. One fighter per ledge.
   const LEDGE_OUT = 0.5, LEDGE_Y = -2.35, LEDGE_MAX = 4, LEDGE_REACH = 2.2, CLIMB_TIME = 0.24;
-  const PASS_TIME = 0.32, PASS_SPEED = 9;
+  const PASS_TIME = 0.32, PASS_SPEED = 9, REEL_TIME = 0.32;
   // it catches the lip once its hands come level with it, from anywhere within reach of that end
   function canGrab(f) {
     if (f.ledge || f.ledgeCd > 0 || f.vy > 0 || f.guard || f.y > LEDGE_Y + 0.5 || f.y < LEDGE_Y - 0.9) return false;
@@ -2267,6 +2296,41 @@ button[aria-pressed="true"] { background: var(--ink); color: var(--paper); }
     ring(V(side * STAGE_HALF, 0.02, 0), '#141414', 0.3);
   }
   function letGo(f) { f.ledge = null; f.ledgeCd = 0.6; }
+  // Stack Overflow has no hover, so its whip can latch onto a ledge and reel it in, ending up hanging there
+  const _wp = V();
+  function whipPoints(f) {
+    const sp = f.spring;
+    if (!sp.nodes.length) return [V(f.x, f.y + RIM_Y, 0)];
+    return sp.nodes.slice(1).map(nd => sp.base.localToWorld(_wp.copy(nd)).clone());
+  }
+  function latchLedge(f, side) {
+    f.whip = null;
+    f.tether = { side, t: 0, fromX: f.x, fromY: f.y };
+    f.vx = 0; f.vy = 0; f.busy = Math.max(f.busy, REEL_TIME);
+    ring(V(side * STAGE_HALF, 0.02, 0), '#f48024', 0.4);
+    // the stack holds a straight line from the tray to the corner while it reels in
+    f.spring.override = sp => {
+      if (!f.tether) return;
+      const base = sp.base.getWorldPosition(_wp);
+      const dx = (side * STAGE_HALF - base.x) * f.facing, dy = -0.02 - base.y;
+      sp.theta = THREE.MathUtils.clamp(Math.atan2(dx, dy), -sp.maxBend, sp.maxBend); sp.omega = 0;
+      sp.profile = u => Math.min(1, u * 6);
+      sp.stretch = Math.max(0.3, Math.hypot(dx, dy) / WHIP_REST);
+    };
+  }
+  function reelIn(f, dt) {
+    const T = f.tether, side = T.side;
+    T.t += dt;
+    f.vx = 0; f.vy = 0; f.onGround = false; f.facing = -side;
+    const e = smooth(Math.min(1, T.t / REEL_TIME));
+    f.x = T.fromX + (side * (STAGE_HALF + LEDGE_OUT) - T.fromX) * e;
+    f.y = T.fromY + (LEDGE_Y - T.fromY) * e;
+    if (T.t >= REEL_TIME) {
+      f.tether = null;
+      f.spring.override = null; f.spring.stretch = 1; f.spring.profile = null;
+      grabLedge(f);
+    }
+  }
   function hangOnLedge(f, inp, dt) {
     const L = f.ledge, side = L.side;
     L.t += dt;
@@ -2440,7 +2504,13 @@ button[aria-pressed="true"] { background: var(--ink); color: var(--paper); }
       if (f.kind !== 'so' && i === 1) _hand.y += Math.sin(now * 2.5 + f.id) * 0.04;
       if (f.kind === 'so' && i === 0 && f.whip) {
         const p = Math.sin(Math.min(1, f.whip.t / f.whip.dur) * Math.PI);
-        _hand.lerp(V(0.85, 2.45, 0.1), p);
+        _hand.lerp(f.whip.up ? V(0.3, 2.95, 0.1) : V(0.85, 2.45, 0.1), p);     // pointing where the lash goes
+      }
+      if (f.kind === 'so' && f.tether) {
+        // both hands up toward the ledge it is reeling in to
+        f.root.updateMatrixWorld(true);
+        const at = f.vis.worldToLocal(_lip.set(f.tether.side * STAGE_HALF, 0, 0));
+        _hand.copy(SHOULDER_LOCAL).add(at.sub(SHOULDER_LOCAL).setLength(1.0));
       }
       if (f.kind === 'so' && i === 0 && f.beam) _hand.lerp(V(0.9, 2.2, 0.1), Math.min(1, f.beam.t * 6));
       if (f.kind === 'so' && i === 0 && f.shot) _hand.lerp(V(0.9, 2.2, 0.1), Math.min(1, f.shot.t * 8));
@@ -2525,7 +2595,7 @@ button[aria-pressed="true"] { background: var(--ink); color: var(--paper); }
       parry: p('Backspace') || p('ParryUp'),
       down: k('KeyS') || k('ArrowDown'),
       dash: p('DashL') ? -1 : p('DashR') ? 1 : 0,
-      up: k('KeyW') || k('ArrowUp') || p('ParryUp'),
+      up: k('KeyW') || k('ArrowUp') || k('Space') || p('ParryUp'),
       a1: p('KeyJ') || p('Digit1') || (k('KeyJ') && controlledBody()?.kind !== 'gpt'),     // hold J to keep firing blocks or rods
       a2: p('KeyK') || p('Digit2'),
       a3: p('KeyL') || p('Digit3'),
@@ -2540,7 +2610,8 @@ button[aria-pressed="true"] { background: var(--ink); color: var(--paper); }
     const ahead = (t.x - f.x) * f.facing > 0;
     if (f.kind === 'so') {
       if (f.bars >= 5 && dy < 1.2 && dist < 12 && Math.random() < 0.4) return 'a3';
-      if (dist < 3.2 && ready('a2')) return 'a2';
+      if (t.y > f.y + 1.6 && dist < 1.4 && ready('a2')) return 'a2up';     // someone overhead: lash upward
+      if (dist < 3.8 && ready('a2')) return 'a2';
       if (dist < 5.5 && ready('a4') && Math.random() < 0.3) return 'a4';
       if (f.bars >= 1 && dist < 11) return 'burst';
     } else if (f.kind === 'gpt') {
@@ -2580,7 +2651,14 @@ button[aria-pressed="true"] { background: var(--ink); color: var(--paper); }
     if (!overStage(f.x) || (f.y < -0.1)) {
       const home = -Math.sign(f.x);
       inp.left = home < 0; inp.right = home > 0;
+      ai.move = home; ai.t = 0;           // and once it's back, it decides afresh instead of walking on
       if (f.vy < 1 && f.jumpsLeft > 0) inp.jump = true;
+      // Stack Overflow, out of jumps: whip at the ledge, upward if it's overhead, else across at it
+      if (f.kind === 'so' && f.jumpsLeft === 0 && f.vy < 2 && !f.whip && !f.tether && f.cd.a2 <= 0) {
+        const cx = Math.sign(f.x) * STAGE_HALF, dx = Math.abs(f.x - cx), above = 0 - (f.y + RIM_Y);
+        if (dx < 1.3 && above > 0.5 && above < WHIP_UP_REACH + 0.6) { inp.a2 = true; inp.up = true; inp.face = home; }
+        else if (dx < WHIP_REACH + 0.4 && above > -2 && above < 1.4) { inp.a2 = true; inp.face = home; }
+      }
       return inp;
     }
     if (!ai.target || !alive(ai.target) || ai.target.team === f.team || ai.targetT <= 0) {
@@ -2616,12 +2694,15 @@ button[aria-pressed="true"] { background: var(--ink); color: var(--paper); }
       if (incoming && f.kind === 'gpt' && f.cd.a2 <= 0 && Math.random() < 0.5) ai.act = 'a2';
       else ai.act = chooseAction(f, t, dist, dy);
     }
+    // never walk on toward an edge it is right next to
+    if (ai.move && ai.move === Math.sign(f.x) && Math.abs(f.x) > STAGE_HALF - 0.9) ai.move = -ai.move;
     inp.left = ai.move < 0; inp.right = ai.move > 0;
     // pressed up against its target, now and then it dashes through to the other side
     if (ai.move && dist < BODY_GAP + 0.1 && Math.sign(dx) === ai.move && f.onGround && Math.random() < dt * 1.5) inp.dash = ai.move;
     if (ai.jump) { inp.jump = true; ai.jump = false; }
     if (ai.act === 'burst') { ai.burstT = 0.25 + Math.random() * 0.3; ai.act = null; ai.rest = 0.6 + Math.random() * 0.8; }
     if (ai.burstT > 0) { inp.a1 = true; inp.face = Math.sign(dx) || f.facing; }
+    if (ai.act === 'a2up') { ai.act = 'a2'; inp.up = true; }
     if (ai.act) { inp[ai.act] = true; inp.face = Math.sign(dx) || f.facing; ai.act = null; ai.rest = 0.55 + Math.random() * 0.9; }
     return inp;
   }
@@ -2903,6 +2984,7 @@ button[aria-pressed="true"] { background: var(--ink); color: var(--paper); }
   const track = document.getElementById('track');
   const carouselEl = document.getElementById('carousel');
   const pickBtn = document.getElementById('pickBtn');
+  const randomBtn = document.getElementById('randomBtn');
   let carIndex = 0;
   const slots = ORDER.map(kind => {
     const kit = KITS[kind];
@@ -2944,6 +3026,7 @@ button[aria-pressed="true"] { background: var(--ink); color: var(--paper); }
     dotsEl.querySelectorAll('i').forEach((d, i) => d.classList.toggle('on', i === carIndex));
     const kind = ORDER[carIndex], taken = pending && pending.step === 'opponent' && kind === pending.pick;
     pickBtn.disabled = !!taken;
+    randomBtn.hidden = !(pending && pending.step === 'opponent');
     pickBtn.textContent = taken ? `${KITS[kind].name} is you` : pending && pending.step === 'opponent' ? `Fight ${KITS[kind].short}` : `Play as ${KITS[kind].short}`;
   }
   function rotateTo(i) { carIndex = (i + 3) % 3; layoutCarousel(); demoT = 0; demoStep = -1; }
@@ -2970,6 +3053,20 @@ button[aria-pressed="true"] { background: var(--ink); color: var(--paper); }
   document.getElementById('prevBtn').addEventListener('click', e => { e.stopPropagation(); rotateTo(carIndex - 1); });
   document.getElementById('nextBtn').addEventListener('click', e => { e.stopPropagation(); rotateTo(carIndex + 1); });
   pickBtn.addEventListener('click', choose);
+  // Duel: let chance pick the opponent. The carousel swings to it and it jiggles, then the match starts.
+  let randomT = 0;
+  function randomOpponent() {
+    if (!pending || pending.step !== 'opponent' || randomT) return;
+    const others = ORDER.filter(k => k !== pending.pick);
+    const i = ORDER.indexOf(others[Math.floor(Math.random() * others.length)]);
+    rotateTo(i);
+    const card = slots[i].slot.querySelector('.card');
+    card.classList.remove('jiggle'); void card.offsetWidth; card.classList.add('jiggle');
+    worlds[i].fighters[0].jig = 1;
+    randomBtn.disabled = true;
+    randomT = setTimeout(() => { randomT = 0; randomBtn.disabled = false; if (!selectEl.hidden) choose(); }, 750);
+  }
+  randomBtn.addEventListener('click', randomOpponent);
   // drag or swipe to rotate
   let dragX = null;
   carouselEl.addEventListener('pointerdown', e => { dragX = e.clientX; });
@@ -2990,6 +3087,7 @@ button[aria-pressed="true"] { background: var(--ink); color: var(--paper); }
     if (selectEl.hidden) return;
     if (e.code === 'ArrowLeft') { e.preventDefault(); rotateTo(carIndex - 1); }
     else if (e.code === 'ArrowRight') { e.preventDefault(); rotateTo(carIndex + 1); }
+    else if (e.code === 'KeyR' && !randomBtn.hidden) { e.preventDefault(); randomOpponent(); }
     else if (e.code === 'Enter' && document.activeElement?.closest?.('.pickrow, .carousel, body') && document.activeElement.id !== 'backBtn') { e.preventDefault(); choose(); }
   });
 
@@ -3163,7 +3261,7 @@ button[aria-pressed="true"] { background: var(--ink); color: var(--paper); }
 
   let camSnap = true;
   function updateCamera(dt) {
-    let list = fighters.filter(f => alive(f) && (f.y > -2 || f.ledge));
+    let list = fighters.filter(f => alive(f) && (f.y > -2 || f.ledge || f.tether || (f.whip && !f.onGround)));
     if (!list.length) list = fighters.filter(f => f.y > -2);
     if (!list.length) return;
     let minX = Infinity, maxX = -Infinity, maxY = 0;

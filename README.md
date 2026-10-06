@@ -21,7 +21,7 @@ Both are made in [`promo/`](promo/) with TapaTab (recording) and ShadowKit (comp
 | Mode | What it is |
 |---|---|
 | Free-for-all | You against both CPUs at once. Last one with lives left wins. |
-| Duel | One on one. Pick yourself, then pick your opponent. |
+| Duel | One on one. Pick yourself, then pick your opponent, or press Random opponent (`R`) and let chance choose. |
 | Training | Play-test one fighter against two dummies. Dummies refill their health, knockouts respawn, and you can make the dummies stand still, move around or fight back. |
 | Watch | Three CPUs fight while you watch. |
 
@@ -61,7 +61,9 @@ Fall off the stage altogether and you lose a life.
 
 ![A fighter falling off the end of the stage](docs/screenshots/ringout.jpg)
 
-The plates along the bottom of the screen show each fighter's 3D logo (turning slowly, and shaking when that fighter is hit), lives as `x3`, `x2`, `x1`, and the health bar along the bottom (with ChatGPT's context meter above it). The move list is along the top. A fighter with lives left drops back in from above a moment later, blinking, and can't be hurt for 2 seconds.
+CPUs recover too: they jump back, grab ledges, and Stack Overflow whips for the ledge once it's out of jumps.
+
+The plates along the bottom of the screen show each fighter's 3D logo (turning slowly, and shaking when that fighter is hit), lives as `x3`, `x2`, `x1`, and the health bar along the bottom (with ChatGPT's context meter above it). The move list is along the top, with the training controls beneath it (so a move list that wraps onto two rows pushes them down rather than covering them). A fighter with lives left drops back in from above a moment later, blinking, and can't be hurt for 2 seconds.
 
 ![Mid-match: the move list along the top, the plates along the bottom, Stack Overflow down to x2](docs/screenshots/lives.jpg)
 
@@ -74,13 +76,14 @@ Carries five orange blocks on a spring above its head. The spring is invisible a
 | Key | Move | |
 |---|---|---|
 | `J` | **Block shot** | Rapid fire. The stack bends at the enemy exactly like the beam's barrel; the blocks rest at the bottom, thread up the bent stack, and leave from the tip along its direction, still lying across it the way they sat on the stack. New ones drop in on top. 3 damage each. Hold `J` to keep firing. |
-| `K` | **Block whip** | The spring stretches out to the length of Claude's fling and lashes the blocks forward, bending at the base first. |
+| `K` | **Block whip** | The spring stretches out and lashes forward: it starts as a curl and unfurls into a nearly straight line angled down from the tray, so it strikes low (down to waist height) and long (about 3.1 units out; it used to reach 2 units with its tip above everyone's heads). The stack's own points are the hitbox. Hold `W` (or jump) for an **upward lash**, straight up about 3.9 units, that knocks whoever is overhead up and away. Off the stage, if the tip catches a ledge's corner it **latches on** and reels Stack Overflow in to hang there, since it has no hover to recover with. |
 | `L` | **Unified beam** | The stack bends toward the enemy like a barrel, and all five blocks feed up it into one glowing beam. |
 | `I` | **Correction** | A condescending remark ("Please provide a minimal reproducible example.") that stuns everyone nearby. |
 
 ![Block shot: the stack bent at ChatGPT, blocks leaving the tip](docs/screenshots/blocks.jpg)
 ![The unified beam firing from the bent stack](docs/screenshots/beam.jpg)
-![The block whip at full stretch](docs/screenshots/whip.jpg)
+![The block whip striking out low into ChatGPT](docs/screenshots/whip.jpg)
+![The upward whip latched onto the ledge, reeling Stack Overflow in](docs/screenshots/whip-latch.jpg)
 
 ### ChatGPT
 
