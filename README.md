@@ -27,7 +27,8 @@ All six are made in [`promo/`](promo/) with TapaTab (recording) and ShadowKit (c
 - The first two were recorded before the directional parry and lives existed, so they still show the old shield bubble.
 - The duel and the free-for-all are whole CPU-against-CPU matches (`cpuMatch` in `takes.mjs`), from the versus screen to the results table, with no narration. The game is silent, so the takes log what happens in it (hits, parries, knockouts, every move and shot) and `promo/fightcut.py` turns that log into a sound track and the edit list. Stack Overflow won both.
 - The practice video names each move with a callout as it's used.
-- The last one shows the same build on a phone held upright, a laptop, and a phone on its side, each drawn around its recording.
+- The last one shows the same build on a phone held upright (19.5:9, with 55px rounded screen corners), a laptop, and a phone on its side, each a 3D device (ShadowKit's `device` layer) with the recording on its screen.
+- Every take logs, per frame, any fighter outside the picture; in the current recordings that's 0 frames.
 
 ## Modes
 

@@ -4423,24 +4423,38 @@ button[aria-pressed="true"] { background: var(--ink); color: var(--paper); }
     const lookY = 1.3 + maxY * 0.3;
     // the comfortable distance, then as far back as it takes for every fighter to be in the picture
     let dist = Math.min(maxDist, want);
+    // everyone still in the match, and where a knocked-out fighter is about to drop back in (so the camera is
+    // already back far enough when it does)
+    const spots = fighters.filter(f => alive(f) && !f.out).map(f => [f.x, f.y]);
+    for (const f of fighters) if (f.dead && !f.out && Number.isFinite(f.stocks) && f.deadT > 1) spots.push([f.spawnX, 4]);
+    const inside = cam => spots.every(([fx, fy]) => [[-0.7, -0.2], [0.7, -0.2], [-0.7, BOX_H + 1.3], [0.7, BOX_H + 1.3]].every(([ox, oy]) => {
+      const p = _fit.set(fx + ox, fy + oy, 0).project(cam);
+      return Math.abs(p.x) < 0.94 && Math.abs(p.y) < 0.9;
+    }));
     const fits = d => {
       fitCam.copy(camera); fitCam.position.set(cx, lookY + d * 0.5, d); fitCam.lookAt(cx, lookY, 0); fitCam.updateMatrixWorld();
-      return everyone.every(f => [[-0.7, -0.2], [0.7, -0.2], [-0.7, BOX_H + 1.3], [0.7, BOX_H + 1.3]].every(([ox, oy]) => {
-        const p = _fit.set(f.x + ox, f.y + oy, 0).project(fitCam);
-        return Math.abs(p.x) < 0.94 && Math.abs(p.y) < 0.9;
-      }));
+      return inside(fitCam);
     };
-    const everyone = fighters.filter(f => alive(f) && !f.out);
     for (let i = 0; i < 12 && !fits(dist); i++) dist *= 1.12;
-    // pulling back is quick, so no one leaves the picture; coming back in is gentle
-    const k = camSnap ? 1 : 1 - Math.exp(-dt * (dist > camera.position.z ? 9 : 3));
+    // pulling back is quick, and at once if anyone is already outside the picture; coming back in is gentle
+    camera.updateMatrixWorld();
+    const lost = !camSnap && dist > camera.position.z && !inside(camera);
+    const k = camSnap || lost ? 1 : 1 - Math.exp(-dt * (dist > camera.position.z ? 9 : 3));
     camSnap = false;
     camera.position.x += (cx - camera.position.x) * k;
+    camera.position.z += (dist - camera.position.z) * k;      // the distance first: the height follows from it
     camera.position.y += (lookY + camera.position.z * 0.5 - camera.position.y) * k;
-    camera.position.z += (dist - camera.position.z) * k;
-    scene.fog.near = camera.position.z + 6; scene.fog.far = camera.position.z + 28;
     camLook.set(camera.position.x, lookY, 0);
     camera.lookAt(camLook);
+    // easing can leave the camera between two views that each fit everyone, with someone just outside: then it
+    // takes the view that was checked
+    camera.updateMatrixWorld();
+    if (!inside(camera)) {
+      camera.position.set(cx, lookY + dist * 0.5, dist);
+      camLook.set(cx, lookY, 0);
+      camera.lookAt(camLook);
+    }
+    scene.fog.near = camera.position.z + 6; scene.fog.far = camera.position.z + 28;
     sun.position.set(camera.position.x + 4, 10, 6);
     sun.target.position.set(camera.position.x, 0, 0);
   }

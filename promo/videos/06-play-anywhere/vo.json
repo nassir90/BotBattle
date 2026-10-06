@@ -1,50 +1,51 @@
 {
- "duration": 33.88,
+ "duration": 33.04,
  "lines": [
   {
    "line": "Bot Battle runs in the browser, here on a phone held upright.",
    "start": 0.0,
-   "end": 4.973
+   "end": 5.249
   },
   {
    "line": "Before the fight, all three bots show off, and then you play with the buttons on screen.",
-   "start": 5.929,
-   "end": 12.198
+   "start": 6.207,
+   "end": 11.768
   },
   {
    "line": "On a computer, you pick your mode and fighter with the mouse or the keyboard.",
-   "start": 12.738,
-   "end": 17.281
+   "start": 12.733,
+   "end": 17.25
   },
   {
-   "line": "During the match, the keys for every move are listed along the bottom.",
-   "start": 18.052,
-   "end": 23.358
+   "line": "Press R and chance picks your opponent, then the two bots face off.",
+   "start": 17.899,
+   "end": 22.712
   },
   {
    "line": "Turn the phone on its side and the buttons fold into two rows.",
-   "start": 24.015,
-   "end": 28.203
+   "start": 23.686,
+   "end": 27.585
   },
   {
    "line": "Here, ChatGPT's cursor takes control of Stack Overflow.",
-   "start": 28.95,
-   "end": 33.532
+   "start": 28.266,
+   "end": 32.697
   }
  ],
  "heard": [
-  "Bot Battle runs in the browser.",
-  "here on a phone held upright.",
-  "Before the fight,",
-  "All three bots show off.",
+  "Bot battle runs in the browser.",
+  "Here on a phone held upright.",
+  "before the fight.",
+  "All three bots show up.",
   "And then you play with the buttons on screen.",
-  "Oh",
-  "on a computer",
+  "on a computer.",
   "You pick your mode and fighter with the mouse or the keyboard.",
-  "During the match, the keys for every move are listed along the bottom.",
-  "Transcribe this speech exactly.",
+  "Press R.",
+  "and chance picks your opponent.",
+  "Then the two bots face off.",
   "Turn the phone on its side.",
   "and the buttons fold into two rows.",
-  "Here, chat GPT's cursor takes control of stack overflow."
+  "Here",
+  "Chat GPT's cursor takes control of stack overflow."
  ]
 }

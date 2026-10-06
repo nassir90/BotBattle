@@ -115,7 +115,10 @@ export default {
     // each fighter: kind, health, lives, knocked out, out of the match
     out.state = { ctx: g ? Math.round(g.context) : null, inhale: A.inhaling('gpt'),
       f: A.fighters.map(f => [f.kind, Math.round(f.hp), Number.isFinite(f.stocks) ? f.stocks : -1, f.dead ? 1 : 0, f.out ? 1 : 0]),
-      result: !document.getElementById('result').hidden, ev: window.__ev.splice(0) };
+      result: !document.getElementById('result').hidden, ev: window.__ev.splice(0),
+      offscreen: A.fighters.filter(f => !f.dead && !f.out && [[0, 0], [0, 3.2]].some(([ox, oy]) => {
+        const p = new (A.camera.position.constructor)(f.x + ox, f.y + oy, 0).project(A.camera);
+        return Math.abs(p.x) > 1 || Math.abs(p.y) > 1; })).map(f => f.kind) };
     // jumps and landings, from each fighter's state since the last frame
     const seen = window.__seen || (window.__seen = {});
     for (const f of A.fighters) {
@@ -200,7 +203,7 @@ export default {
       ] },
 
     // the showcase: the game being played on a phone held upright, on a desktop, and on a phone on its side
-    show_phone: { seconds: 30, inject: INJECT_PHONE, css: '',
+    show_phone: { seconds: 30, size: [390, 844], dpr: 2, inject: INJECT_PHONE, css: '',     // a 19.5:9 phone (iPhone-sized)
       script: [
         [1.5, page => page.click({ text: 'Free-for-all' })],
         [3.2, page => page.click('#nextBtn')],
@@ -238,7 +241,7 @@ export default {
         [25.2, page => page.up('KeyJ')],
         [26.6, page => page.press('KeyK')],
       ] },
-    show_landscape: { seconds: 24, size: [740, 360], inject: INJECT_PHONE, css: '',
+    show_landscape: { seconds: 24, size: [844, 390], inject: INJECT_PHONE, css: '',
       script: [
         [1.2, page => page.click('.mode[data-mode="training"]')],
         [2.6, page => page.click('#nextBtn')],
