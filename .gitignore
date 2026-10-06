@@ -6,3 +6,10 @@ dist/
 .env*
 *.log
 .DS_Store
+
+# rendered videos and recordings are build output: never in git (make.py writes them to promo/out/, TapaTab to promo/clips/)
+*.mp4
+*.mov
+*.webm
+*.h264
+promo/clips/

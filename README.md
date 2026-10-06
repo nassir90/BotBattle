@@ -8,17 +8,19 @@ Stack Overflow, ChatGPT and Claude settle it on a sheet of paper. It's a 3D stic
 
 ## Videos
 
-| [Showcase: three bots, one sheet of paper](promo/out/01-showcase.mp4) | [Devlog: what the inhale eats](promo/out/02-inhale.mp4) |
+| Showcase: three bots, one sheet of paper | Devlog: what the inhale eats |
 |---|---|
-| [![Showcase video](docs/screenshots/video-showcase.jpg)](promo/out/01-showcase.mp4) | [![Inhale devlog video](docs/screenshots/video-inhale.jpg)](promo/out/02-inhale.mp4) |
+| ![Showcase video](docs/screenshots/video-showcase.jpg) | ![Inhale devlog video](docs/screenshots/video-inhale.jpg) |
 
-| [Who would win? Stack Overflow vs ChatGPT](promo/out/03-who-would-win.mp4) | [Free-for-all: three bots, two lives each](promo/out/04-free-for-all.mp4) |
+| Who would win? Stack Overflow vs ChatGPT | Free-for-all: three bots, two lives each |
 |---|---|
-| [![Duel video](docs/screenshots/video-who-would-win.jpg)](promo/out/03-who-would-win.mp4) | [![Free-for-all video](docs/screenshots/video-free-for-all.jpg)](promo/out/04-free-for-all.mp4) |
+| ![Duel video](docs/screenshots/video-who-would-win.jpg) | ![Free-for-all video](docs/screenshots/video-free-for-all.jpg) |
 
-| [Practice: Stack Overflow's moves](promo/out/05-practice-so.mp4) | [Showcase: play it anywhere](promo/out/06-play-anywhere.mp4) |
+| Practice: Stack Overflow's moves | Showcase: play it anywhere |
 |---|---|
-| [![Practice video](docs/screenshots/video-practice-so.jpg)](promo/out/05-practice-so.mp4) | [![Phone, desktop and landscape video](docs/screenshots/video-play-anywhere.jpg)](promo/out/06-play-anywhere.mp4) |
+| ![Practice video](docs/screenshots/video-practice-so.jpg) | ![Phone, desktop and landscape video](docs/screenshots/video-play-anywhere.jpg) |
+
+The videos themselves aren't kept in git (they're build output, ignored in `.gitignore`); `make.py` writes them to `promo/out/`.
 
 All six are made in [`promo/`](promo/) with TapaTab (recording) and ShadowKit (compositing, narration, music): `takes.mjs` stages each scene, and `videos/<id>/edl.js` is each video's edit list.
 
