@@ -120,6 +120,7 @@ button[aria-pressed="true"] { background: var(--ink); color: var(--paper); }
 }
 .overlay > .panel { margin-block: auto; }
 #select { background: color-mix(in srgb, var(--paper) 94%, transparent); }
+#select .panel { gap: 12px; }
 .panel { width: min(980px, 100%); display: grid; gap: 18px; }
 .result.panel { gap: 14px; }
 .panel h1 { margin: 0; font-family: var(--display); font-weight: 400; font-size: clamp(24px, 5vw, 44px); line-height: 1; text-wrap: balance; }
@@ -142,7 +143,7 @@ button[aria-pressed="true"] { background: var(--ink); color: var(--paper); }
 
 
 /* fighter carousel: cards on a ring, the 3D fighter stands on top of each card */
-.carousel { position: relative; height: 640px; overflow: hidden; touch-action: pan-y; cursor: grab; }
+.carousel { position: relative; height: 520px; overflow: hidden; touch-action: pan-y; cursor: grab; }
 .carousel:active { cursor: grabbing; }
 .carousel .slot {
   position: absolute; left: 50%; top: 0; width: var(--cw); margin-left: calc(var(--cw) / -2);
@@ -156,7 +157,7 @@ button[aria-pressed="true"] { background: var(--ink); color: var(--paper); }
   72% { transform: translateY(-4px); } 100% { transform: translateY(0); }
 }
 .carousel .card.jiggle { animation: jiggle 0.45s ease-out; }
-.carousel .card .pedestal { position: relative; height: 270px; margin: 0 -14px 4px; border-bottom: 2px solid var(--ink); background: linear-gradient(var(--paper), color-mix(in srgb, var(--c) 10%, var(--paper))); }
+.carousel .card .pedestal { position: relative; height: clamp(170px, 28vh, 250px); margin: 0 -14px 4px; border-bottom: 2px solid var(--ink); background: linear-gradient(var(--paper), color-mix(in srgb, var(--c) 10%, var(--paper))); }
 .carousel .slot.side .card { pointer-events: auto; }
 #previewCanvas { position: absolute; inset: 0; width: 100%; height: 100%; pointer-events: none; z-index: 3; }
 .carousel .nav { position: absolute; top: 100px; z-index: 4; width: 44px; height: 44px; padding: 0; font-size: 16px; }
@@ -286,7 +287,7 @@ button[aria-pressed="true"] { background: var(--ink); color: var(--paper); }
       <button type="button" class="mode" data-mode="training"><h2>Training</h2><span>Play-test one fighter against dummies. Health refills and knockouts respawn.</span></button>
       <button type="button" class="mode" data-mode="watch"><h2>Watch</h2><span>Three CPUs fight it out while you watch.</span></button>
     </div>
-    <p class="keys">Move <kbd>A</kbd> <kbd>D</kbd> or <kbd>&larr;</kbd> <kbd>&rarr;</kbd>, double-tap to dash &middot; Jump <kbd>W</kbd> <kbd>&uarr;</kbd> <kbd>Space</kbd> &middot; Shot <kbd>J</kbd> &middot; Melee <kbd>K</kbd> &middot; Power <kbd>L</kbd> &middot; Special <kbd>I</kbd> &middot; Parry <kbd>Backspace</kbd> toward the way you face or press, <kbd>W</kbd> + <kbd>Backspace</kbd> overhead &middot; Fall past an edge and you grab it: toward the stage climbs, <kbd>W</kbd> to jump</p>
+    <p class="keys">Move <kbd>A</kbd> <kbd>D</kbd> or <kbd>&larr;</kbd> <kbd>&rarr;</kbd>, double-tap to dash &middot; Jump <kbd>W</kbd> <kbd>&uarr;</kbd> <kbd>Space</kbd> &middot; Shot <kbd>J</kbd> &middot; Melee <kbd>K</kbd> &middot; Power <kbd>L</kbd> &middot; Special <kbd>I</kbd> &middot; Parry <kbd>Backspace</kbd> toward the way you face or press, <kbd>W</kbd> + <kbd>Backspace</kbd> overhead &middot; Fall past an edge and you grab it; press toward the stage to climb up</p>
   </div>
   <nav class="brands" id="brands" aria-label="The real ones">
     <canvas id="brandCanvas"></canvas>
@@ -841,30 +842,30 @@ button[aria-pressed="true"] { background: var(--ink); color: var(--paper); }
       name: 'Stack Overflow', short: 'SO', color: '#f48024', jumps: 1, range: 4,
       blurb: 'Angry, well-sourced, and already closed your question.',
       abilities: {
-        a1: { name: 'Block shot', short: 'Block', cd: 0.06, desc: 'Rapid fire: the stack bends at the enemy like the beam, and blocks thread up it and fly out of the top. Hold to keep firing.' },
-        a2: { name: 'Block whip', short: 'Whip', cd: 0.8, desc: 'The spring stretches out and lashes the blocks forward and low. Hold W (or jump) to lash straight up. Off the stage, the tip latches onto a ledge and reels you in.' },
-        a3: { name: 'Unified beam', short: 'Beam', cd: 1.2, desc: 'Bend the stack at the enemy and feed all five blocks up it into a beam.' },
-        a4: { name: 'Correction', short: 'Correct', cd: 7, desc: 'A condescending remark that stuns everyone nearby.' },
+        a1: { name: 'Block shot', short: 'Block', cd: 0.06, desc: 'Fires blocks from the top of your stack. Hold to keep firing.' },
+        a2: { name: 'Block whip', short: 'Whip', cd: 0.8, desc: 'Lashes your stack forward. Hold W to lash upward. Grabs ledges.' },
+        a3: { name: 'Unified beam', short: 'Beam', cd: 1.2, desc: 'Fires all five blocks as one beam.' },
+        a4: { name: 'Correction', short: 'Correct', cd: 7, desc: 'A smug remark that stuns everyone nearby.' },
       },
     },
     gpt: {
       name: 'ChatGPT', short: 'GPT', color: GPT_GREEN, jumps: 2, range: 5.5,
       blurb: 'Borrows your body, eats your attacks, and compacts you.',
       abilities: {
-        a1: { name: 'Computer use', short: 'Cursor', cd: 0.8, desc: 'Launch a homing mouse cursor.' },
-        a2: { name: 'Inhale', short: 'Inhale', cd: 3.5, desc: 'The head tips forward, the logo grows and spins up a tornado that sucks in enemies and their attacks. Builds context.' },
-        a3: { name: 'Computer use (advanced)', short: 'Take over', cd: 9, desc: 'Bigger cursor that takes control of whoever it hits for 2 seconds.' },
-        a4: { name: 'Compaction', short: 'Compact', cd: 2, desc: 'Spend 50% context to flatten everyone in front. They grow back slowly, faster as they land hits.' },
+        a1: { name: 'Computer use', short: 'Cursor', cd: 0.8, desc: 'Fires a cursor that chases the nearest enemy.' },
+        a2: { name: 'Inhale', short: 'Inhale', cd: 3.5, desc: 'Sucks in enemies and their attacks. Builds context.' },
+        a3: { name: 'Computer use (advanced)', short: 'Take over', cd: 9, desc: 'Controls whoever it hits for 2 seconds.' },
+        a4: { name: 'Compaction', short: 'Compact', cd: 2, desc: 'Uses half your context to flatten everyone in front.' },
       },
-      passive: 'Double jump: the logo spins up like a rotor.',
+      passive: 'Double jump.',
     },
     claude: {
       name: 'Claude', short: 'Claude', color: '#d97757', jumps: 2, range: 3,
-      blurb: 'Thinks in threes and fours. Has rods to spare.',
+      blurb: 'Thinks in threes and fours. Has rays to spare.',
       abilities: {
-        a1: { name: 'Shoot', short: 'Shoot', cd: 0.12, desc: 'Rapid fire: rods leave the logo one after another. Light damage, real knockback. Rods grow back. Hold to keep firing.' },
-        a2: { name: 'Fling', short: 'Fling', cd: 0.9, desc: 'Fling one rod out of the logo to poke whoever is in front. It has to grow back.' },
-        a3: { name: 'Combobulating', short: 'Dots', cd: 2.4, desc: 'Alternates three dots in a line and four in a square; Claude punches them out one by one.' },
+        a1: { name: 'Shoot', short: 'Shoot', cd: 0.12, desc: 'Fires the rays of your logo. Hold to keep firing.' },
+        a2: { name: 'Fling', short: 'Fling', cd: 0.9, desc: 'Jabs one ray forward. It grows back.' },
+        a3: { name: 'Combobulating', short: 'Dots', cd: 2.4, desc: 'Punches out three dots in a line, or four in a square.' },
       },
       passive: 'Double jump.',
     },
@@ -3119,6 +3120,8 @@ button[aria-pressed="true"] { background: var(--ink); color: var(--paper); }
   function layoutCarousel() {
     const cw = Math.min(330, carouselEl.clientWidth * 0.78);
     carouselEl.style.setProperty('--cw', cw + 'px');
+    // as tall as the tallest card (plus its shadow), so nothing below it is pushed off a normal screen
+    carouselEl.style.height = Math.max(...slots.map(sl => sl.slot.offsetHeight)) + 8 + 'px';
     slots.forEach((sl, i) => {
       let off = i - carIndex;
       if (off > 1) off -= 3; if (off < -1) off += 3;
