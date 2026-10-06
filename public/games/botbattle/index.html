@@ -38,32 +38,30 @@ button:active { transform: translate(2px, 2px); box-shadow: 1px 1px 0 var(--ink)
 button:focus-visible { outline: 3px solid var(--so); outline-offset: 2px; }
 button[aria-pressed="true"] { background: var(--ink); color: var(--paper); }
 
-/* health plates */
+/* health plates, along the bottom: a square with the fighter's 3D logo (drawn into the game canvas behind the
+   transparent square), lives as x3, and the health bar along the bottom of the plate */
 .hud {
-  position: fixed; top: calc(env(safe-area-inset-top, 0px) + 12px); left: 16px; right: 16px;
-  display: grid; grid-template-columns: repeat(var(--n, 3), minmax(0, 1fr)); gap: 12px; pointer-events: none;
+  position: fixed; bottom: calc(env(safe-area-inset-bottom, 0px) + 14px); left: 16px; right: 16px;
+  display: grid; grid-template-columns: repeat(var(--n, 3), minmax(0, 250px)); justify-content: center; gap: 14px; pointer-events: none;
 }
-.plate { display: grid; grid-template-columns: minmax(0, 1fr); gap: 4px; min-width: 0; }
-.plate-top { display: flex; justify-content: space-between; align-items: center; gap: 6px; min-width: 0; }
-.plate-name { font-family: var(--display); font-size: clamp(11px, 1.6vw, 15px); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
-.plate-tag { font-size: 10px; letter-spacing: 0.08em; color: var(--ink-soft); white-space: nowrap; }
+.plate { --sq: 60px; display: grid; grid-template-columns: var(--sq) minmax(0, 1fr); min-width: 0; border: 2px solid var(--ink); box-shadow: 3px 3px 0 var(--ink); }
+.plate-logo { height: var(--sq); border-right: 2px solid var(--ink); position: relative; }
+.plate.out .plate-logo::after { content: "OUT"; position: absolute; inset: 0; display: grid; place-items: center; font-family: var(--display); font-size: 12px; color: var(--ink-soft); }
+.plate-info { background: var(--paper); display: grid; grid-template-rows: auto 1fr auto; gap: 3px; padding: 5px 8px 6px; min-width: 0; }
+.plate-top { display: flex; justify-content: space-between; align-items: baseline; gap: 6px; min-width: 0; }
+.stock { font-family: var(--display); font-size: 20px; line-height: 1; }
+.plate-tag { font-size: 10px; letter-spacing: 0.08em; color: var(--ink-soft); white-space: nowrap; font-variant-numeric: tabular-nums; }
 .plate-tag.you { color: var(--ink); font-weight: 600; }
-.bar { height: 14px; border: 2px solid var(--ink); background: var(--paper-2); position: relative; overflow: hidden; }
+.bar { height: 12px; border: 2px solid var(--ink); background: var(--paper-2); position: relative; overflow: hidden; align-self: end; }
 .bar-fill { position: absolute; inset: 0; transform-origin: left; background: var(--c); transition: transform 0.12s linear; }
 .bar-lag { position: absolute; inset: 0; transform-origin: left; background: var(--hurt); opacity: 0.45; transition: transform 0.6s ease-out 0.15s; }
-.plate-meta { display: flex; justify-content: space-between; gap: 8px; font-size: 10px; font-variant-numeric: tabular-nums; color: var(--ink-soft); }
-.ctx { height: 5px; border: 1.5px solid var(--ink); background: var(--paper-2); position: relative; overflow: hidden; }
+.ctx { height: 5px; border: 1.5px solid var(--ink); background: var(--paper-2); position: relative; overflow: hidden; align-self: center; }
 .ctx i { position: absolute; inset: 0; transform-origin: left; background: var(--gpt); }
-.plate.out .plate-name { text-decoration: line-through; color: var(--ink-soft); }
-.plate-id { display: flex; align-items: center; gap: 6px; min-width: 0; }
-.plate-id .plate-name { min-width: 0; }
-.stocks { display: inline-flex; gap: 3px; flex: none; }
-.stocks i { width: 8px; height: 8px; border: 1.5px solid var(--ink); background: var(--c); }
-.stocks i.lost { background: transparent; opacity: 0.45; }
+.plate.out .stock { color: var(--ink-soft); }
 
 /* move list */
 .moves {
-  position: fixed; left: 16px; bottom: calc(env(safe-area-inset-bottom, 0px) + 14px);
+  position: fixed; left: 16px; top: calc(env(safe-area-inset-top, 0px) + 12px);
   display: flex; flex-wrap: wrap; gap: 8px; align-items: stretch; pointer-events: none; max-width: calc(100% - 140px);
 }
 .move {
@@ -79,13 +77,13 @@ button[aria-pressed="true"] { background: var(--ink); color: var(--paper); }
 .pips i.on { background: var(--so); }
 .count { font-variant-numeric: tabular-nums; color: var(--ink-soft); }
 .status {
-  position: fixed; left: 50%; top: calc(env(safe-area-inset-top, 0px) + 96px); transform: translateX(-50%);
+  position: fixed; left: 50%; top: calc(env(safe-area-inset-top, 0px) + 66px); transform: translateX(-50%);
   font-family: var(--display); font-size: 13px; padding: 4px 10px; background: var(--gpt); color: var(--paper);
   border: 2px solid var(--ink); pointer-events: none; white-space: nowrap;
 }
-.corner { position: fixed; right: 16px; bottom: calc(env(safe-area-inset-bottom, 0px) + 14px); }
+.corner { position: fixed; right: 16px; top: calc(env(safe-area-inset-top, 0px) + 12px); }
 .trainbar {
-  position: fixed; left: 50%; top: calc(env(safe-area-inset-top, 0px) + 96px); transform: translateX(-50%);
+  position: fixed; left: 50%; top: calc(env(safe-area-inset-top, 0px) + 66px); transform: translateX(-50%);
   display: flex; flex-wrap: wrap; gap: 6px; align-items: center; justify-content: center; max-width: calc(100% - 32px);
   font-size: 11px; color: var(--ink-soft);
 }
@@ -145,7 +143,14 @@ button[aria-pressed="true"] { background: var(--ink); color: var(--paper); }
   position: absolute; left: 50%; top: 0; width: var(--cw); margin-left: calc(var(--cw) / -2);
   transition: transform 0.38s cubic-bezier(.2,.8,.2,1), opacity 0.38s; will-change: transform;
 }
-.carousel .card { width: 100%; padding-top: 0; }
+.carousel .card { width: 100%; padding-top: 0; border: 2px solid var(--ink); box-shadow: 3px 3px 0 var(--ink); }
+.carousel .card .pedestal { overflow: hidden; }
+/* a click on a card gives it a little jiggle */
+@keyframes jiggle {
+  0% { transform: rotate(0) scale(1); } 18% { transform: rotate(-2.4deg) scale(1.025); } 38% { transform: rotate(1.8deg) scale(0.99); }
+  58% { transform: rotate(-1deg) scale(1.01); } 78% { transform: rotate(0.5deg); } 100% { transform: rotate(0) scale(1); }
+}
+.carousel .card.jiggle { animation: jiggle 0.45s ease-out; }
 .carousel .card .pedestal { position: relative; height: 270px; margin: 0 -14px 4px; border-bottom: 2px solid var(--ink); background: linear-gradient(var(--paper), color-mix(in srgb, var(--c) 10%, var(--paper))); }
 .carousel .slot.side .card { pointer-events: auto; }
 #previewCanvas { position: absolute; inset: 0; width: 100%; height: 100%; pointer-events: none; z-index: 3; }
@@ -208,7 +213,10 @@ button[aria-pressed="true"] { background: var(--ink); color: var(--paper); }
 .touch { display: none; }
 @media (pointer: coarse) {
   .moves { display: none; }
-  .corner { bottom: auto; top: calc(env(safe-area-inset-top, 0px) + 96px); }
+  .hud { bottom: calc(env(safe-area-inset-bottom, 0px) + 216px); left: 12px; right: 12px; gap: 8px; }
+  .plate { --sq: 44px; }
+  .stock { font-size: 16px; }
+  .trainbar, .status { top: calc(env(safe-area-inset-top, 0px) + 64px); }
   .touch {
     position: fixed; left: 12px; right: 12px; bottom: calc(env(safe-area-inset-bottom, 0px) + 12px);
     display: flex; justify-content: space-between; align-items: flex-end; gap: 12px; pointer-events: none;
@@ -273,7 +281,7 @@ button[aria-pressed="true"] { background: var(--ink); color: var(--paper); }
       <button type="button" class="mode" data-mode="training"><h2>Training</h2><span>Play-test one fighter against dummies. Health refills and knockouts respawn.</span><span class="go">Practise &rarr;</span></button>
       <button type="button" class="mode" data-mode="watch"><h2>Watch</h2><span>Three CPUs fight it out while you watch.</span><span class="go">Watch &rarr;</span></button>
     </div>
-    <p class="keys">Move <kbd>A</kbd> <kbd>D</kbd> or <kbd>&larr;</kbd> <kbd>&rarr;</kbd> &middot; Jump <kbd>W</kbd> <kbd>&uarr;</kbd> <kbd>Space</kbd> &middot; Shot <kbd>J</kbd> &middot; Melee <kbd>K</kbd> &middot; Power <kbd>L</kbd> &middot; Special <kbd>I</kbd> &middot; Parry <kbd>Backspace</kbd> toward the way you face or press, <kbd>W</kbd> + <kbd>Backspace</kbd> overhead &middot; Three lives each; fall off the edge and you lose one.</p>
+    <p class="keys">Move <kbd>A</kbd> <kbd>D</kbd> or <kbd>&larr;</kbd> <kbd>&rarr;</kbd>, double-tap to dash past someone &middot; Jump <kbd>W</kbd> <kbd>&uarr;</kbd> <kbd>Space</kbd> &middot; Shot <kbd>J</kbd> &middot; Melee <kbd>K</kbd> &middot; Power <kbd>L</kbd> &middot; Special <kbd>I</kbd> &middot; Parry <kbd>Backspace</kbd> toward the way you face or press, <kbd>W</kbd> + <kbd>Backspace</kbd> overhead &middot; Fall past an edge and you grab it: toward the stage climbs, <kbd>W</kbd> leaps, away lets go &middot; Three lives each; fall off the stage and you lose one.</p>
   </div>
   <nav class="brands" aria-label="The real ones">
     <a href="https://stackoverflow.com" target="_blank" rel="noopener" title="stackoverflow.com"><svg viewBox="0 0 24 24" aria-hidden="true"><path fill="#bcbbbb" d="M3 13h2.2v6.6h12.6V13H20v9H3z"/><g fill="#f48024"><rect x="6.8" y="17.0" width="9.4" height="1.9" transform="rotate(0 7.4 18.2) translate(0 0.00)"/><rect x="6.8" y="16.8" width="9.4" height="1.9" transform="rotate(-10 7.4 18.0) translate(0 -2.25)"/><rect x="6.8" y="16.6" width="9.4" height="1.9" transform="rotate(-22 7.4 17.8) translate(0 -4.50)"/><rect x="6.8" y="16.4" width="9.4" height="1.9" transform="rotate(-38 7.4 17.6) translate(0 -6.75)"/><rect x="6.8" y="16.2" width="9.4" height="1.9" transform="rotate(-58 7.4 17.4) translate(0 -9.00)"/></g></svg>Stack Overflow</a>
@@ -921,6 +929,7 @@ button[aria-pressed="true"] { background: var(--ink); color: var(--paper); }
       cd: { a1: 0, a2: 0, a3: 0, a4: 0 },
       possessedBy: null, possessing: null, possessTimer: 0,
       guard: null, guardCd: 0, parryGrace: 0, parryFrom: null, invuln: 0, jumpT: 9, compact: 1, context: 0,
+      passT: 0, ledge: null, ledgeCd: 0,
       stats: { dmg: 0, hits: 0, kos: 0, taken: 0, parries: 0, moves: 0, ctx: 0 },
       ai: { t: 0, move: 0, jump: false, act: null, rest: 1 + Math.random(), target: null, targetT: 0, burstT: 0 },
     };
@@ -1093,7 +1102,7 @@ button[aria-pressed="true"] { background: var(--ink); color: var(--paper); }
   // key held; overhead with W). The guard forms, shines for a moment, then loosens. Only hits that arrive
   // from the guarded side while it shines are parried: no damage, a freeze, and a nearby attacker is left
   // stuck. A hit from anywhere else lands as normal and breaks the pose.
-  const GUARD_IN = 4 / 60, GUARD_SHINE = 14 / 60, GUARD_OUT = 16 / 60, GUARD_END = GUARD_IN + GUARD_SHINE + GUARD_OUT;
+  const GUARD_IN = 4 / 60, GUARD_SHINE = 26 / 60, GUARD_OUT = 18 / 60, GUARD_END = GUARD_IN + GUARD_SHINE + GUARD_OUT;
   const KB_MAX = 10;
   const smooth = x => x * x * (3 - 2 * x);
   const shining = f => !!f.guard && f.guard.t >= GUARD_IN && f.guard.t < GUARD_IN + GUARD_SHINE;
@@ -1130,6 +1139,7 @@ button[aria-pressed="true"] { background: var(--ink); color: var(--paper); }
       return 'parry';
     }
     if (h.guard) h.guard = null;               // a hit from an unguarded side breaks the pose
+    if (h.ledge) { h.ledge = null; h.ledgeCd = 0.5; }   // and knocks it off a ledge
     const dealt = Math.min(dmg, h.hp);         // damage past zero health doesn't count in the stats
     h.hp = Math.max(0, h.hp - dmg);
     // knockback stacks from rapid fire, up to a limit, so a single burst can't clear the stage
@@ -1137,6 +1147,7 @@ button[aria-pressed="true"] { background: var(--ink); color: var(--paper); }
     if (kby > 0) { h.vy = Math.max(h.vy, kby); h.onGround = false; }
     h.lastKb = { x: kbx, y: kby };
     h.flash = 0.18;
+    h.hudKick = 1;
     h.lastHitT = 0;
     h.stats.taken += dealt;
     if (src) {
@@ -1364,7 +1375,7 @@ button[aria-pressed="true"] { background: var(--ink); color: var(--paper); }
   // ================= Abilities =================
   function tryAbility(f, slot) {
     const ab = f.kit.abilities[slot];
-    if (!ab || f.cd[slot] > 0 || f.busy > 0 || f.guard) return false;
+    if (!ab || f.cd[slot] > 0 || f.busy > 0 || f.guard || f.ledge) return false;
     const ok = ABILITY[f.kind][slot](f);
     if (ok !== false) { f.cd[slot] = ab.cd; f.stats.moves++; }
     return ok !== false;
@@ -2065,6 +2076,7 @@ button[aria-pressed="true"] { background: var(--ink); color: var(--paper); }
       p.py = p.y - vy * dt0;
     }
     f.arms.forEach(a => { a.limb.L1 = a.L1; a.limb.L2 = a.L2; });     // undo an overhead guard's stretch
+    f.vis.rotation.z = 0; f.ledge = null;
     f.rag = {
       pts,
       links: RAG_LINKS.map(([a, b]) => [a, b, Math.hypot(pts[a].x - pts[b].x, pts[a].y - pts[b].y)]),
@@ -2139,40 +2151,53 @@ button[aria-pressed="true"] { background: var(--ink); color: var(--paper); }
       f.guard.t += dt;
       if (f.guard.t >= GUARD_END) { f.guard = null; f.guardCd = 0.15; }
     }
-    if (inp.parry && !f.guard && f.guardCd <= 0 && f.busy <= 0) startGuard(f, inp);
+    if (inp.parry && !f.guard && !f.ledge && f.guardCd <= 0 && f.busy <= 0) startGuard(f, inp);
 
     const rooted = f.busy > 0 || !!f.guard;
     f.busy = Math.max(0, f.busy - dt);
 
-    let move = (inp.right ? 1 : 0) - (inp.left ? 1 : 0);
-    if (rooted) move = 0;
-    const rate = f.onGround ? 30 : 12;
-    const speed = 5.5 * (0.7 + 0.3 * f.compact);
-    f.vx += THREE.MathUtils.clamp(move * speed - f.vx, -rate * dt, rate * dt);
-    if (move) f.facing = move;
+    f.ledgeCd = Math.max(0, f.ledgeCd - dt);
+    if (f.ledge) hangOnLedge(f, inp, dt);
+    else {
+      let move = (inp.right ? 1 : 0) - (inp.left ? 1 : 0);
+      if (rooted) move = 0;
+      // double-tap a direction: a quick dash that slips past anyone in the way
+      f.passT = Math.max(0, f.passT - dt);
+      if (inp.dash && !rooted && f.passT <= 0) {
+        f.passT = PASS_TIME; f.passDir = inp.dash; f.facing = inp.dash;
+        if (f.onGround) ring(V(f.x, 0.03, 0), '#141414', 0.35, true);
+      }
+      const rate = f.onGround ? 30 : 12;
+      const speed = 5.5 * (0.7 + 0.3 * f.compact);
+      if (f.passT > 0) f.vx = f.passDir * PASS_SPEED;
+      else f.vx += THREE.MathUtils.clamp(move * speed - f.vx, -rate * dt, rate * dt);
+      if (move && f.passT <= 0) f.facing = move;
 
-    if (inp.jump && !rooted && f.jumpsLeft > 0) {
-      const air = !f.onGround;
-      f.jumpsLeft--;
-      if (air) airJump(f);
-      else { f.vy = 9.6; f.onGround = false; f.jumpT = 0; }
-    }
-    if (f.lift > 0) {
-      f.lift -= dt;
-      f.vy += LIFT_THRUST * dt;
-      f.rotorBoost = 1;
-      if (f.lift <= 0 && f.spring && !f.whip && !f.inhale && !f.compaction && !f.beam) f.spring.override = null;
-    }
-    const wasY = f.y;
-    f.vy += GRAV * dt;
-    f.x += f.vx * dt; f.y += f.vy * dt;
-    // the stage only exists between its edges: walk or get knocked past them and you fall
-    if (f.y <= 0 && wasY >= -0.05 && overStage(f.x) && !(f.lift > 0 && f.vy > 0)) {
-      f.y = 0; f.vy = Math.max(0, f.vy); f.onGround = true; f.jumpsLeft = f.kit.jumps;
-    } else f.onGround = f.y === 0 && overStage(f.x);
-    if (f.y < -0.05 && Math.abs(f.x) < STAGE_HALF + BOX_W * 0.6) {
-      f.x = Math.sign(f.x || 1) * (STAGE_HALF + BOX_W * 0.6);   // slide down the side of the slab
-      f.vx = 0;
+      if (inp.jump && !rooted && f.jumpsLeft > 0) {
+        const air = !f.onGround;
+        f.jumpsLeft--;
+        if (air) airJump(f);
+        else { f.vy = 9.6; f.onGround = false; f.jumpT = 0; }
+      }
+      if (f.lift > 0) {
+        f.lift -= dt;
+        f.vy += LIFT_THRUST * dt;
+        f.rotorBoost = 1;
+        if (f.lift <= 0 && f.spring && !f.whip && !f.inhale && !f.compaction && !f.beam) f.spring.override = null;
+      }
+      const wasY = f.y;
+      f.vy += GRAV * dt;
+      f.x += f.vx * dt; f.y += f.vy * dt;
+      // the stage only exists between its edges: walk or get knocked past them and you fall
+      if (f.y <= 0 && wasY >= -0.05 && overStage(f.x) && !(f.lift > 0 && f.vy > 0)) {
+        f.y = 0; f.vy = Math.max(0, f.vy); f.onGround = true; f.jumpsLeft = f.kit.jumps;
+      } else f.onGround = f.y === 0 && overStage(f.x);
+      // falling past the edge: catch the lip of the stage
+      if (canGrab(f)) grabLedge(f);
+      if (!f.ledge && f.y < -0.05 && Math.abs(f.x) < STAGE_HALF + BOX_W * 0.6) {
+        f.x = Math.sign(f.x || 1) * (STAGE_HALF + BOX_W * 0.6);   // slide down the side of the slab
+        f.vx = 0;
+      }
     }
     if (f.y < RING_OUT_Y) { ringOut(f); return; }
 
@@ -2195,6 +2220,7 @@ button[aria-pressed="true"] { background: var(--ink); color: var(--paper); }
 
     // pose
     f.vis.scale.x = f.facing;
+    f.vis.rotation.z += ((f.passT > 0 ? -f.facing * 0.28 : 0) - f.vis.rotation.z) * Math.min(1, dt * 18);   // leaning into a dash
     const c = f.compact;
     f.root.scale.set(1 + (1 - c) * 0.35, c, 1 + (1 - c) * 0.35);
     f.root.position.set(f.x, f.y, 0);
@@ -2219,6 +2245,61 @@ button[aria-pressed="true"] { background: var(--ink); color: var(--paper); }
     }
     f.mats.outline.color.set(glow ? GPT_GREEN : '#141414');
   }
+  // ================= Ledges =================
+  // A fighter falling past either end of the stage grabs its lip and hangs there by the hands, head just over
+  // the edge. From the ledge: toward the stage climbs up, jump leaps up off it, away or down lets go (and so
+  // does waiting too long). Grabbing gives the jumps back. One fighter per ledge.
+  const LEDGE_OUT = 0.5, LEDGE_Y = -2.35, LEDGE_MAX = 4, LEDGE_REACH = 2.2, CLIMB_TIME = 0.24;
+  const PASS_TIME = 0.32, PASS_SPEED = 9;
+  // it catches the lip once its hands come level with it, from anywhere within reach of that end
+  function canGrab(f) {
+    if (f.ledge || f.ledgeCd > 0 || f.vy > 0 || f.guard || f.y > LEDGE_Y + 0.5 || f.y < LEDGE_Y - 0.9) return false;
+    const ax = Math.abs(f.x);
+    if (ax < STAGE_HALF || ax > STAGE_HALF + LEDGE_REACH) return false;
+    const side = Math.sign(f.x);
+    return !fighters.some(o => o !== f && o.ledge && o.ledge.side === side);
+  }
+  function grabLedge(f) {
+    const side = Math.sign(f.x);
+    f.ledge = { side, t: 0, fromX: f.x, fromY: f.y, climb: -1 };
+    f.vx = 0; f.vy = 0; f.onGround = false; f.lift = 0; f.passT = 0;
+    f.jumpsLeft = f.kit.jumps; f.facing = -side;
+    ring(V(side * STAGE_HALF, 0.02, 0), '#141414', 0.3);
+  }
+  function letGo(f) { f.ledge = null; f.ledgeCd = 0.6; }
+  function hangOnLedge(f, inp, dt) {
+    const L = f.ledge, side = L.side;
+    L.t += dt;
+    f.vx = 0; f.vy = 0; f.onGround = false; f.facing = -side;
+    const hangX = side * (STAGE_HALF + LEDGE_OUT);
+    if (L.climb >= 0) {
+      // climbing: up over the lip in an arc, then standing on the stage
+      L.climb += dt;
+      const p = smooth(Math.min(1, L.climb / CLIMB_TIME)), standX = side * (STAGE_HALF - 0.45);
+      f.x = hangX + (standX - hangX) * smooth(Math.max(0, p * 1.4 - 0.4));
+      f.y = LEDGE_Y + (0.15 - LEDGE_Y) * Math.min(1, p * 1.25);
+      if (L.climb >= CLIMB_TIME) {
+        letGo(f);
+        f.x = standX; f.y = 0; f.onGround = true; f.jumpsLeft = f.kit.jumps;
+      }
+      return;
+    }
+    // easing into the hang from wherever it caught the lip
+    const e = smooth(Math.min(1, L.t / 0.12));
+    f.x = L.fromX + (hangX - L.fromX) * e; f.y = L.fromY + (LEDGE_Y - L.fromY) * e;
+    if (L.t < 0.18 || f.stun > 0) return;             // a moment to settle before it can act
+    const toward = side > 0 ? inp.left : inp.right, away = side > 0 ? inp.right : inp.left;
+    if (inp.jump) {                                    // leap up off the ledge
+      letGo(f);
+      f.vy = 13; f.vx = -side * 3; f.jumpT = 0;
+      f.jumpsLeft = Math.max(0, f.kit.jumps - 1);
+    } else if (toward) {
+      L.climb = 0;
+    } else if (away || inp.down || L.t > LEDGE_MAX) {
+      letGo(f);
+    }
+  }
+
   function startGuard(f, inp) {
     const dir = inp.up ? 'up' : 'side';
     const side = inp.right ? 1 : inp.left ? -1 : f.facing;
@@ -2305,7 +2386,7 @@ button[aria-pressed="true"] { background: var(--ink); color: var(--paper); }
         ft.air = true; ft.stepping = false;
         const k = Math.min(1, dt * 16);
         ft.x += (f.x + f.facing * ft.s * 0.28 - ft.x) * k;
-        ft.y += (f.y + 0.22 - ft.y) * k;
+        ft.y += (f.y + (f.ledge ? 0.04 : 0.22) - ft.y) * k;      // hanging from a ledge, the legs dangle straight
         continue;
       }
       if (ft.air) { ft.air = false; ft.y = 0; ft.x = home; }
@@ -2349,7 +2430,7 @@ button[aria-pressed="true"] { background: var(--ink); color: var(--paper); }
   }
 
   // ================= Arms =================
-  const _hand = V();
+  const _hand = V(), _lip = V();
   function updateArms(f, dt) {
     const now = performance.now() / 1000;
     f.arms.forEach((arm, i) => {
@@ -2377,6 +2458,12 @@ button[aria-pressed="true"] { background: var(--ink); color: var(--paper); }
           _hand.lerp(V(at.x - 0.16, at.y, at.z), reach);
         });
       }
+      // hanging: both hands on the lip of the stage
+      if (f.ledge && f.ledge.climb < 0) {
+        f.root.updateMatrixWorld(true);
+        _hand.copy(f.vis.worldToLocal(_lip.set(f.ledge.side * (STAGE_HALF + 0.04), 0.03, i ? -0.12 : 0.16)));
+        bend = 1;
+      }
       // guarding: the hands go to the held piece
       const gw = guardWeight(f);
       // overhead the arms stretch a little (they are short, and the cup is in the way) with the elbows out wide
@@ -2397,15 +2484,23 @@ button[aria-pressed="true"] { background: var(--ink); color: var(--paper); }
 
   // ================= Input =================
   const keys = new Set(), pressed = new Set();
-  const GAME_KEYS = new Set(['KeyA', 'KeyD', 'KeyW', 'ArrowLeft', 'ArrowRight', 'ArrowUp', 'Space', 'Backspace',
+  const GAME_KEYS = new Set(['KeyA', 'KeyD', 'KeyW', 'KeyS', 'ArrowLeft', 'ArrowRight', 'ArrowUp', 'ArrowDown', 'Space', 'Backspace',
     'KeyJ', 'KeyK', 'KeyL', 'KeyI', 'Digit1', 'Digit2', 'Digit3', 'Digit4']);
+  // a second press of the same direction within a moment is a double tap: the dash
+  const lastTap = {};
+  function noteTap(code) {
+    const dir = code === 'KeyA' || code === 'ArrowLeft' ? 'DashL' : code === 'KeyD' || code === 'ArrowRight' ? 'DashR' : null;
+    if (!dir) return;
+    const now = performance.now();
+    if (now - (lastTap[dir] || -1e9) < 280) { pressed.add(dir); lastTap[dir] = -1e9; } else lastTap[dir] = now;
+  }
   addEventListener('keydown', e => {
     if (e.code === 'Escape' && inMatch()) { openMenu(); return; }
     if (e.code === 'Escape' && !selectEl.hidden) { document.getElementById('backBtn').click(); return; }
     if (!GAME_KEYS.has(e.code) || !player) return;
     if (document.activeElement && document.activeElement.tagName === 'BUTTON' && e.code === 'Space') document.activeElement.blur();
     e.preventDefault();
-    if (!e.repeat) pressed.add(e.code);
+    if (!e.repeat) { pressed.add(e.code); noteTap(e.code); }
     keys.add(e.code);
   });
   addEventListener('keyup', e => keys.delete(e.code));
@@ -2413,7 +2508,7 @@ button[aria-pressed="true"] { background: var(--ink); color: var(--paper); }
 
   document.querySelectorAll('.touch button').forEach(btn => {
     const code = btn.dataset.key;
-    const down = e => { e.preventDefault(); keys.add(code); pressed.add(code); btn.setPointerCapture?.(e.pointerId); };
+    const down = e => { e.preventDefault(); keys.add(code); pressed.add(code); noteTap(code); btn.setPointerCapture?.(e.pointerId); };
     const upH = e => { e.preventDefault(); keys.delete(code); };
     btn.addEventListener('pointerdown', down);
     btn.addEventListener('pointerup', upH);
@@ -2428,6 +2523,8 @@ button[aria-pressed="true"] { background: var(--ink); color: var(--paper); }
       right: k('KeyD') || k('ArrowRight'),
       jump: p('KeyW') || p('ArrowUp') || p('Space'),
       parry: p('Backspace') || p('ParryUp'),
+      down: k('KeyS') || k('ArrowDown'),
+      dash: p('DashL') ? -1 : p('DashR') ? 1 : 0,
       up: k('KeyW') || k('ArrowUp') || p('ParryUp'),
       a1: p('KeyJ') || p('Digit1') || (k('KeyJ') && controlledBody()?.kind !== 'gpt'),     // hold J to keep firing blocks or rods
       a2: p('KeyK') || p('Digit2'),
@@ -2471,6 +2568,14 @@ button[aria-pressed="true"] { background: var(--ink); color: var(--paper); }
       return inp;
     }
     ai.rest -= dt; ai.targetT -= dt; ai.burstT -= dt;
+    // on a ledge: hang a moment, then climb up or leap off it
+    if (f.ledge) {
+      if (f.ledge.t > 0.35 + (f.id % 3) * 0.2) {
+        if ((f.id + Math.floor(f.ledge.t * 3)) % 2) inp.jump = true;
+        else { inp.left = f.ledge.side > 0; inp.right = f.ledge.side < 0; }
+      }
+      return inp;
+    }
     // off the edge: steer home and use every jump to get back
     if (!overStage(f.x) || (f.y < -0.1)) {
       const home = -Math.sign(f.x);
@@ -2512,6 +2617,8 @@ button[aria-pressed="true"] { background: var(--ink); color: var(--paper); }
       else ai.act = chooseAction(f, t, dist, dy);
     }
     inp.left = ai.move < 0; inp.right = ai.move > 0;
+    // pressed up against its target, now and then it dashes through to the other side
+    if (ai.move && dist < BODY_GAP + 0.1 && Math.sign(dx) === ai.move && f.onGround && Math.random() < dt * 1.5) inp.dash = ai.move;
     if (ai.jump) { inp.jump = true; ai.jump = false; }
     if (ai.act === 'burst') { ai.burstT = 0.25 + Math.random() * 0.3; ai.act = null; ai.rest = 0.6 + Math.random() * 0.8; }
     if (ai.burstT > 0) { inp.a1 = true; inp.face = Math.sign(dx) || f.facing; }
@@ -2532,12 +2639,15 @@ button[aria-pressed="true"] { background: var(--ink); color: var(--paper); }
       const el = document.createElement('div');
       el.className = 'plate';
       el.style.setProperty('--c', f.kit.color);
+      el.setAttribute('role', 'group');
+      el.setAttribute('aria-label', f.kit.name);
       const tag = f.isPlayer ? 'YOU' : f.dummy ? 'DUMMY' : 'CPU';
-      el.innerHTML = `<div class="plate-top"><span class="plate-id"><span class="plate-name"></span><span class="stocks" aria-label="Lives"></span></span><span class="plate-tag${f.isPlayer ? ' you' : ''}">${tag}</span></div>
-        <div class="bar"><div class="bar-lag"></div><div class="bar-fill"></div></div>
-        ${f.kind === 'gpt' ? '<div class="ctx" title="Context"><i></i></div>' : ''}
-        <div class="plate-meta"><span class="plate-hp"></span><span class="plate-ctx"></span></div>`;
-      el.querySelector('.plate-name').textContent = f.kit.name;
+      el.innerHTML = `<div class="plate-logo" aria-hidden="true"></div>
+        <div class="plate-info">
+          <div class="plate-top"><span class="stock"></span><span class="plate-tag${f.isPlayer ? ' you' : ''}">${tag} <span class="plate-hp"></span></span></div>
+          ${f.kind === 'gpt' ? '<div class="ctx" title="Context"><i></i></div>' : '<span></span>'}
+          <div class="bar"><div class="bar-lag"></div><div class="bar-fill"></div></div>
+        </div>`;
       hud.appendChild(el);
       plates.set(f, el);
     }
@@ -2547,15 +2657,11 @@ button[aria-pressed="true"] { background: var(--ink); color: var(--paper); }
     for (const [f, el] of plates) {
       el.querySelector('.bar-fill').style.transform = `scaleX(${f.hp / 100})`;
       el.querySelector('.bar-lag').style.transform = `scaleX(${f.hp / 100})`;
-      el.querySelector('.plate-hp').textContent = `${Math.ceil(f.hp)} / 100`;
+      el.querySelector('.plate-hp').textContent = String(Math.ceil(f.hp));
       el.classList.toggle('out', !!f.out);
-      const st = el.querySelector('.stocks');
-      const total = mode.lives || 0, key = `${f.stocks}/${total}`;
-      if (Number.isFinite(f.stocks) && st.dataset.k !== key) {
-        st.dataset.k = key;
-        st.innerHTML = Array.from({ length: total }, (_, i) => `<i class="${i < f.stocks ? '' : 'lost'}"></i>`).join('');
-        st.setAttribute('aria-label', `${f.stocks} of ${total} lives left`);
-      }
+      // lives as x3, x2, x1 (training has no limit)
+      el.querySelector('.stock').textContent = Number.isFinite(f.stocks) ? `x${f.stocks}` : 'x\u221e';
+      el.querySelector('.stock').setAttribute('aria-label', Number.isFinite(f.stocks) ? `${f.stocks} lives left` : 'Unlimited lives');
     }
   }
   function updatePlatesLive() {
@@ -2563,7 +2669,7 @@ button[aria-pressed="true"] { background: var(--ink); color: var(--paper); }
       const ctx = el.querySelector('.ctx i');
       if (ctx) {
         ctx.style.transform = `scaleX(${f.context / 100})`;
-        el.querySelector('.plate-ctx').textContent = `context ${Math.floor(f.context)}%`;
+        ctx.parentElement.title = `Context ${Math.floor(f.context)}%`;
       }
     }
   }
@@ -2600,7 +2706,7 @@ button[aria-pressed="true"] { background: var(--ink); color: var(--paper); }
       }
       movesEl.appendChild(el);
     }
-    const extra = [['W', body.kit.jumps > 1 ? 'Double jump' : 'Jump'], ['\u232B', 'Parry'], ['W+\u232B', 'Overhead parry']];
+    const extra = [['W', body.kit.jumps > 1 ? 'Double jump' : 'Jump'], ['AA DD', 'Dash past'], ['\u232B', 'Parry'], ['W+\u232B', 'Overhead parry']];
     for (const [k, label] of extra) {
       const el = document.createElement('div');
       el.className = 'move static';
@@ -2806,8 +2912,15 @@ button[aria-pressed="true"] { background: var(--ink); color: var(--paper); }
       `<li data-slot="${s}"><kbd>${KEY_LABEL[s]}</kbd><span><strong>${kit.abilities[s].name}.</strong> ${kit.abilities[s].desc}</span></li>`).join('');
     const passive = kit.passive ? `<li><kbd>W</kbd><span>${kit.passive}</span></li>` : '';
     slot.innerHTML = `<div class="card" role="group" aria-label="${kit.name}" style="--c:${kit.color}"><div class="pedestal"></div><h2>${kit.name}</h2><span>${kit.blurb}</span><ul>${list}${passive}</ul></div>`;
-    // clicking a card only selects it; Enter (or the Play button) goes ahead
-    slot.addEventListener('click', () => { const i = ORDER.indexOf(kind); if (i !== carIndex) rotateTo(i); });
+    // clicking a card only selects it (with a jiggle to feel it); Enter (or the Play button) goes ahead
+    slot.addEventListener('click', () => {
+      const i = ORDER.indexOf(kind);
+      if (i !== carIndex) rotateTo(i);
+      const card = slot.querySelector('.card');
+      card.classList.remove('jiggle'); void card.offsetWidth; card.classList.add('jiggle');
+      const w = worlds[i];
+      if (w) w.fighters[0].jig = 1;
+    });
     track.appendChild(slot);
     return { kind, slot };
   });
@@ -2990,6 +3103,12 @@ button[aria-pressed="true"] { background: var(--ink); color: var(--paper); }
       enterWorld(w);
       f.x = 0; f.vx = 0; f.facing = 1;
       updateFighter(f, inp, dt);
+      // a click on the card makes the fighter wobble: squash and stretch that settles quickly
+      if (f.jig > 0) {
+        f.jig = Math.max(0, f.jig - dt * 2.4);
+        const q = Math.sin((1 - f.jig) * 26) * 0.16 * f.jig;
+        f.root.scale.set(f.root.scale.x * (1 - q * 0.6), f.root.scale.y * (1 + q), f.root.scale.z * (1 - q * 0.6));
+      }
       updateProjectiles(dt);
       updateEffects(dt);
       scene.updateMatrixWorld();
@@ -3044,7 +3163,7 @@ button[aria-pressed="true"] { background: var(--ink); color: var(--paper); }
 
   let camSnap = true;
   function updateCamera(dt) {
-    let list = fighters.filter(f => alive(f) && f.y > -2);
+    let list = fighters.filter(f => alive(f) && (f.y > -2 || f.ledge));
     if (!list.length) list = fighters.filter(f => f.y > -2);
     if (!list.length) return;
     let minX = Infinity, maxX = -Infinity, maxY = 0;
@@ -3085,6 +3204,7 @@ button[aria-pressed="true"] { background: var(--ink); color: var(--paper); }
     const live = fighters.filter(f => !f.dead);
     for (let i = 0; i < live.length; i++) for (let j = i + 1; j < live.length; j++) {
       const a = live[i], b = live[j];
+      if (a.passT > 0 || b.passT > 0 || a.ledge || b.ledge) continue;     // a dash slips past
       if (Math.abs(a.y - b.y) > BOX_H * 0.7) continue;
       const dx = b.x - a.x, d = Math.abs(dx);
       if (d >= BODY_GAP) continue;
@@ -3094,6 +3214,63 @@ button[aria-pressed="true"] { background: var(--ink); color: var(--paper); }
       const closing = (a.vx - b.vx) * sgn;
       if (closing > 0) { const mid = (a.vx + b.vx) / 2; a.vx = mid; b.vx = mid; }
     }
+  }
+
+  // ================= HUD logos =================
+  // Each plate's square is see-through; the fighter's logo is drawn into the game canvas right behind it,
+  // turning slowly, and shaking for a moment when that fighter is hit.
+  const HUD_PAPER = new THREE.Color('#fbfaf7');
+  const hudCam = new THREE.OrthographicCamera(-0.58, 0.58, 0.58, -0.58, 0.1, 10);
+  hudCam.position.z = 5;
+  const HUD_LOGOS = Object.fromEntries(['so', 'gpt', 'claude'].map(kind => {
+    const sc = new THREE.Scene();
+    sc.background = HUD_PAPER;
+    sc.add(new THREE.HemisphereLight('#ffffff', '#d8d2c4', 0.85));
+    const l = new THREE.DirectionalLight('#ffffff', 0.7); l.position.set(2, 3, 5); sc.add(l);
+    const logo = new THREE.Group();
+    if (kind === 'so') {
+      // the Stack Overflow mark: the grey tray with the orange bars fanning up out of it
+      const g = new THREE.Group();
+      g.add(inked(trayBaseGeo, trayMat));
+      for (const sx of [-1, 1]) { const side = inked(traySideGeo, trayMat); side.position.set(0.44 * sx, 0.17, 0); g.add(side); }
+      // as in the real mark: each bar pivots up from its left end, a little more than the one below
+      [0, 10, 22, 38, 58].forEach((deg, k) => {
+        const pivot = new THREE.Group();
+        pivot.position.set(-0.26, 0.13 + k * 0.126, 0);
+        pivot.rotation.z = THREE.MathUtils.degToRad(deg);
+        const bar = inked(barGeo, barMat);
+        bar.position.x = 0.31;
+        pivot.add(bar);
+        g.add(pivot);
+      });
+      g.position.y = -0.46; g.scale.setScalar(0.78);
+      logo.add(g);
+    } else logo.add(inked(kind === 'gpt' ? openaiGeo : claudeGeo, kind === 'gpt' ? openaiMat : claudeMat));
+    sc.add(logo);
+    return [kind, { sc, logo }];
+  }));
+  const emptyHud = new THREE.Scene(); emptyHud.background = HUD_PAPER;
+  function renderHudLogos(dt) {
+    if (!plates.size) return;
+    const H = stage.clientHeight, t = performance.now() / 1000;
+    renderer.setScissorTest(true);
+    for (const [f, el] of plates) {
+      const r = el.querySelector('.plate-logo').getBoundingClientRect();
+      if (r.width < 4) continue;
+      const w = r.width - 2, x = r.left, y = H - r.bottom;
+      renderer.setViewport(x, y, w, r.height); renderer.setScissor(x, y, w, r.height);
+      if (f.out) { renderer.render(emptyHud, hudCam); continue; }
+      const { sc, logo } = HUD_LOGOS[f.kind];
+      f.hudKick = Math.max(0, (f.hudKick || 0) - dt * 2.5);
+      const shake = Math.sin(t * 45) * 0.3 * f.hudKick;
+      // the chatbots' logos turn like their rotors; Stack Overflow's sways
+      if (f.kind === 'so') logo.rotation.set(0, Math.sin(t * 0.9 + f.id) * 0.5, shake);
+      else logo.rotation.set(Math.sin(t * 0.7 + f.id) * 0.25, Math.sin(t * 0.9 + f.id) * 0.35, f.spinDir * t * 0.8 + shake);
+      logo.scale.setScalar(1 + 0.15 * f.hudKick);
+      renderer.render(sc, hudCam);
+    }
+    renderer.setScissorTest(false);
+    renderer.setViewport(0, 0, stage.clientWidth, H);
   }
 
   // ================= Main loop =================
@@ -3107,6 +3284,7 @@ button[aria-pressed="true"] { background: var(--ink); color: var(--paper); }
     if (hitstop > 0) {            // parry freeze: everything holds still for a moment
       hitstop -= dt;
       renderer.render(scene, camera);
+      renderHudLogos(0);
       return;
     }
     lastDt = dt;
@@ -3137,6 +3315,7 @@ button[aria-pressed="true"] { background: var(--ink); color: var(--paper); }
     updateMoves();
     checkResult(dt);
     renderer.render(scene, camera);
+    renderHudLogos(dt);
   }
 
   startMatch({ kind: 'watch' });   // CPUs brawl behind the main menu

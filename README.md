@@ -25,7 +25,7 @@ Both are made in [`promo/`](promo/) with TapaTab (recording) and ShadowKit (comp
 | Training | Play-test one fighter against two dummies. Dummies refill their health, knockouts respawn, and you can make the dummies stand still, move around or fight back. |
 | Watch | Three CPUs fight while you watch. |
 
-Fighters are picked from a carousel: click a card, or rotate with the arrow buttons, the arrow keys, a drag or the mouse wheel, then press `Enter` (or Play). Clicking a card only selects it. Each card has its fighter standing in its own little window, and the one in the middle works through its moves in turn, using the real game code, with the move it's showing highlighted in the card's list.
+Fighters are picked from a carousel: click a card, or rotate with the arrow buttons, the arrow keys, a drag or the mouse wheel, then press `Enter` (or Play). Clicking a card only selects it, and the card and its fighter give a little jiggle. Each card has its fighter standing in its own little window, and the one in the middle works through its moves in turn, using the real game code, with the move it's showing highlighted in the card's list.
 
 Every match starts with **3 lives** each by default; the picker next to Play sets 1, 2, 3 or 5.
 
@@ -36,6 +36,7 @@ Every match starts with **3 lives** each by default; the picker next to Play set
 | Key | Action |
 |---|---|
 | `A` `D` or `←` `→` | Move |
+| Double-tap `A` or `D` | Dash, slipping past anyone in the way |
 | `W`, `↑` or `Space` | Jump (ChatGPT and Claude can double jump) |
 | `J` (or `1`) | Shot: Block shot, Computer use, Shoot |
 | `K` (or `2`) | Melee: Block whip, Inhale, Fling |
@@ -43,19 +44,26 @@ Every match starts with **3 lives** each by default; the picker next to Play set
 | `I` (or `4`) | Special: Correction, Compaction |
 | `Backspace` | Parry toward the way you face, or the way you're pressing |
 | `W` + `Backspace` | Overhead parry |
+| On a ledge: toward the stage, `W`, or away / `S` | Climb up, leap off, or let go |
 | `Esc` | Back to the menu |
 
 On phones, the same controls appear as on-screen buttons, with separate Parry and ↑ Parry buttons.
 
 ![Phone layout with the touch pad](docs/screenshots/phone.jpg)
 
-The stage has edges. Walk off, or get knocked off, and you lose a life.
+Fighters are solid to each other, so you can't walk through someone; double-tap a direction to dash past them.
+
+The stage has edges. Fall past one and you catch its lip, hanging by the hands with your head over the edge (jumps come back when you grab). From there, press toward the stage to climb up, jump to leap off it, or press away or down to let go; after 4 seconds you let go anyway, and a hit knocks you off. One fighter per ledge.
+
+![Claude hanging from the end of the stage](docs/screenshots/ledge.jpg)
+
+Fall off the stage altogether and you lose a life.
 
 ![A fighter falling off the end of the stage](docs/screenshots/ringout.jpg)
 
-Lives show as squares beside each name. A fighter with lives left drops back in from above a moment later, blinking, and can't be hurt for 2 seconds.
+The plates along the bottom of the screen show each fighter's 3D logo (turning slowly, and shaking when that fighter is hit), lives as `x3`, `x2`, `x1`, and the health bar along the bottom (with ChatGPT's context meter above it). The move list is along the top. A fighter with lives left drops back in from above a moment later, blinking, and can't be hurt for 2 seconds.
 
-![Mid-match, with Stack Overflow down to 2 of its 3 lives](docs/screenshots/lives.jpg)
+![Mid-match: the move list along the top, the plates along the bottom, Stack Overflow down to x2](docs/screenshots/lives.jpg)
 
 ## The fighters
 
@@ -118,7 +126,7 @@ Its logo is the real Claude mark, split into its 12 rays along their seams, with
 
 ## Parry
 
-`Backspace` snaps a fighter into a guard in one direction. The guard forms (4 frames), **shines** for 14 frames, then loosens (16 frames), and the fighter can't move or attack until it has loosened.
+`Backspace` snaps a fighter into a guard in one direction. The guard forms (4 frames), **shines** for 26 frames, then loosens (18 frames), and the fighter can't move or attack until it has loosened.
 
 - **Side parry** (`Backspace`, toward the way you face or the way you're pressing): each fighter uses its own top piece as a shield.
   - Stack Overflow takes the grey tray off its head with its left hand, and its right hand drapes the blocks over it as slats.

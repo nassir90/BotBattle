@@ -50,8 +50,9 @@ export default {
     { replace: 'const MAX_DIST = 26;', code: 'const MAX_DIST = window.__maxDist || 26;' },
   ],
   ready: () => !!window.__app,
-  // the move list, touch pad, menu button and training bar would sit where the subtitles go
-  css: `.moves, .touch, .corner, .trainbar, .status { display: none !important; }`,
+  // the move list, touch pad, menu button, training bar and health plates would sit where the text goes
+  // (a hidden plate also skips its 3D logo, which is drawn into the game canvas)
+  css: `.moves, .touch, .corner, .trainbar, .status, .hud { display: none !important; }`,
   annotate: () => {
     const A = window.__app, out = { inhale: [] };
     const m = A.mouth('gpt');
@@ -136,7 +137,7 @@ export default {
     // a side parry against a block (Claude's fingers round the spokes), an overhead parry against the whip,
     // then a fling that knocks Stack Overflow off the end of the stage. A block leaves the stack about 0.4 s
     // after it is fired (the barrel bends first), the whip connects 0.12 s after it starts, and the guard shines from
-    // 0.07 s to 0.3 s after Backspace.
+    // 0.07 s to 0.5 s after Backspace.
     parry: { seconds: 10,
       setup: () => window.__app.stage('claude', [['claude', -1.2, 1], ['so', 2.6, -1], ['gpt', -4.5, 1]]),
       script: [
