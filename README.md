@@ -56,12 +56,12 @@ On phones, the same controls appear as on-screen buttons, with separate Parry an
 
 Fighters are solid to each other, and they push:
 
-- **Running into someone** from open space knocks them into a stumble: they're shoved back about 2.8 units, arms flung up, and can't act until they catch themselves.
+- **Running into someone** from open space: your hands come up as you close in and you shove them with both arms, knocking them into a stumble. They're shoved back about 2.8 units, arms flung up, and can't act until they catch themselves.
 - **Leaning on someone you're already touching** walks them back slowly (1.6 units a second) while you shove with both hands; they rock back and strain.
 - **Both pushing** is a power struggle: you lean in head to head and the pair sways one way, then the other.
 - A double-tap dash slips past instead.
 
-Faces show it: when a fighter is hit, stumbling, stunned or being pushed, Stack Overflow screws its eyes shut and grits its teeth, and the chatbots' smiles go wobbly with a bead of sweat, with the face shaking while it lasts.
+Faces show it: when a fighter is hit, stumbling, stunned or being pushed, Stack Overflow screws its eyes shut and grits its teeth, and the chatbots' smiles go flat, with the face shaking while it lasts.
 
 ![Stack Overflow shoving ChatGPT back, and the two in a power struggle](docs/screenshots/push.jpg)
 
