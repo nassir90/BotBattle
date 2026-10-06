@@ -388,6 +388,9 @@ body.two-players .corner { left: 50%; right: auto; transform: translateX(-50%); 
 .roomform input { font: 500 15px var(--mono); color: var(--ink); background: var(--paper); border: 2px solid var(--ink); padding: 8px 10px; min-width: 0; }
 .roomform input:focus { outline: 3px solid color-mix(in srgb, var(--gpt) 50%, transparent); outline-offset: 1px; }
 .roomform button { justify-self: start; }
+.roomform.casual { grid-column: 1 / -1; grid-template-columns: minmax(0, 1fr) auto; align-items: center; }
+.roomform.casual p { margin: 4px 0 0; font-size: 13px; color: var(--ink-soft); }
+.lobby.casual .invite { display: none; }
 .lobby { display: grid; grid-template-columns: minmax(0, 1fr) auto; gap: 20px; align-items: start; }
 .lobby-main { display: grid; gap: 14px; min-width: 0; }
 .roster { list-style: none; margin: 0; padding: 0; display: grid; gap: 8px; }
@@ -530,6 +533,10 @@ body.two-players .corner { left: 50%; right: auto; transform: translateX(-50%); 
     <p class="sub" id="onlineMsg" role="status"></p>
     <div id="signedOut" hidden><div id="clerkSignIn"></div></div>
     <div class="rooms" id="rooms" hidden>
+      <div class="roomform casual">
+        <div><h2>Casual match</h2><p>Play one match against whoever's looking for one too.</p></div>
+        <button type="button" id="casualBtn">Find a match</button>
+      </div>
       <form class="roomform" id="createForm" autocomplete="off">
         <h2>Make a room</h2>
         <label>Room name<input id="createName" maxlength="16" required placeholder="Paper Arena"></label>
@@ -1465,7 +1472,10 @@ body.two-players .corner { left: 50%; right: auto; transform: translateX(-50%); 
   // key held; overhead with W). The guard forms, shines for a moment, then loosens. Only hits that arrive
   // from the guarded side while it shines are parried: no damage, a freeze, and a nearby attacker is left
   // stuck. A hit from anywhere else lands as normal and breaks the pose.
-  const GUARD_IN = 4 / 60, GUARD_SHINE = 26 / 60, GUARD_OUT = 18 / 60, GUARD_END = GUARD_IN + GUARD_SHINE + GUARD_OUT;
+  // Holding the button keeps the shield up after the shine: hits from that side are blocked (no damage, a little
+  // push back), but only the shine parries.
+  const GUARD_IN = 4 / 60, GUARD_SHINE = 34 / 60, GUARD_OUT = 18 / 60, GUARD_END = GUARD_IN + GUARD_SHINE + GUARD_OUT;
+  const GUARD_HELD = GUARD_IN + GUARD_SHINE;     // where a held guard waits
   const KB_MAX = 10;
   const smooth = x => x * x * (3 - 2 * x);
   const shining = f => !!f.guard && f.guard.t >= GUARD_IN && f.guard.t < GUARD_IN + GUARD_SHINE;
@@ -1477,10 +1487,9 @@ body.two-players .corner { left: 50%; right: auto; transform: translateX(-50%); 
     return 1 - smooth(Math.min(1, (g.t - GUARD_IN - GUARD_SHINE) / GUARD_OUT));
   }
   // dir is the way the attack travels: overhead guards stop what comes down, side guards what comes at their face
-  function guarding(h, dir) {
-    if (!shining(h)) return false;
-    return h.guard.dir === 'up' ? dir.y < -0.3 : dir.x * h.guard.side < -0.3 && dir.y > -0.85;
-  }
+  const facesHit = (h, dir) => h.guard.dir === 'up' ? dir.y < -0.3 : dir.x * h.guard.side < -0.3 && dir.y > -0.85;
+  function guarding(h, dir) { return shining(h) && facesHit(h, dir); }
+  const blocking = (h, dir) => !!h.guard && h.guard.held && h.guard.t >= GUARD_HELD && facesHit(h, dir);
   let hitstop = 0;
   let trainDamage = 0;
   function hurt(h, dmg, kbx, kby, from, opts = {}) {
@@ -1499,6 +1508,12 @@ body.two-players .corner { left: 50%; right: auto; transform: translateX(-50%); 
       floatText(h.x, h.y + boxH(h) + 0.4, 'Parry!', 'parry');
       ring(h.root.localToWorld(guardCenter(h)), h.kit.color, 1.2);
       flashScreen();
+      return 'parry';
+    }
+    if (blocking(h, dir)) {                     // a held shield: no damage, pushed back a little
+      h.vx = THREE.MathUtils.clamp(h.vx + kbx * 0.3, -KB_MAX, KB_MAX);
+      floatText(h.x, h.y + boxH(h) + 0.4, 'Block', 'info');
+      ring(h.root.localToWorld(guardCenter(h)), '#141414', 0.7);
       return 'parry';
     }
     if (h.guard) h.guard = null;               // a hit from an unguarded side breaks the pose
@@ -2554,7 +2569,10 @@ body.two-players .corner { left: 50%; right: auto; transform: translateX(-50%); 
     f.guardCd = Math.max(0, f.guardCd - dt);
     if (f.guard) {
       f.guard.t += dt;
-      if (f.guard.t >= GUARD_END) { f.guard = null; f.guardCd = 0.15; }
+      // still holding the button once the shine is over: the shield stays up
+      if (inp.guard && f.guard.t >= GUARD_HELD && (f.guard.held || f.guard.t - dt < GUARD_HELD)) { f.guard.t = GUARD_HELD; f.guard.held = true; }
+      else if (f.guard.held && f.guard.t > GUARD_HELD) f.guard.held = false;
+      if (f.guard.t >= GUARD_END) { f.guard = null; f.guardCd = 0.08; }
     }
     if (inp.parry && !f.guard && !f.ledge && f.guardCd <= 0 && f.busy <= 0) startGuard(f, inp);
 
@@ -2573,15 +2591,41 @@ body.two-players .corner { left: 50%; right: auto; transform: translateX(-50%); 
       f.intent = move;
       // double-tap a direction: a quick dash that slips past anyone in the way
       f.passT = Math.max(0, f.passT - dt);
+      f.dashSettle = Math.max(0, (f.dashSettle || 0) - dt);
       if (inp.dash && !rooted && f.passT <= 0) {
-        f.passT = PASS_TIME; f.passDir = inp.dash; f.facing = inp.dash; f.brushed = new Set();
+        f.passT = PASS_TIME; f.passDir = inp.dash; f.facing = inp.dash; f.brushed = new Set(); f.backT = 0; f.airBack = false;
         if (f.onGround) ring(V(f.x, 0.03, 0), '#141414', 0.35, true);
       }
-      const rate = f.stumble > 0 ? 7 : f.onGround ? 30 : 12;     // a stumble slides to a stop
-      const speed = 5.5 * (0.7 + 0.3 * f.compact) * (1 - CROUCH_SLOW * f.crouch);
-      if (f.passT > 0) f.vx = f.passDir * PASS_SPEED;
-      else f.vx += THREE.MathUtils.clamp(move * speed - f.vx, -rate * dt, rate * dt);
-      if (move && f.passT <= 0 && !f.pushing) f.facing = move;
+      // setting off (from standing, from the other way, or after letting go): a short burst that eases to walking
+      // pace. Turning round from a walk, you first walk backwards for a moment, still facing the way you were
+      // going: shots and parries still go that way, and a jump in that moment keeps facing it until you land.
+      let kick = false;
+      if (move && move !== f.lastMove && f.passT <= 0 && f.onGround) {
+        f.burstT = BURST_TIME; kick = true;
+        const wasGoing = f.lastMove === f.facing || (f.lastDir === f.facing && f.sinceDir < 0.15);
+        if (move === -f.facing && wasGoing) f.backT = BACK_TIME;
+      }
+      if (move === f.facing) { f.backT = 0; f.airBack = false; }
+      if (f.onGround) { f.backT = Math.max(0, (f.backT || 0) - dt); f.airBack = false; }
+      else if (f.backT > 0) f.airBack = true;
+      f.burstT = Math.max(0, (f.burstT || 0) - dt);
+      if (move) { f.lastDir = move; f.sinceDir = 0; } else f.sinceDir = (f.sinceDir || 0) + dt;
+      f.lastMove = move;
+      const back = backing(f) && move === -f.facing;
+      const speed = 5.5 * (0.7 + 0.3 * f.compact) * (1 - CROUCH_SLOW * f.crouch) * (back ? BACK_SPEED : 1) * (1 + BURST_K * f.burstT / BURST_TIME);
+      if (f.passT > 0) {
+        // the dash eases off over its last part, into a walk if you're still holding that way
+        f.passK = smooth(Math.min(1, f.passT / (PASS_TIME * PASS_EASE)));
+        const after = move === f.passDir ? speed : 0;
+        f.vx = f.passDir * (after + (PASS_SPEED - after) * f.passK);
+        f.dashSettle = DASH_SETTLE;
+      } else if (kick) f.vx = move * speed;               // the burst starts at full speed
+      else if (!(f.guard && !f.onGround)) {          // a guard in the air keeps its momentum
+        // a stumble slides to a stop; just out of a dash, the body settles more gently
+        const rate = f.stumble > 0 ? 7 : !f.onGround ? 12 : f.dashSettle > 0 ? 24 : f.burstT > 0 ? 90 : 60;
+        f.vx += THREE.MathUtils.clamp(move * speed - f.vx, -rate * dt, rate * dt);
+      }
+      if (move && f.passT <= 0 && !f.pushing && !backing(f)) f.facing = move;
 
       if (inp.jump && !rooted && f.jumpsLeft > 0) {
         const air = !f.onGround;
@@ -2636,8 +2680,11 @@ body.two-players .corner { left: 50%; right: auto; transform: translateX(-50%); 
     // discomfort shows on the face, which also shakes while it lasts
     setFace(f, f.flash > 0 || f.stumble > 0 || f.strain > 0 || f.stun > 0);
     // leaning: into a dash, along a stumble (the top runs ahead of the feet), or into a push
-    const lean = f.passT > 0 ? -f.facing * 0.28 : f.strike ? f.facing * (f.strike.low ? 0.16 : -0.1) * strikeReach(f) : f.jolt > 0 ? -f.joltDir * 0.2 * (f.jolt / 0.2) : f.shoveT > 0 ? -f.shoveDir * 0.22 * (f.shoveK || 1) * Math.min(1, f.shoveT / 0.15) : f.stumble > 0 ? -f.stumbleDir * 0.32 * Math.min(1, f.stumble / 0.2) : (f.lean || 0);
-    f.vis.rotation.z += (lean - f.vis.rotation.z) * Math.min(1, dt * 14);
+    const lean = f.passT > 0 ? -f.facing * 0.28 * (f.passK ?? 1) : f.strike ? f.facing * (f.strike.low ? 0.16 : -0.1) * strikeReach(f) : f.jolt > 0 ? -f.joltDir * 0.2 * (f.jolt / 0.2) : f.shoveT > 0 ? -f.shoveDir * 0.22 * (f.shoveK || 1) * Math.min(1, f.shoveT / 0.15) : f.stumble > 0 ? -f.stumbleDir * 0.32 * Math.min(1, f.stumble / 0.2) : (f.lean || 0);
+    const leanTo = lean || (backing(f) && f.onGround && f.vx * f.facing < -0.5 ? f.facing * 0.07 : 0);
+    // leaning into a dash is quick; coming out of it (as it slows, and just after) is gentle
+    const easing = f.dashSettle > 0 && !(f.passT > 0 && f.passK >= 1);
+    f.vis.rotation.z += (leanTo - f.vis.rotation.z) * Math.min(1, dt * (easing ? 5 : 14));
     const c = f.compact;
     f.root.scale.set(1 + (1 - c) * 0.35, c, 1 + (1 - c) * 0.35);
     f.root.position.set(f.x, f.y, 0);
@@ -2647,7 +2694,7 @@ body.two-players .corner { left: 50%; right: auto; transform: translateX(-50%); 
     f.vis.position.z = f.z;
     f.vis.rotation.x = THREE.MathUtils.clamp(f.zVel * 0.05, -0.3, 0.3);
     // running: the face slides round the cup toward where it's going
-    const run = f.onGround && f.passT <= 0 ? Math.min(1, Math.abs(f.vx) / 5.5) : 0;
+    const run = f.onGround && f.passT <= 0 && f.vx * f.facing > 0 ? Math.min(1, Math.abs(f.vx) / 5.5) : 0;
     f.face.rotation.y += (run * 0.42 - f.face.rotation.y) * Math.min(1, dt * 10);
     updateLegs(f, dt);
     updateArms(f, dt);
@@ -2676,10 +2723,11 @@ body.two-players .corner { left: 50%; right: auto; transform: translateX(-50%); 
   // Every fighter has one: a quick jab at head height, or, crouched, a low kick along the floor that knocks the
   // other fighter off balance. Neither stops you walking. reach, y0 and y1 are where it hits, from the body's middle.
   const STRIKE = {
-    punch: { dur: 0.3, from: 0.06, to: 0.16, cd: 0.36, reach: 1.4, y0: 1.5, y1: 2.7, dmg: 4, kbx: 3.5, kby: 1.2 },
+    punch: { dur: 0.32, from: 0.07, to: 0.17, cd: 0.38, reach: 1.95, y0: 1.5, y1: 2.7, dmg: 4, kbx: 3.5, kby: 1.2 },
     kick: { dur: 0.36, from: 0.08, to: 0.2, cd: 0.5, reach: 1.35, y0: 0, y1: 0.8, dmg: 5, kbx: 1.5, kby: 0 },
   };
   const strikeOf = f => f.strike.low ? STRIKE.kick : STRIKE.punch;
+  const PUNCH_STRETCH = 0.6;           // the punching arm stretches out this much further
   function tryStrike(f, face) {
     if (f.strike || f.strikeCd > 0 || f.busy > 0 || f.guard || f.ledge || f.tether || f.stumble > 0 || f.possessing) return;
     if (face) f.facing = face;
@@ -2718,6 +2766,10 @@ body.two-players .corner { left: 50%; right: auto; transform: translateX(-50%); 
   // does waiting too long). Grabbing gives the jumps back. One fighter per ledge.
   const LEDGE_OUT = 0.5, LEDGE_Y = -2.35, LEDGE_MAX = 4, LEDGE_REACH = 2.2, CLIMB_TIME = 0.24;
   const PASS_TIME = 0.32, PASS_SPEED = 9, REEL_TIME = 0.32;
+  const PASS_EASE = 0.45, DASH_SETTLE = 0.3;       // the dash slows over its last 45%, then the body settles
+  const BURST_TIME = 0.16, BURST_K = 0.6;          // setting off: up to 60% faster, easing to walking pace
+  const BACK_TIME = 0.3, BACK_SPEED = 0.8;         // turning round: walking backwards first, a little slower
+  const backing = f => (f.backT || 0) > 0 || !!f.airBack;
   // it catches the lip once its hands come level with it, from anywhere within reach of that end
   function canGrab(f) {
     if (f.ledge || f.ledgeCd > 0 || f.vy > 0 || f.guard || f.y > LEDGE_Y + 0.5 || f.y < LEDGE_Y - 0.9) return false;
@@ -2810,7 +2862,7 @@ body.two-players .corner { left: 50%; right: auto; transform: translateX(-50%); 
 
   function startGuard(f, inp) {
     const dir = inp.up ? 'up' : 'side';
-    const side = inp.right ? 1 : inp.left ? -1 : f.facing;
+    const side = backing(f) ? f.facing : inp.right ? 1 : inp.left ? -1 : f.facing;   // walking backwards: still forward
     if (dir === 'side') f.facing = side;
     // W then Backspace in quick succession: the W started a jump, so take it back and guard from the ground
     if (dir === 'up' && f.jumpT < 0.1 && f.vy > 0 && f.y < 1.2) {
@@ -2936,7 +2988,7 @@ body.two-players .corner { left: 50%; right: auto; transform: translateX(-50%); 
     f.vis.position.y += (-dip - CROUCH_DROP * (f.crouch || 0) - f.vis.position.y) * Math.min(1, dt * 20);
     f.root.updateMatrixWorld(true);
 
-    const vLocal = Math.sign(f.vx * f.facing) || 1;
+    const vLocal = backing(f) ? 1 : Math.sign(f.vx * f.facing) || 1;
     for (const ft of f.feet) {
       _fw.set(ft.x, ft.y + ANKLE_H, 0.04); f.vis.worldToLocal(_fw);
       const kx = THREE.MathUtils.lerp(ft.s, vLocal, f.gait);
@@ -2997,10 +3049,13 @@ body.two-players .corner { left: 50%; right: auto; transform: translateX(-50%); 
         });
       }
       // running at someone: hands come up ready; on contact they thrust out in a shove, then come back
+      // punching: the front hand (Stack Overflow's pointing one) shoots out on a stretched arm; the chatbots bring
+      // the other hand up to guard, Stack Overflow keeps it where it is
+      let stretch = 1;
       if (f.strike && !f.strike.low) {
         const k = strikeReach(f);
-        if (i === 0) _hand.lerp(V(1.2, 2.0, 0.14), k); else _hand.lerp(V(0.4, 1.9, -0.12), k * 0.7);
-        bend = -1;
+        if (i === 0) { _hand.lerp(V(1.85, 2.0, 0.1), k); stretch = 1 + PUNCH_STRETCH * k; bend = -1; }
+        else if (f.kind !== 'so') { _hand.lerp(V(0.4, 1.9, -0.12), k * 0.7); bend = -1; }
       }
       const shoveArm = shoveReach(f);
       if (shoveArm > 0) { _hand.lerp(V(0.92, i ? 1.8 : 2.0, i ? -0.12 : 0.14), shoveArm); bend = -1; }
@@ -3021,7 +3076,7 @@ body.two-players .corner { left: 50%; right: auto; transform: translateX(-50%); 
       const gw = guardWeight(f);
       // overhead the arms stretch a little (they are short, and the cup is in the way) with the elbows out wide
       const reachUp = gw > 0 && f.guard.dir === 'up' ? 1 + 0.3 * gw : 1;
-      arm.limb.L1 = arm.L1 * reachUp; arm.limb.L2 = arm.L2 * reachUp;
+      arm.limb.L1 = arm.L1 * reachUp * stretch; arm.limb.L2 = arm.L2 * reachUp * stretch;
       if (gw > 0) {
         const to = GUARD_POSES[f.kind][f.guard.dir].hands[i];
         _hand.lerp(to, gw);
@@ -3104,7 +3159,7 @@ body.two-players .corner { left: 50%; right: auto; transform: translateX(-50%); 
   function playerInput(scheme = 'all', body = controlledBody()) {
     const S = SCHEMES[scheme], k = c => S[c].some(x => keys.has(x)), p = c => S[c].some(x => pressed.has(x));
     return {
-      left: k('left'), right: k('right'), jump: p('jump'), parry: p('parry'), down: k('down'), strike: p('strike'),
+      left: k('left'), right: k('right'), jump: p('jump'), parry: p('parry'), guard: k('parry'), down: k('down'), strike: p('strike'),
       dash: p('dashL') ? -1 : p('dashR') ? 1 : 0,
       up: k('jump') || p('up'),
       a1: p('a1') || (keys.has(S.a1[0]) && body?.kind !== 'gpt'),     // hold it to keep firing blocks or rods
@@ -4033,8 +4088,8 @@ body.two-players .corner { left: 50%; right: auto; transform: translateX(-50%); 
   const GAME_URL = `${location.origin}/games/botbattle/`;   // where any sign-in step that leaves the page comes back to
   const EMOTES = [['\u{1F44D}', 'Thumbs up'], ['\u{1F602}', 'Laughing'], ['\u{1F62D}', 'Crying'], ['\u{1F621}', 'Angry'], ['\u{1F525}', 'Fire'], ['\u{1F91D}', 'Good game']];
   // controls as bits: held ones, then ones pressed since the last message
-  const IN = { left: 1, right: 2, down: 4, up: 8, fire: 16, jump: 32, parry: 64, dashL: 128, dashR: 256, a1: 512, a2: 1024, a3: 2048, a4: 4096, strike: 8192 };
-  const HELD = 31;
+  const IN = { left: 1, right: 2, down: 4, up: 8, fire: 16, jump: 32, parry: 64, dashL: 128, dashR: 256, a1: 512, a2: 1024, a3: 2048, a4: 4096, strike: 8192, guard: 16384 };
+  const HELD = 31 | 16384;          // the bits that are held down (moving, firing, the guard), not pressed once
   const esc = s => String(s).replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' })[c]);
   const net = { ws: null, me: null, room: null, lobby: null, match: null, remote: new Map(), frame: 0, error: null, ping: 0, pendingJoin: null, view: null };
   let netSays = false;               // set while a knockout the host reported is played out on a guest
@@ -4181,6 +4236,18 @@ body.two-players .corner { left: 50%; right: auto; transform: translateX(-50%); 
       connect(body.key, { invite: body.invite });
     } catch { say('Couldn’t reach the server. Check your connection and try again.', true); }
   });
+  document.getElementById('casualBtn').addEventListener('click', async e => {
+    e.currentTarget.blur();
+    const acc = await account().catch(() => null);
+    if (!acc) { showOnline(); return; }
+    say('Finding a match…');
+    try {
+      const res = await fetch(`${API_BASE}/casual`, { method: 'POST', headers: { authorization: `Bearer ${await acc.token()}` } });
+      const body = await res.json().catch(() => ({ error: 'The server sent something odd. Try again.' }));
+      if (!res.ok) { say(body.error || 'That didn’t work. Try again.', true); return; }
+      connect(body.key, {});
+    } catch { say('Couldn’t reach the server. Check your connection and try again.', true); }
+  });
   document.getElementById('joinForm').addEventListener('submit', e => {
     e.preventDefault();
     const name = document.getElementById('joinName').value.trim().replace(/\s+/g, ' ');
@@ -4224,7 +4291,8 @@ body.two-players .corner { left: 50%; right: auto; transform: translateX(-50%); 
     switch (m.t) {
       case 'error': net.error = m.error; return;
       case 'welcome':
-        net.me = m.id; net.room = { name: m.room, key: m.key, invite: m.invite };
+        net.me = m.id; net.room = { name: m.room, key: m.key, invite: m.invite, casual: !!m.casual };
+        document.getElementById('lobby').classList.toggle('casual', net.room.casual);
         if (location.hash) history.replaceState(null, '', location.pathname + location.search);
         showView('lobby'); say('');
         drawInvite();
@@ -4321,11 +4389,13 @@ body.two-players .corner { left: 50%; right: auto; transform: translateX(-50%); 
     ready.textContent = me && me.ready ? 'Not ready' : 'Ready';
     const start = document.getElementById('startBtn');
     const allReady = L.players.length >= 2 && L.players.every(p => p.kind && p.ready);
-    start.hidden = !host; start.disabled = !allReady || L.playing;
+    start.hidden = !host || net.room.casual; start.disabled = !allReady || L.playing;     // casual matches start by themselves
     const lives = document.getElementById('lobbyLives');
     lives.querySelectorAll('button').forEach(b => { b.disabled = !host || L.playing; b.setAttribute('aria-pressed', String(Number(b.dataset.lives) === L.lives)); });
     document.getElementById('lobbyNote').textContent =
       L.playing ? 'A match is on.' :
+      net.room.casual && L.players.length < 2 ? 'Looking for another player… You’ll be matched with the next person who asks for a casual match.' :
+      net.room.casual ? 'Matched! Pick a fighter and press Ready. The match starts when you’re both ready.' :
       L.players.length < 2 ? 'Waiting for someone to join. Share the QR code or the link.' :
       !allReady ? 'Pick a fighter and press Ready. Everyone needs a different fighter.' :
       host ? 'Everyone’s ready. Keep this tab open while you host the match.' : 'Everyone’s ready. Waiting for the host to start.';
@@ -4437,7 +4507,7 @@ body.two-players .corner { left: 50%; right: auto; transform: translateX(-50%); 
       r.inp = {
         left: !!(b & IN.left), right: !!(b & IN.right), down: !!(b & IN.down), up: !!(b & IN.up),
         jump: !!(b & IN.jump), parry: !!(b & IN.parry), dash: b & IN.dashL ? -1 : b & IN.dashR ? 1 : 0,
-        a1: !!(b & (IN.a1 | IN.fire)), a2: !!(b & IN.a2), a3: !!(b & IN.a3), a4: !!(b & IN.a4), strike: !!(b & IN.strike),
+        a1: !!(b & (IN.a1 | IN.fire)), a2: !!(b & IN.a2), a3: !!(b & IN.a3), a4: !!(b & IN.a4), strike: !!(b & IN.strike), guard: !!(b & IN.guard),
       };
       r.pend = 0; r.frame = net.frame;
     }
@@ -4446,7 +4516,7 @@ body.two-players .corner { left: 50%; right: auto; transform: translateX(-50%); 
   function encodeInput(p) {
     return (p.left ? IN.left : 0) | (p.right ? IN.right : 0) | (p.down ? IN.down : 0) | (p.up ? IN.up : 0) | (p.a1 ? IN.fire : 0)
       | (p.jump ? IN.jump : 0) | (p.parry ? IN.parry : 0) | (p.dash < 0 ? IN.dashL : 0) | (p.dash > 0 ? IN.dashR : 0)
-      | (p.a1 ? IN.a1 : 0) | (p.a2 ? IN.a2 : 0) | (p.a3 ? IN.a3 : 0) | (p.a4 ? IN.a4 : 0) | (p.strike ? IN.strike : 0);
+      | (p.a1 ? IN.a1 : 0) | (p.a2 ? IN.a2 : 0) | (p.a3 ? IN.a3 : 0) | (p.a4 ? IN.a4 : 0) | (p.strike ? IN.strike : 0) | (p.guard ? IN.guard : 0);
   }
   const r2 = v => Math.round(v * 100) / 100;
   const snapOf = f => [r2(f.x), r2(f.y), r2(f.vx), r2(f.vy), f.facing, Math.round(f.hp * 10) / 10, Number.isFinite(f.stocks) ? f.stocks : 0,
@@ -4565,6 +4635,8 @@ body.two-players .corner { left: 50%; right: auto; transform: translateX(-50%); 
     window.__bb = () => fighters.map(f => ({ id: f.netId, kind: f.kind, x: f.x, y: f.y, z: f.z || 0, face: f.face.rotation.y, hp: f.hp, dead: f.dead, out: !!f.out, stocks: f.stocks, versus: !!versus,
       vx: f.vx, crouch: f.crouch || 0, stumble: f.stumble || 0, facing: f.facing }));
     window.__bbKO = i => { const f = fighters[i]; if (f && !f.dead) { f.hp = 0; die(f); } };   // knocks a fighter out, as this browser
+    // one fighter, frame by frame: speed, facing, walking backwards, the guard, the lean
+    window.__bbTrack = (i, on) => { if (on) { trackLog = { i, rows: [] }; return null; } const r = trackLog && trackLog.rows; trackLog = null; return r; };
     window.__bbCam = on => { if (on) { camLog = []; return null; } const r = camLog; camLog = null; return r; };   // the camera, frame by frame
     // hands and heads in the versus gestures: steps one fighter's gesture through and reports how deep any part of
     // an arm (upper arm, forearm, fist, Stack Overflow's finger) goes into its own cup, in body units
@@ -4782,6 +4854,7 @@ body.two-players .corner { left: 50%; right: auto; transform: translateX(-50%); 
   addEventListener('resize', resize);
   resize();
 
+  let trackLog = null;                    // dev: __bbTrack
   let camSnap = true, camLog = null, camLookY = null, camZv = 0;      // camLog: the camera, frame by frame, for local testing (?dev=)
   const fitCam = new THREE.PerspectiveCamera(), _fit = V();
   function updateCamera(dt) {
@@ -5178,6 +5251,11 @@ body.two-players .corner { left: 50%; right: auto; transform: translateX(-50%); 
     updateBubble(dt);
     updateMoves();
     checkResult(dt);
+    if (trackLog && fighters[trackLog.i]) {
+      const f = fighters[trackLog.i];
+      trackLog.rows.push({ dt, x: f.x, y: f.y, vx: f.vx, facing: f.facing, back: backing(f), ground: f.onGround, dash: f.passT > 0,
+        guard: f.guard ? { t: f.guard.t, held: !!f.guard.held } : null, lean: f.vis.rotation.z });
+    }
     renderScene();
     renderHudLogos(dt);
   }

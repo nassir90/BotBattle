@@ -15,10 +15,12 @@ export default defineConfig({
 		triggers: [triggers.fetch({ pattern: "mpts.ie/games/botbattle*", zone: "mpts.ie" })],
 		env: {
 			ROOMS: bindings.durableObject({ worker: "botbattle", exportName: "Room" }),
+			CASUAL: bindings.durableObject({ worker: "botbattle", exportName: "Casual" }),
 			DB: bindings.d1({ name: "botbattle" }),
 		},
 		exports: {
 			Room: exports.durableObject({ storage: "sqlite" }),
+			Casual: exports.durableObject({ storage: "sqlite" }),
 		},
 	},
 });

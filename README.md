@@ -63,6 +63,7 @@ Play matches open on a versus screen: a panel for each fighter in its colour, wi
 On mpts.ie the menu has an **Online** mode and a **Leaderboard**. (The copy published as a Claude artifact stays offline.)
 
 - **Signing in:** online play needs an account, through [Clerk](https://clerk.com) (email, username or Google), so your name and wins follow you between devices. Clerk's sign-in form sits right on the Online screen. Signing in with Google goes to Google's page in the same tab and comes back to the game, where the form carries on: a new account picks its username there. Signing out stays on the game too. The offline modes don't need one.
+- **Casual matches:** **Find a match** puts you in a room with someone who's waiting for one, or in a new room to wait in until someone else asks. Casual rooms are for two, have no host button (the match starts once you're both ready), and get names like "Casual rotor 42". A small Durable Object (`Casual`) hands out the rooms, counting players it has just sent to a room so two people asking at once don't both get the last place.
 - **Rooms:** make one with a name and an optional password, or join one by name.
   - Names are 3 to 16 Latin letters, digits or spaces, checked on the server with the [obscenity](https://github.com/jo3-l/obscenity) profanity filter (it catches look-alike spellings such as "sh1t").
   - Passwords are stored only as a salted PBKDF2 hash. An empty room deletes itself after ten minutes.
@@ -80,18 +81,18 @@ The server is the same Worker that serves the page: each room is a Durable Objec
 
 | Key | Action |
 |---|---|
-| `A` `D` or `←` `→` | Move |
+| `A` `D` or `←` `→` | Move. Setting off (from standing, from the other way, or after letting go) starts with a short burst that eases to walking pace, and you stop and start with little sliding. Turning round from a walk, you first walk backwards for 0.3 s, still facing the way you were going: shots, punches and parries still go that way, and jumping in that moment is a jump backwards that faces forward until you land. |
 | Hold `S` or `↓` | Crouch: you sink down and make a smaller target, so shots fired level at head height (like Claude's fling) go over you. You can still walk, at a little under half speed. |
-| Double-tap `A` or `D` | Dash, slipping past anyone in the way |
+| Double-tap `A` or `D` | Dash, slipping past anyone in the way. It slows over its last part into a walk (if you're still holding that way), and the body straightens up gently. |
 | Walk into someone | Push them (see below) |
 | `W`, `↑` or `Space` | Jump (ChatGPT and Claude can double jump) |
-| `H` | Punch: a quick jab at head height (4 damage). Every fighter has it, and you can keep walking while you throw it. |
+| `H` | Punch: a quick jab at head height (4 damage) on a stretched arm that reaches about two body-widths out. Every fighter has it (Stack Overflow pokes with its pointing hand), and you can keep walking while you throw it. |
 | `S` + `H` (crouched) | Low kick along the floor (5 damage) that knocks the other fighter off balance for a moment |
 | `J` (or `1`) | Shot: Block shot, Computer use, Shoot |
 | `K` (or `2`) | Melee: Block whip, Inhale, Fling |
 | `L` (or `3`) | Power: Unified beam, Computer use (advanced), Combobulating |
 | `I` (or `4`) | Special: Correction, Compaction |
-| `Backspace` | Parry toward the way you face, or the way you're pressing |
+| `Backspace` | Parry toward the way you face, or the way you're pressing. Hold it to keep the shield up. |
 | `W` + `Backspace` | Overhead parry |
 | On a ledge: toward the stage, `W`, or away / `S` | Climb up, leap off, or let go |
 | `Esc` | Back to the menu |
@@ -211,7 +212,7 @@ Its logo is the real Claude mark, split into its 12 rays along their seams, with
 
 ## Parry
 
-`Backspace` snaps a fighter into a guard in one direction. The guard forms (4 frames), **shines** for 26 frames, then loosens (18 frames), and the fighter can't move or attack until it has loosened.
+`Backspace` snaps a fighter into a guard in one direction. The guard forms (4 frames), **shines** for 34 frames, then loosens (18 frames), and the fighter can't move or attack until it has loosened. **Holding** `Backspace` keeps the shield up after the shine for as long as you hold it: hits from the guarded side are blocked (no damage, a little push back, "Block"), though only the shine parries. In the air a guard keeps the jump's momentum, and while walking backwards it guards the way you face.
 
 - **Side parry** (`Backspace`, toward the way you face or the way you're pressing): each fighter uses its own top piece as a shield.
   - Stack Overflow takes the grey tray off its head with its left hand, and its right hand drapes the blocks over it as slats.
@@ -222,7 +223,7 @@ Its logo is the real Claude mark, split into its 12 rays along their seams, with
 ![The three side parries: the draped tray, the logo held by its hole, the logo held by its spokes](docs/screenshots/parry-side.jpg)
 ![The three overhead parries](docs/screenshots/parry-up.jpg)
 
-Only a hit that arrives **from the guarded direction while the guard shines** is parried. Side guards stop attacks coming at their face; overhead guards stop attacks coming down (the whip's lash, a beam fired from above, the Compaction slab). The whip comes over and down, so either guard stops it; the slab only an overhead one. A parry takes no damage, freezes the action for a moment, turns away the rest of that attacker's hits for a short while (so a parried beam stays parried), cuts the guard's recovery short, and leaves a nearby attacker stuck for 0.6 seconds. A hit from any other direction, or outside the shine, lands as normal and breaks the guard. CPUs guard too, overhead against things dropping in and to the side otherwise.
+Only a hit that arrives **from the guarded direction while the guard shines** is parried. Side guards stop attacks coming at their face; overhead guards stop attacks coming down (the whip's lash, a beam fired from above, the Compaction slab). The whip comes over and down, so either guard stops it; the slab only an overhead one. A parry takes no damage, freezes the action for a moment, turns away the rest of that attacker's hits for a short while (so a parried beam stays parried), cuts the guard's recovery short, and leaves a nearby attacker stuck for 0.6 seconds. A hit from any other direction, or outside the shine without the shield held up, lands as normal and breaks the guard. CPUs guard too, overhead against things dropping in and to the side otherwise.
 
 ## Knockouts
 
@@ -273,6 +274,8 @@ BOTBATTLE_URL=http://localhost:5173/games/botbattle/ ~/projects/ShadowKit/.venv/
 BOTBATTLE_URL=http://localhost:5173/games/botbattle/ ~/projects/ShadowKit/.venv/bin/python tests/split_test.py
 BOTBATTLE_URL=http://localhost:5173/games/botbattle/ ~/projects/ShadowKit/.venv/bin/python tests/camera_test.py
 BOTBATTLE_URL=http://localhost:5173/games/botbattle/ ~/projects/ShadowKit/.venv/bin/python tests/strike_test.py
+BOTBATTLE_URL=http://localhost:5173/games/botbattle/ ~/projects/ShadowKit/.venv/bin/python tests/moves_test.py
+BOTBATTLE_URL=http://localhost:5173/games/botbattle/ ~/projects/ShadowKit/.venv/bin/python tests/casual_test.py
 ```
 
-`online_test.py` makes a room, refuses a wrong password, joins by password and by invite link, picks, readies, plays (both screens agree on positions and health), emotes, has a player leave, and checks the leaderboard. `split_test.py` plays User A against User B on a phone: the split screen, User B's pad and plates turned round at the top, the pads apart and in their own halves, each pad moving only its own fighter (User B's arrows the other way round), and the Menu clear of the plates. `strike_test.py` walks while crouched (slower than walking) and lands a punch and a low kick with `H` alone, `R` for User A and `M` for User B. `camera_test.py` records the camera through a duel while User A jumps and counts jitter and snaps. `play_test.py` goes through Play: the seats, a colour, User B, removing and adding seats, both users' keys moving only their own fighter, the result, and the leaderboard's benchmark table. `visual_test.py` measures three things on the real page: ink blobs inside the OpenAI and Claude logos, arms going into heads during the versus gestures, and controls cut off by a phone's rounded corners (55px, with no safe area reported). `invite_test.py` checks that an invite opened while signed out survives signing up and lands you in the room. `ko_test.py` checks that only the host knocks anyone out, that comebacks and the result reach every screen, and that the win is recorded.
+`online_test.py` makes a room, refuses a wrong password, joins by password and by invite link, picks, readies, plays (both screens agree on positions and health), emotes, has a player leave, and checks the leaderboard. `split_test.py` plays User A against User B on a phone: the split screen, User B's pad and plates turned round at the top, the pads apart and in their own halves, each pad moving only its own fighter (User B's arrows the other way round), and the Menu clear of the plates. `moves_test.py` records a fighter frame by frame: the burst when setting off, walking backwards when turning round (and a backwards jump and parry that face forward), the dash easing out, and holding the shield up. `casual_test.py` matches two players into one casual room and a third into another, starts the match once both are ready, and checks the punch and held guard reach the other player. `strike_test.py` walks while crouched (slower than walking) and lands a punch and a low kick with `H` alone, `R` for User A and `M` for User B. `camera_test.py` records the camera through a duel while User A jumps and counts jitter and snaps. `play_test.py` goes through Play: the seats, a colour, User B, removing and adding seats, both users' keys moving only their own fighter, the result, and the leaderboard's benchmark table. `visual_test.py` measures three things on the real page: ink blobs inside the OpenAI and Claude logos, arms going into heads during the versus gestures, and controls cut off by a phone's rounded corners (55px, with no safe area reported). `invite_test.py` checks that an invite opened while signed out survives signing up and lands you in the room. `ko_test.py` checks that only the host knocks anyone out, that comebacks and the result reach every screen, and that the win is recorded.

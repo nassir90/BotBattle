@@ -1,22 +1,25 @@
 // Bot Battle's server. The game page is a static asset; everything under /games/botbattle/api is handled here.
 //   POST /api/rooms                 create a room (signed in): { name, password? } -> { key, name, invite }
+//   POST /api/casual                a casual match (signed in): a room with someone waiting in it, or a new one -> { key, name }
 //   GET  /api/rooms/<key>/ws        a room's WebSocket; the first message signs in and unlocks the room (see Room)
 //   GET  /api/leaderboard           the top players
 // Each room is a Durable Object named by its key (the name in lower case). It holds the password hash and the
 // invite, the players in the lobby, and relays a match: everyone's controls to everyone, the host's state to guests.
+// Casual rooms are made by the Casual object (one for the whole game), which hands each player a room someone is
+// waiting in, or a new one to wait in. They hold two players, and the match starts once both are ready.
 // Players sign in with Clerk; their session tokens are checked against Clerk's public signing keys.
 import { DurableObject } from "cloudflare:workers";
 import { createRemoteJWKSet, jwtVerify } from "jose";
 import { RegExpMatcher, englishDataset, englishRecommendedTransformers } from "obscenity";
 
-type Env = { ROOMS: DurableObjectNamespace<Room>; DB: D1Database };
+type Env = { ROOMS: DurableObjectNamespace<Room>; CASUAL: DurableObjectNamespace<Casual>; DB: D1Database };
 
 const API = "/games/botbattle/api";
 const CLERK = "https://merry-filly-2600.clerk.accounts.dev";
 const JWKS = createRemoteJWKSet(new URL(`${CLERK}/.well-known/jwks.json`));
 const ORIGINS = new Set(["https://mpts.ie", "http://localhost:5173", "http://127.0.0.1:5173"]);
 const KINDS = ["so", "gpt", "claude"];
-const MAX_PLAYERS = 3;
+const MAX_PLAYERS = 3, CASUAL_PLAYERS = 2;
 const IDLE_MS = 10 * 60 * 1000;          // an empty room is deleted this long after its last player leaves
 const profanity = new RegExpMatcher({ ...englishDataset.build(), ...englishRecommendedTransformers });
 
@@ -34,6 +37,47 @@ function roomName(raw: unknown): { name: string; key: string } | { error: string
 function displayName(raw: unknown) {
 	const name = String(raw ?? "").replace(/[^A-Za-z0-9 _.-]/g, "").trim().slice(0, 16);
 	return name.length >= 2 && !profanity.hasMatch(name) ? name : "Player";
+}
+
+// Casual matches: the rooms handed out lately, and who they were handed to. A player is sent to a room with one
+// other player waiting in it (and no match on), or else to a new room of their own to wait in. A room counts the
+// players who were sent to it but haven't arrived yet (for a little while), so two people asking at once don't
+// both get the last place.
+const PROMISE_MS = 20 * 1000, CASUAL_AGE_MS = 30 * 60 * 1000;
+type Open = { key: string; name: string; created: number; promised: Record<string, number> };
+export class Casual extends DurableObject<Env> {
+	open: Open[] | null = null;      // kept in storage too: an idle object is unloaded, and its memory with it
+
+	async find(user: string): Promise<{ key: string; name: string }> {
+		this.open ??= (await this.ctx.storage.get<Open[]>("open")) ?? [];
+		const keep = () => this.ctx.storage.put("open", this.open);
+		for (const r of [...this.open]) {
+			const s = await this.env.ROOMS.get(this.env.ROOMS.idFromName(r.key)).status();
+			const now = Date.now();
+			for (const [id, until] of Object.entries(r.promised)) if (until < now || s.players.includes(id)) delete r.promised[id];
+			const coming = Object.keys(r.promised).length;
+			if (!s.exists || s.playing || now - r.created > CASUAL_AGE_MS || (!s.players.length && !coming)) {
+				this.open = this.open.filter(o => o !== r);
+				continue;
+			}
+			if (s.players.includes(user) || r.promised[user] || s.players.length + coming < CASUAL_PLAYERS) {
+				r.promised[user] = now + PROMISE_MS;
+				await keep();
+				return { key: r.key, name: r.name };
+			}
+		}
+		// nobody waiting: a new room, with a made-up name
+		const words = ["paper", "ink", "stack", "token", "prompt", "cursor", "rotor", "beam"];        // six letters at most
+		for (;;) {
+			const name = `Casual ${words[Math.floor(Math.random() * words.length)]} ${Math.floor(Math.random() * 90 + 10)}`;   // 16 at most, like any room name
+			const key = name.toLowerCase();
+			const made = await this.env.ROOMS.get(this.env.ROOMS.idFromName(key)).create(name, key, "", true);
+			if ("error" in made) continue;                  // that name's in use: another
+			this.open.push({ key, name, created: Date.now(), promised: { [user]: Date.now() + PROMISE_MS } });
+			await keep();
+			return { key, name };
+		}
+	}
 }
 
 // a signed-in player: their Clerk user id. Locally (cf dev), "dev:<name>" stands in, for testing without Clerk.
@@ -88,6 +132,12 @@ export default {
 			const made = await room.create(checked.name, checked.key, password);
 			return "error" in made ? json(made, 409) : json(made);
 		}
+		if (path === "/casual" && request.method === "POST") {
+			const auth = request.headers.get("authorization")?.replace(/^Bearer /, "");
+			const user = await signedIn(auth, isLocal(url));
+			if (!user) return json({ error: "Sign in to play a casual match." }, 401);
+			return json(await env.CASUAL.get(env.CASUAL.idFromName("casual")).find(user));
+		}
 		const ws = path.match(/^\/rooms\/([^/]+)\/ws$/);
 		if (ws) {
 			if (request.headers.get("upgrade") !== "websocket") return new Response("Expected a WebSocket", { status: 426 });
@@ -105,7 +155,7 @@ export default {
 	},
 } satisfies ExportedHandler<Env>;
 
-type Info = { name: string; key: string; salt: string; hash: string | null; invite: string; created: number };
+type Info = { name: string; key: string; salt: string; hash: string | null; invite: string; created: number; casual?: boolean };
 type Player = { id: string; name: string; kind: string | null; ready: boolean; ws: WebSocket; emoteAt: number };
 
 export class Room extends DurableObject<Env> {
@@ -122,15 +172,21 @@ export class Room extends DurableObject<Env> {
 	}
 
 	// a new room, unless one by that name has players in it
-	async create(name: string, key: string, password: string) {
+	async create(name: string, key: string, password: string, casual = false) {
 		await this.load();
 		if (this.info && this.players.length) return { error: "That room is in use. Pick another name." };
 		const salt = crypto.getRandomValues(new Uint8Array(16));
-		this.info = { name, key, salt: b64(salt), hash: password ? await hashPassword(password, salt) : null, invite: randomToken(18), created: Date.now() };
+		this.info = { name, key, salt: b64(salt), hash: password ? await hashPassword(password, salt) : null, invite: randomToken(18), created: Date.now(), casual };
 		await this.ctx.storage.put("info", this.info);
 		await this.ctx.storage.setAlarm(Date.now() + IDLE_MS);
 		this.lives = 3; this.match = null;
 		return { name, key, invite: this.info.invite };
+	}
+
+	// for the Casual object: who's in the room, and whether a match is on
+	async status() {
+		const info = await this.load();
+		return { exists: !!info, players: this.players.map(p => p.id), playing: !!this.match };
 	}
 
 	async fetch(request: Request) {
@@ -170,13 +226,14 @@ export class Room extends DurableObject<Env> {
 		}
 		const again = this.players.find(p => p.id === id);
 		if (again) { this.players = this.players.filter(p => p !== again); try { again.ws.close(4002, "joined elsewhere"); } catch { /* gone */ } }
-		if (this.players.length >= MAX_PLAYERS) return fail("That room is full (three players).");
+		const most = info.casual ? CASUAL_PLAYERS : MAX_PLAYERS;
+		if (this.players.length >= most) return fail(info.casual ? "Someone else got that match first. Try again." : "That room is full (three players).");
 		if (this.match && !this.match.players.includes(id)) return fail("A match is on in that room. Try again when it ends.");
 		const me: Player = { id, name: displayName(msg.name), kind: again?.kind ?? null, ready: false, ws, emoteAt: 0 };
 		this.players.push(me);
 		if (!this.host) this.host = id;
 		await this.ctx.storage.deleteAlarm();
-		ws.send(JSON.stringify({ t: "welcome", id, room: info.name, key: info.key, invite: info.invite }));
+		ws.send(JSON.stringify({ t: "welcome", id, room: info.name, key: info.key, invite: info.invite, casual: !!info.casual }));
 		this.lobby();
 		return me;
 	}
@@ -189,20 +246,18 @@ export class Room extends DurableObject<Env> {
 				me.kind = msg.kind; me.ready = false; this.lobby(); return;
 			case "ready":
 				if (this.match || !me.kind) return;
-				me.ready = !!msg.on; this.lobby(); return;
+				me.ready = !!msg.on;
+				if (this.info?.casual && this.allReady()) { this.begin(); return; }     // casual: no host to press start
+				this.lobby(); return;
 			case "lives":
 				if (!isHost || this.match || ![1, 2, 3, 5].includes(msg.n)) return;
 				this.lives = msg.n; this.lobby(); return;
-			case "start": {
-				if (!isHost || this.match || this.players.length < 2 || this.players.some(p => !p.kind || !p.ready)) return;
-				this.match = { id: randomToken(9), players: this.players.map(p => p.id), names: new Map(this.players.map(p => [p.id, p.name])) };
-				this.send(null, { t: "start", mid: this.match.id, lives: this.lives, host: this.host,
-					players: this.players.map(p => ({ id: p.id, name: p.name, kind: p.kind })) });
-				this.lobby(); return;
-			}
+			case "start":
+				if (isHost && this.allReady()) this.begin();
+				return;
 			case "in":         // a player's controls, for everyone else
 				if (!this.match || !this.match.players.includes(me.id) || !Number.isInteger(msg.b)) return;
-				this.send(me, { t: "in", id: me.id, b: msg.b & 0x1fff }); return;
+				this.send(me, { t: "in", id: me.id, b: msg.b & 0xffff }); return;
 			case "snap":       // the host's state of the match, for the guests, passed on as it came
 				if (isHost && this.match) this.send(me, raw); return;
 			case "emote": {
@@ -216,6 +271,16 @@ export class Room extends DurableObject<Env> {
 			case "ping":
 				me.ws.send('{"t":"pong"}'); return;
 		}
+	}
+
+	allReady() {
+		return !this.match && this.players.length >= 2 && this.players.every(p => p.kind && p.ready);
+	}
+	begin() {
+		this.match = { id: randomToken(9), players: this.players.map(p => p.id), names: new Map(this.players.map(p => [p.id, p.name])) };
+		this.send(null, { t: "start", mid: this.match.id, lives: this.lives, host: this.host,
+			players: this.players.map(p => ({ id: p.id, name: p.name, kind: p.kind })) });
+		this.lobby();
 	}
 
 	// the host reports how the match went; it goes on the leaderboard once
