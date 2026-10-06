@@ -216,6 +216,24 @@ button[aria-pressed="true"] { background: var(--ink); color: var(--paper); }
 .bench tbody tr:last-child .win { border-bottom: 2px solid var(--win); border-radius: 0 0 10px 10px; }
 .bench tbody tr:last-child th, .bench tbody tr:last-child td { border-bottom: none; }
 .bench-note { font-size: 11px; color: var(--ink-soft); margin: 0; }
+.bench .short { display: none; }
+/* narrow screens: short fighter names, no benchmark subtitles, tighter cells, so it fits without scrolling */
+@media (max-width: 560px) {
+  .bench { min-width: 0; width: 100%; }
+  .bench th, .bench td { padding: 7px 5px; }
+  .bench td { min-width: 0; font-size: 12px; }
+  .bench thead th { font-size: 11px; padding-top: 10px; }
+  .bench thead th .long, .bench tbody th small { display: none; }
+  .bench thead th .short { display: inline; }
+  .bench thead th .sw { margin-right: 4px; }
+  .bench tbody th { font-size: 11px; }
+  .result.panel { gap: 10px; }
+}
+/* short screens (a phone on its side): tighter rows */
+@media (max-height: 540px) {
+  .bench th, .bench td { padding-top: 5px; padding-bottom: 5px; }
+  .bench tbody th small { display: none; }
+}
 .result .row { display: flex; gap: 10px; flex-wrap: wrap; justify-content: center; }
 
 /* touch pad */
@@ -3072,7 +3090,7 @@ button[aria-pressed="true"] { background: var(--ink); color: var(--paper); }
     const cols = [...fighters].sort((a, b) => (b === winner) - (a === winner) || (b.stocks - a.stocks) || (b.hp - a.hp));
     const head = cols.map(f => {
       const tag = f === winner ? (leading ? 'Leading' : 'Winner') : f.isPlayer ? 'You' : f.out ? 'Out' : 'CPU';
-      return `<th scope="col" class="${f === winner ? 'win' : ''}" style="--c:${f.kit.color}"><span class="sw"></span>${f.kit.name}<small>${tag}${f.isPlayer && f !== winner ? '' : f.isPlayer ? ' \u00b7 you' : ''}</small></th>`;
+      return `<th scope="col" class="${f === winner ? 'win' : ''}" style="--c:${f.kit.color}"><span class="sw"></span><span class="long">${f.kit.name}</span><span class="short" aria-hidden="true">${f.kit.short}</span><small>${tag}${f.isPlayer && f !== winner ? '' : f.isPlayer ? ' \u00b7 you' : ''}</small></th>`;
     }).join('');
     const body = BENCH_ROWS.map(row => {
       const vals = cols.map(row.get);
@@ -3095,7 +3113,11 @@ button[aria-pressed="true"] { background: var(--ink); color: var(--paper); }
     const living = fighters.filter(f => !f.out);
     const winner = living.length === 1 ? living[0] : [...living].sort((a, b) => (b.stocks - a.stocks) || (b.hp - a.hp))[0] || null;
     renderBench(winner, living.length > 1);
-    setTimeout(() => { resultEl.hidden = false; document.getElementById('rematchBtn').focus(); }, 1100);
+    setTimeout(() => {
+      resultEl.hidden = false;
+      document.getElementById('touch').hidden = true;     // the touch pad would show through under the buttons
+      document.getElementById('rematchBtn').focus();
+    }, 1100);
   }
   function checkResult(dt) {
     if (matchOver) return;
