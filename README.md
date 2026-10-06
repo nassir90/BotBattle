@@ -12,7 +12,20 @@ Stack Overflow, ChatGPT and Claude settle it on a sheet of paper. It's a 3D stic
 |---|---|
 | [![Showcase video](docs/screenshots/video-showcase.jpg)](promo/out/01-showcase.mp4) | [![Inhale devlog video](docs/screenshots/video-inhale.jpg)](promo/out/02-inhale.mp4) |
 
-Both are made in [`promo/`](promo/) with TapaTab (recording) and ShadowKit (compositing, narration, music): `takes.mjs` stages each scene in training mode, and `videos/<id>/edl.js` is each video's edit list. They were recorded before the directional parry and lives existed, so they still show the old shield bubble.
+| [Who would win? Stack Overflow vs ChatGPT](promo/out/03-who-would-win.mp4) | [Free-for-all: three bots, two lives each](promo/out/04-free-for-all.mp4) |
+|---|---|
+| [![Duel video](docs/screenshots/video-who-would-win.jpg)](promo/out/03-who-would-win.mp4) | [![Free-for-all video](docs/screenshots/video-free-for-all.jpg)](promo/out/04-free-for-all.mp4) |
+
+| [Practice: Stack Overflow's moves](promo/out/05-practice-so.mp4) | [Showcase: play it anywhere](promo/out/06-play-anywhere.mp4) |
+|---|---|
+| [![Practice video](docs/screenshots/video-practice-so.jpg)](promo/out/05-practice-so.mp4) | [![Phone, desktop and landscape video](docs/screenshots/video-play-anywhere.jpg)](promo/out/06-play-anywhere.mp4) |
+
+All six are made in [`promo/`](promo/) with TapaTab (recording) and ShadowKit (compositing, narration, music): `takes.mjs` stages each scene, and `videos/<id>/edl.js` is each video's edit list.
+
+- The first two were recorded before the directional parry and lives existed, so they still show the old shield bubble.
+- The duel and the free-for-all are real CPU-against-CPU matches (`cpuMatch` in `takes.mjs`), cut down to their turning points. Stack Overflow won both.
+- The practice video names each move with a callout as it's used.
+- The last one shows the same build on a phone held upright, a desktop, and a phone on its side.
 
 ## Modes
 

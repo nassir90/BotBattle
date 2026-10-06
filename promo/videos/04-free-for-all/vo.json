@@ -1,0 +1,51 @@
+{
+ "duration": 35.2,
+ "lines": [
+  {
+   "line": "All three bots at once, each played by the computer, with two lives each.",
+   "start": 0.0,
+   "end": 5.713
+  },
+  {
+   "line": "Claude is the first to go off the edge, losing a life.",
+   "start": 6.46,
+   "end": 9.988
+  },
+  {
+   "line": "Then Stack Overflow's beam catches the other two, and ChatGPT loses a life.",
+   "start": 10.673,
+   "end": 16.688
+  },
+  {
+   "line": "Claude's second life goes next, and then there are two.",
+   "start": 17.522,
+   "end": 21.815
+  },
+  {
+   "line": "ChatGPT flattens Stack Overflow with a compaction, but can't finish it.",
+   "start": 22.078,
+   "end": 27.527
+  },
+  {
+   "line": "Stack Overflow's blocks take ChatGPT's last life, and it wins without losing one.",
+   "start": 28.291,
+   "end": 34.715
+  }
+ ],
+ "heard": [
+  "All three bots at once.",
+  "each played by the computer.",
+  "with two lives each.",
+  "Claude is the first to go off the edge.",
+  "losing a life.",
+  "Then stack overflow's beam catches the other two.",
+  "and chat GPT loses a life.",
+  "Claude's second life goes next.",
+  "And then",
+  "There are two.",
+  "Transcribe this speech exactly. Reply with only the words spoken.",
+  "Chat GPT flattens stack overflow with a compaction, but can't finish it.",
+  "Stack Overflow blocks, take chat GPT's last life.",
+  "and it wins without losing one."
+ ]
+}

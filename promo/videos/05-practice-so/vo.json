@@ -1,0 +1,54 @@
+{
+ "duration": 34.32,
+ "lines": [
+  {
+   "line": "In training, Stack Overflow fires blocks from the top of its stack.",
+   "start": 0.0,
+   "end": 4.559
+  },
+  {
+   "line": "Its whip lashes out low, and holding up sends it straight up.",
+   "start": 5.196,
+   "end": 9.417
+  },
+  {
+   "line": "Its beam fires all five blocks at once.",
+   "start": 10.418,
+   "end": 12.972
+  },
+  {
+   "line": "A correction stuns everyone nearby.",
+   "start": 13.904,
+   "end": 16.01
+  },
+  {
+   "line": "A parry to the side stops a rod, and an overhead parry stops ChatGPT's slab.",
+   "start": 16.985,
+   "end": 22.465
+  },
+  {
+   "line": "Crouching lets Claude's fling pass overhead, and a double tap dashes past.",
+   "start": 23.501,
+   "end": 27.871
+  },
+  {
+   "line": "With no jumps left below the stage, the upward whip grabs the ledge and pulls it back up.",
+   "start": 28.888,
+   "end": 34.045
+  }
+ ],
+ "heard": [
+  "In training",
+  "Stack Overflow fires blocks from the top of its stack.",
+  "It's whip lashes out low.",
+  "and holding up, sends it straight up.",
+  "It's beam fires all five blocks at once.",
+  "A correction stuns everyone nearby.",
+  "A parry to the side stops a rod.",
+  "And an overhead parry stops chat GPT's slab.",
+  "Crouching lets Claude fling pass overhead.",
+  "and a double tap dashes past.",
+  "With no jumps left below the stage,",
+  "The upward whip grabs the ledge and pulls it back up."
+ ]
+}

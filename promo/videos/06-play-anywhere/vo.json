@@ -1,0 +1,46 @@
+{
+ "duration": 26.48,
+ "lines": [
+  {
+   "line": "Bot Battle runs in the browser, on a phone held upright.",
+   "start": 0.0,
+   "end": 4.158
+  },
+  {
+   "line": "Each fighter is a logo with its lives on the corner, and the moves are buttons.",
+   "start": 4.753,
+   "end": 9.732
+  },
+  {
+   "line": "On a desktop, the mouse and keyboard pick the mode and the fighter.",
+   "start": 10.298,
+   "end": 14.319
+  },
+  {
+   "line": "In a match, the moves are listed along the bottom.",
+   "start": 14.691,
+   "end": 17.232
+  },
+  {
+   "line": "With the phone on its side, the buttons fold into two rows.",
+   "start": 17.726,
+   "end": 21.43
+  },
+  {
+   "line": "There, ChatGPT's cursor takes control of Stack Overflow.",
+   "start": 21.859,
+   "end": 26.172
+  }
+ ],
+ "heard": [
+  "Bot Battle runs in the browser.",
+  "on a phone held upright.",
+  "Each fighter is a logo.",
+  "with its lives on the corner and the moves are buttons",
+  "On a desktop, the mouse and keyboard pick the mode and the fighter.",
+  "In a match, the moves are listed along the bottom.",
+  "With the phone on its side?",
+  "The buttons fold into two rows.",
+  "There, Chat GPT's cursor takes control of stack overflow."
+ ]
+}

@@ -1,0 +1,20 @@
+[
+ {
+  "say": "All three bots at once, each played by the computer, with two lives each."
+ },
+ {
+  "say": "Claude is the first to go off the edge, losing a life."
+ },
+ {
+  "say": "Then Stack Overflow's beam catches the other two, and ChatGPT loses a life."
+ },
+ {
+  "say": "Claude's second life goes next, and then there are two."
+ },
+ {
+  "say": "ChatGPT flattens Stack Overflow with a compaction, but can't finish it."
+ },
+ {
+  "say": "Stack Overflow's blocks take ChatGPT's last life, and it wins without losing one."
+ }
+]

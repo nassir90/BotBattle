@@ -30,6 +30,27 @@ const HOOK = `
     screen(v) { const p = v.clone().project(camera); return [(p.x + 1) / 2 * innerWidth * devicePixelRatio, (1 - p.y) / 2 * innerHeight * devicePixelRatio]; },
     mouth: kind => { const f = fighters.find(q => q.kind === kind); return f && f.rotor ? mouthOf(f) : null; },
     inhaling: kind => { const f = fighters.find(q => q.kind === kind); return !!(f && f.inhale); },
+    // CPUs only: a duel or a free-for-all among the kinds given, with that many lives; when one is left standing
+    // the real results table comes up (autoResult, called before every frame)
+    cpuMatch(kinds, lives, maxDist) {
+      ['menu', 'select', 'result'].forEach(id => { document.getElementById(id).hidden = true; });
+      window.__maxDist = maxDist || 24;
+      startMatch({ kind: 'watch', lives });
+      for (const f of [...fighters]) if (!kinds.includes(f.kind)) {
+        scene.remove(f.root); springs = springs.filter(sp => sp !== f.spring); fighters.splice(fighters.indexOf(f), 1);
+      }
+      const xs = kinds.length === 2 ? [-3.5, 3.5] : [-6, 0, 6];
+      kinds.forEach((k, i) => window.__app.place(k, xs[i], xs[i] < 0 ? 1 : -1));
+      buildHud();
+      window.__app.resultShown = false;
+    },
+    autoResult() {
+      const A = window.__app, left = fighters.filter(f => !f.out);
+      if (A.resultShown || mode.kind !== 'watch' || fighters.length < 2 || left.length !== 1) return;
+      A.resultShown = true;
+      const w = left[0];
+      endMatch(w.kit.name + ' wins', 'With ' + w.stocks + (w.stocks === 1 ? ' life' : ' lives') + ' left.');
+    },
     // training with the player on the left and both dummies standing still, close enough for a phone-shaped frame
     stage(pick, places) {
       ['menu', 'select', 'result'].forEach(id => { document.getElementById(id).hidden = true; });
@@ -41,33 +62,175 @@ const HOOK = `
   };
 `;
 
+const INJECT_BASE = [
+  { before: "  startMatch({ kind: 'watch' });   // CPUs brawl behind the main menu", code: HOOK },
+  // recording only: the camera may come in closer than the game's own limit, so a narrow frame isn't all paper
+  { replace: 'const MAX_DIST = 26;', code: 'const MAX_DIST = window.__maxDist || 26;' },
+];
+// the gameplay takes were framed with the landscape camera; keep it, rather than the wider portrait lens phones get
+const INJECT = [
+  ...INJECT_BASE,
+  { replace: 'camera.fov = camera.aspect < 1 ? 48 : 34;', code: 'camera.fov = 34;' },
+  { replace: 'const maxDist = camera.aspect < 1 ? MAX_DIST * 1.6 : MAX_DIST;', code: 'const maxDist = MAX_DIST;' },
+];
+const INJECT_PHONE = [
+      ...INJECT_BASE,
+      // a phone: the touch layout, as the game shows it on a touch screen
+      { replace: '@media (pointer: coarse) {', code: '@media all {' },
+      { replace: '@media (pointer: coarse) and (orientation: landscape) and (max-height: 540px) {', code: '@media (orientation: landscape) and (max-height: 540px) {' },
+    ];
+// CPU matches show the health plates (they sit at the top, clear of the text)
+const CSS_MATCH = `.moves, .touch, .corner, .trainbar, .status { display: none !important; }`;
+
 export default {
   app: '../public/games/botbattle',
   size: [540, 960], dpr: 2,
-  inject: [
-    { before: "  startMatch({ kind: 'watch' });   // CPUs brawl behind the main menu", code: HOOK },
-    // recording only: the camera may come in closer than the game's own limit, so a narrow frame isn't all paper
-    { replace: 'const MAX_DIST = 26;', code: 'const MAX_DIST = window.__maxDist || 26;' },
-    // the takes were framed with the landscape camera; keep it, rather than the wider portrait lens phones get
-    { replace: 'camera.fov = camera.aspect < 1 ? 48 : 34;', code: 'camera.fov = 34;' },
-    { replace: 'const maxDist = camera.aspect < 1 ? MAX_DIST * 1.6 : MAX_DIST;', code: 'const maxDist = MAX_DIST;' },
-  ],
+  inject: INJECT,
   ready: () => !!window.__app,
   // the move list, touch pad, menu button, training bar and health plates would sit where the text goes
   // (a hidden plate also skips its 3D logo, which is drawn into the game canvas)
   css: `.moves, .touch, .corner, .trainbar, .status, .hud { display: none !important; }`,
   annotate: () => {
-    const A = window.__app, out = { inhale: [] };
+    const A = window.__app, out = { inhale: [], moves: [] };
     const m = A.mouth('gpt');
     if (m && A.inhaling('gpt')) {
       const [x, y] = A.screen(m);
       out.inhale.push({ k: 'call', id: 'mouth', x, y, text: 'the mouth', dx: -150, dy: -230 });
     }
     const g = A.get('gpt');
-    out.state = { ctx: g ? Math.round(g.context) : null, inhale: A.inhaling('gpt') };
+    // each fighter: kind, health, lives, knocked out, out of the match
+    out.state = { ctx: g ? Math.round(g.context) : null, inhale: A.inhaling('gpt'),
+      f: A.fighters.map(f => [f.kind, Math.round(f.hp), Number.isFinite(f.stocks) ? f.stocks : -1, f.dead ? 1 : 0, f.out ? 1 : 0]),
+      result: !document.getElementById('result').hidden };
+    // practice: name what Stack Overflow is doing, at its stack
+    const so = A.get('so');
+    if (window.__labelMoves && so && !so.dead) {
+      const label = so.tether ? 'the whip latches on' : so.ledge ? 'hanging on' : so.whip ? (so.whip.up ? 'W + K: upward whip' : 'K: block whip')
+        : so.beam ? 'L: unified beam' : (so.shot || so.launch.length) ? 'J: block shot' : so.guard ? (so.guard.dir === 'up' ? 'W + Backspace: overhead parry' : 'Backspace: parry')
+        : so.crouch > 0.5 ? 'S: crouch' : so.passT > 0 ? 'double-tap: dash' : so.busy > 0.05 && document.querySelector('.bubble') ? 'I: correction' : null;
+      // a label stays up at least 1.6 s, long enough to read
+      const now = performance.now();
+      if (label) window.__lastLabel = { text: label, until: now + 1600 };
+      const shown = label || (window.__lastLabel && now < window.__lastLabel.until ? window.__lastLabel.text : null);
+      if (shown) {
+        so.crown.updateMatrixWorld(true);
+        const [x, y] = A.screen(so.crown.localToWorld(new (so.crown.position.constructor)(0, 0.3, 0)));
+        out.moves.push({ k: 'call', id: 'move', x, y, text: shown, dx: 160, dy: -230 });
+      }
+    }
     return out;
   },
   takes: {
+    // "Who would win?": Stack Overflow against ChatGPT, CPU against CPU, two lives each, to the results table
+    duel_so_gpt: { seconds: 110, css: CSS_MATCH,
+      setup: () => window.__app.cpuMatch(['so', 'gpt'], 2, 22),
+      each: () => window.__app && window.__app.autoResult(),
+      script: [] },
+
+    // all three CPUs, two lives each, to the results table
+    ffa: { seconds: 130, css: CSS_MATCH,
+      setup: () => window.__app.cpuMatch(['so', 'gpt', 'claude'], 2, 24),
+      each: () => window.__app && window.__app.autoResult(),
+      script: [] },
+
+    // practice: Stack Overflow goes through its moves on the dummies, each one named as it happens
+    practice_so: { seconds: 46,
+      setup: () => { window.__labelMoves = true; window.__app.stage('so', [['so', -2.6, 1], ['gpt', 0.4, -1], ['claude', 3.4, -1]]); },
+      script: [
+        [1.0, page => page.down('KeyJ')],                                   // block shot
+        [2.3, page => page.up('KeyJ')],
+        [7, page => page.press('KeyK')],                                  // block whip
+        [10, page => page.js(() => window.__app.place('gpt', 2.4, -1))],
+        [10.2, page => page.down('ArrowUp')],                                // upward whip (from a jump)
+        [10.35, page => page.press('KeyK')],
+        [10.8, page => page.up('ArrowUp')],
+        [13, page => page.press('KeyL')],                                 // unified beam
+        [16.5, page => page.press('KeyI')],                                 // correction
+        // a parry: Claude fires a rod, Stack Overflow guards toward it
+        [20, page => page.js(() => { const A = window.__app; A.place('claude', 0.6, -1); A.place('gpt', 5, -1); })],
+        [20.6, page => page.press('Backspace')],
+        [20.64, page => page.js(() => window.__app.fire('claude', 'a1', -1))],
+        // an overhead parry: ChatGPT slams a compaction down
+        [23, page => page.js(() => { const A = window.__app; A.place('claude', 6, -1); A.place('gpt', -0.6, -1); A.get('gpt').context = 100; })],
+        [23.6, page => page.js(() => window.__app.fire('gpt', 'a4', -1))],
+        [23.62, page => page.down('KeyW')],
+        [23.68, page => page.press('Backspace')],
+        [24, page => page.up('KeyW')],
+        // crouch under Claude's fling
+        [26.5, page => page.js(() => { const A = window.__app; A.place('gpt', 6, -1); A.place('claude', 0.0, -1); })],
+        [27, page => page.down('KeyS')],
+        [27.4, page => page.js(() => window.__app.fire('claude', 'a2', -1))],
+        [28.6, page => page.up('KeyS')],
+        // dash past Claude
+        [29.4, page => page.down('KeyD')],
+        [29.5, page => page.up('KeyD')],
+        [29.62, page => page.down('KeyD')],
+        [30.4, page => page.up('KeyD')],
+        // off the edge with no jumps left: the upward whip latches onto the ledge, then it climbs up
+        [33, page => page.js(() => { const A = window.__app, f = A.get('so'); A.place('gpt', 7.5, -1); A.place('claude', 4, -1); f.x = 11.2; f.y = -5.2; f.vx = 0; f.vy = 0; f.onGround = false; f.jumpsLeft = 0; f.facing = -1; f.feet.forEach(ft => { ft.air = true; ft.y = -5.2; }); })],
+        [33.03, page => page.down('ArrowUp')],
+        [33.07, page => page.press('KeyK')],
+        [33.5, page => page.up('ArrowUp')],
+        [35.4, page => page.down('ArrowLeft')],
+        [36, page => page.up('ArrowLeft')],
+      ] },
+
+    // the showcase: the game being played on a phone held upright, on a desktop, and on a phone on its side
+    show_phone: { seconds: 26, inject: INJECT_PHONE, css: '',
+      script: [
+        [1.5, page => page.click({ text: 'Free-for-all' })],
+        [3.2, page => page.click('#nextBtn')],
+        [4.4, page => page.click('#prevBtn')],
+        [5.8, page => page.click('#pickBtn')],
+        [7.0, page => page.down('ArrowRight')],
+        [8.6, page => page.up('ArrowRight')],
+        [9.0, page => page.click('[data-key="KeyJ"]')], [9.25, page => page.click('[data-key="KeyJ"]')], [9.5, page => page.click('[data-key="KeyJ"]')],
+        [11.0, page => page.click('[data-key="KeyK"]')],
+        [13.0, page => page.click('[data-key="Space"]')],
+        [14.5, page => page.click('[data-key="KeyL"]')],
+        [17.5, page => page.click('[data-key="Backspace"]')],
+        [19.0, page => page.click('[data-key="KeyI"]')],
+        [21.0, page => page.click('[data-key="KeyK"]')],
+        [23.0, page => page.click('[data-key="KeyJ"]')], [23.25, page => page.click('[data-key="KeyJ"]')],
+      ] },
+    show_desktop: { seconds: 26, size: [1280, 720], dpr: 1, inject: INJECT_BASE, css: '',
+      script: [
+        [1.2, page => page.glide([260, 160], { text: 'Duel' }, 0.8)],
+        [2.2, page => page.click({ text: 'Duel' })],
+        [3.6, page => page.press('ArrowRight')],
+        [4.6, page => page.press('ArrowRight')],
+        [5.8, page => page.press('Enter')],
+        [7.2, page => page.press('KeyR')],                                  // random opponent
+        [9.5, page => page.down('KeyD')],
+        [10.6, page => page.up('KeyD')],
+        [11.0, page => page.down('KeyJ')],
+        [12.2, page => page.up('KeyJ')],
+        [13.5, page => page.press('KeyK')],
+        [15.0, page => page.press('KeyL')],
+        [17.5, page => page.press('KeyW')],
+        [17.8, page => page.press('KeyW')],
+        [19.0, page => page.press('Backspace')],
+        [20.5, page => page.down('KeyJ')],
+        [21.6, page => page.up('KeyJ')],
+        [23.0, page => page.press('KeyK')],
+      ] },
+    show_landscape: { seconds: 24, size: [740, 360], inject: INJECT_PHONE, css: '',
+      script: [
+        [1.2, page => page.click('.mode[data-mode="training"]')],
+        [2.6, page => page.click('#nextBtn')],
+        [4.0, page => page.press('Enter')],
+        [5.2, page => page.down('ArrowRight')],
+        [6.4, page => page.up('ArrowRight')],
+        [7.0, page => page.click('[data-key="KeyK"]')],
+        [10.0, page => page.click('[data-key="KeyJ"]')],
+        [12.0, page => page.click('[data-key="KeyL"]')],
+        [15.0, page => page.click('[data-key="Space"]')],
+        [15.3, page => page.click('[data-key="Space"]')],
+        [17.5, page => page.click('[data-key="Backspace"]')],
+        [19.5, page => page.click('[data-key="KeyJ"]')],
+        [21.0, page => page.click('[data-key="KeyK"]')],
+      ] },
+
     // the three CPUs fighting on their own
     brawl: { seconds: 40,
       setup: () => {
