@@ -1209,6 +1209,7 @@ button[aria-pressed="true"] { background: var(--ink); color: var(--paper); }
     h.hp = Math.max(0, h.hp - dmg);
     // knockback stacks from rapid fire, up to a limit, so a single burst can't clear the stage
     h.vx = THREE.MathUtils.clamp(h.vx + kbx, -KB_MAX, KB_MAX);
+    if (Math.abs(kbx) > 1 || kby > 2) h.kbT = 0.7;         // sent flying: whoever it hits is bowled over too
     if (kby > 0) { h.vy = Math.max(h.vy, kby); h.onGround = false; }
     h.lastKb = { x: kbx, y: kby };
     h.flash = 0.18;
@@ -2234,6 +2235,8 @@ button[aria-pressed="true"] { background: var(--ink); color: var(--paper); }
     f.pushT = Math.max(0, (f.pushT || 0) - dt);
     f.strain = Math.max(0, (f.strain || 0) - dt);
     f.shoveT = Math.max(0, (f.shoveT || 0) - dt);
+    f.kbT = Math.max(0, (f.kbT || 0) - dt);
+    f.jolt = Math.max(0, (f.jolt || 0) - dt);
     if (f.pushT <= 0) { f.lean = 0; f.pushing = 0; }
     if (f.stun > 0) { f.stun -= dt; inp = NO_INPUT; }
     if (f.possessing) inp = NO_INPUT;
@@ -2322,7 +2325,7 @@ button[aria-pressed="true"] { background: var(--ink); color: var(--paper); }
     // discomfort shows on the face, which also shakes while it lasts
     setFace(f, f.flash > 0 || f.stumble > 0 || f.strain > 0 || f.stun > 0);
     // leaning: into a dash, along a stumble (the top runs ahead of the feet), or into a push
-    const lean = f.passT > 0 ? -f.facing * 0.28 : f.shoveT > 0 ? -f.shoveDir * 0.22 * Math.min(1, f.shoveT / 0.15) : f.stumble > 0 ? -f.stumbleDir * 0.32 * Math.min(1, f.stumble / 0.2) : (f.lean || 0);
+    const lean = f.passT > 0 ? -f.facing * 0.28 : f.jolt > 0 ? -f.joltDir * 0.2 * (f.jolt / 0.2) : f.shoveT > 0 ? -f.shoveDir * 0.22 * (f.shoveK || 1) * Math.min(1, f.shoveT / 0.15) : f.stumble > 0 ? -f.stumbleDir * 0.32 * Math.min(1, f.stumble / 0.2) : (f.lean || 0);
     f.vis.rotation.z += (lean - f.vis.rotation.z) * Math.min(1, dt * 14);
     const c = f.compact;
     f.root.scale.set(1 + (1 - c) * 0.35, c, 1 + (1 - c) * 0.35);
@@ -2580,7 +2583,7 @@ button[aria-pressed="true"] { background: var(--ink); color: var(--paper); }
   function shoveReach(f) {
     if (f.shoveT > 0) {
       const p = 1 - f.shoveT / SHOVE_TIME;                 // out fast, back slowly
-      return p < 0.25 ? 0.6 + 0.4 * p / 0.25 : 1 - (p - 0.25) / 0.75;
+      return (f.shoveK || 1) * (p < 0.25 ? 0.6 + 0.4 * p / 0.25 : 1 - (p - 0.25) / 0.75);
     }
     // closing fast on someone just ahead: hands up and forward, ready to shove
     if (!f.onGround || f.vx * f.facing < RAM_SPEED * 0.8) return 0;
@@ -3406,15 +3409,36 @@ button[aria-pressed="true"] { background: var(--ink); color: var(--paper); }
   const TOP_HALF = { so: 0.5, gpt: 0.47, claude: 0.48 };
   const restGap = (a, b) => TOP_HALF[a.kind] + TOP_HALF[b.kind] + 0.04;
   let contacts = new Set(), pushClock = 0, pairGaps = new Map();
-  function stumble(f, dir, speed) {
+  function stumble(f, dir, speed, least = 4) {
     if (f.stumble > 0.15) return;
     f.stumble = 0.55; f.stumbleDir = dir;
-    f.vx = dir * THREE.MathUtils.clamp(speed * 1.05, 4, 8);
-    ring(V(f.x, 0.03, 0), '#141414', 0.4, true);
+    f.vx = dir * THREE.MathUtils.clamp(speed * 1.05, least, 8);
+    if (f.onGround) ring(V(f.x, 0.03, 0), '#141414', 0.4, true);
   }
   // the runner shoves with both hands as it hits, so the stumble plainly comes from it
   const SHOVE_TIME = 0.4;
-  function shove(f, dir) { f.shoveT = SHOVE_TIME; f.shoveDir = dir; f.facing = dir; }
+  function shove(f, dir, k = 1) { f.shoveT = SHOVE_TIME; f.shoveDir = dir; f.shoveK = k; f.facing = dir; }
+  // m arrives against o, moving toward it at `speed` (along dir). Every arrival shows:
+  //  - knocked flying (or stumbling) into someone: they're bowled over too, no hands involved
+  //  - running in: a two-handed shove that sends them stumbling
+  //  - walking or drifting in: a bump, a hand put out and the other jolted, straining (holding on turns it
+  //    into a push)
+  function impact(m, o, dir, speed, intends) {
+    if ((m.kbT > 0 || m.stumble > 0) && speed > 0.6) {
+      // a slow drift still knocks them back a step; a body flying in sends them reeling
+      stumble(o, dir, speed * 0.85, speed > 3 ? 4 : 2.5);
+      m.vx *= 0.45;
+      o.strain = Math.max(o.strain || 0, 0.4);
+      m.strain = Math.max(m.strain || 0, 0.45); m.jolt = 0.2; m.joltDir = -dir;   // the one thrown in feels it too
+    } else if (speed > RAM_SPEED) {
+      stumble(o, dir, speed); m.vx *= 0.2; shove(m, dir);
+    } else if (speed > 0.25 || intends) {
+      if (!(o.stumble > 0)) o.vx += dir * 1.4;
+      o.strain = Math.max(o.strain || 0, 0.35);
+      o.jolt = 0.2; o.joltDir = dir;
+      if (!(m.stumble > 0)) shove(m, dir, 0.55);
+    }
+  }
   function separateFighters(dt) {
     const live = fighters.filter(f => !f.dead);
     pushClock += dt;
@@ -3430,11 +3454,11 @@ button[aria-pressed="true"] { background: var(--ink); color: var(--paper); }
       const dir = Math.sign(dx) || (a.id < b.id ? 1 : -1);   // from a toward b
       now.add(key);
       const grounded = a.onGround && b.onGround;
-      if (!contacts.has(key) && grounded) {
-        // first contact: whoever came running in knocks the other into a stumble (both, if both did)
+      if (!contacts.has(key)) {
+        // first contact: each side's way of arriving decides what it does to the other
         const va = a.vx * dir, vb = -b.vx * dir;
-        if (va > RAM_SPEED) { stumble(b, dir, va); a.vx *= 0.2; shove(a, dir); }
-        if (vb > RAM_SPEED) { stumble(a, -dir, vb); b.vx *= 0.2; shove(b, -dir); }
+        impact(a, b, dir, va, a.intent * dir > 0);
+        impact(b, a, -dir, vb, b.intent * -dir > 0);
       }
       if (grounded && !(a.stumble > 0) && !(b.stumble > 0)) {
         const pa = a.intent * dir > 0, pb = b.intent * -dir > 0;

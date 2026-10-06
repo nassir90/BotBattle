@@ -59,6 +59,10 @@ Fighters are solid to each other, and they push:
 - **Running into someone** from open space: your hands come up as you close in and you shove them with both arms, knocking them into a stumble. They're shoved back about 2.8 units, arms flung up, and can't act until they catch themselves.
 - **Leaning on someone you're already touching** walks them back slowly (1.6 units a second) while you shove with both hands; they rock back and strain.
 - **Both pushing** is a power struggle: you lean in head to head and the pair sways one way, then the other.
+- **Knocked into someone** by a hit (or stumbling into them): they're bowled over into a stumble too, and the one thrown in jolts back.
+- **Walking or jumping into someone** without the speed for a shove: a bump. You put a hand out, they're jolted back a little and strain; keep going and it becomes a push.
+
+Every contact gets one of these. Measured with a play-test harness that drives random scenarios and CPU brawls and checks each contact for a reaction within 0.2 s: all of them react (31/31 knocked into someone, all with the bystander stumbling; 225/225 run-ins; 178/178 walk-ins; 113/113 jump-ins; 94/94 contacts in five CPU brawls). Before this, only 4 of 34 knocked-into contacts and none of 40 jump-ins did.
 - A double-tap dash slips past instead.
 
 Faces show it: when a fighter is hit, stumbling, stunned or being pushed, Stack Overflow screws its eyes shut and grits its teeth, and the chatbots' smiles go flat, with the face shaking while it lasts.
