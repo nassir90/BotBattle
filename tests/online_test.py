@@ -27,7 +27,7 @@ async def main():
                     if '"t":"in"' in payload: pg.ins += 1
                 ws.on("framereceived", frame)
             pg.on("websocket", on_ws)
-            await pg.goto(B + f"?dev={user}{extra}")
+            await pg.goto(B + f"?dev={user}{extra}", wait_until="domcontentloaded", timeout=90000)
             return pg
         alice = await page("alice")
         await alice.click('.mode[data-mode="online"]')

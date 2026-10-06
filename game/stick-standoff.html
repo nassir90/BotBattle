@@ -125,17 +125,22 @@ button[aria-pressed="true"] { background: var(--ink); color: var(--paper); }
 .mode { grid-template-columns: 170px minmax(0, 1fr); align-items: center; gap: 16px; padding: 14px 18px; }
 .mode span { color: var(--ink-soft); }
 @media (max-width: 560px) { .mode { grid-template-columns: 1fr; gap: 6px; } }
-/* the logo row sits at the foot of the menu when there's room, and below its content (scrolling) when there isn't */
+/* the menu: the title centred over the modes, with the three real sites' logos turning in a triangle beside them
+   (below them on a narrow screen) */
 #menu:not([hidden]) { display: flex; flex-direction: column; align-items: center; }
-#menu .panel { margin-top: auto; margin-bottom: auto; }
-.brands { position: relative; flex: none; margin-top: 90px; padding-bottom: calc(env(safe-area-inset-bottom, 0px) + 8px); display: flex; justify-content: center; gap: 36px; }
-.brands a { display: grid; justify-items: center; gap: 4px; color: var(--ink-soft); text-decoration: none; font-size: 10px; letter-spacing: 0.06em; text-transform: uppercase; }
+#menu .panel { margin-top: auto; margin-bottom: auto; width: min(1120px, 100%); }
+#menu h1 { text-align: center; }
+.menu-body { display: grid; grid-template-columns: minmax(0, 760px) 300px; gap: 24px; align-items: center; justify-content: center; }
+.mode-links { justify-content: center; }
+.brands { position: relative; width: 300px; height: 300px; }
+.brands a { position: absolute; left: 0; top: 0; display: block; color: var(--ink-soft); text-decoration: none; }
+@media (max-width: 960px) { .menu-body { grid-template-columns: minmax(0, 760px); } .brands { justify-self: center; width: 260px; height: 230px; } }
 .brands a:hover { color: var(--ink); }
 .brands a:focus-visible { outline: 3px solid var(--so); outline-offset: 4px; }
 .brands { pointer-events: none; }
 .brands a { pointer-events: auto; will-change: transform; }
 .brands .logo3d { display: block; width: 84px; height: 84px; }
-#brandCanvas { position: absolute; left: 50%; top: -90px; width: min(680px, 100vw); height: 280px; transform: translateX(-50%); pointer-events: none; }
+#brandCanvas { position: absolute; left: -70px; top: -70px; width: calc(100% + 140px); height: calc(100% + 140px); pointer-events: none; }
 
 
 /* fighter carousel: cards on a ring, the 3D fighter stands on top of each card */
@@ -248,12 +253,14 @@ button[aria-pressed="true"] { background: var(--ink); color: var(--paper); }
   .plate-info .plate-top { display: none; }
   .plate-info .bar { order: -1; align-self: stretch; height: 7px; border-width: 1.5px; }
   .plate-info .ctx { align-self: stretch; height: 4px; border-width: 1px; }
-  .corner { right: calc(env(safe-area-inset-right, 0px) + 12px); bottom: auto; top: calc(env(safe-area-inset-top, 0px) + 10px); }
+  /* phones have rounded corners, and many don't report them as safe areas: anything near a corner keeps 20px from
+     both edges, which clears a 55px corner radius (a control's corner needs 55 * (1 - 1/sqrt 2) = 16px) */
+  .corner { right: max(calc(env(safe-area-inset-right, 0px) + 12px), 20px); bottom: auto; top: max(calc(env(safe-area-inset-top, 0px) + 10px), 20px); }
   .corner button { padding: 7px 10px; font-size: 11px; }
   .topstack { top: calc(env(safe-area-inset-top, 0px) + 92px); }
   .touch {
-    position: fixed; left: calc(env(safe-area-inset-left, 0px) + 12px); right: calc(env(safe-area-inset-right, 0px) + 12px);
-    bottom: calc(env(safe-area-inset-bottom, 0px) + 12px);
+    position: fixed; left: max(calc(env(safe-area-inset-left, 0px) + 12px), 20px); right: max(calc(env(safe-area-inset-right, 0px) + 12px), 20px);
+    bottom: max(calc(env(safe-area-inset-bottom, 0px) + 12px), 20px);
     display: flex; justify-content: space-between; align-items: flex-end; gap: 12px; pointer-events: none;
   }
   .pad { display: grid; grid-template-columns: repeat(2, 60px); gap: 8px; pointer-events: auto; }
@@ -421,7 +428,7 @@ button[aria-pressed="true"] { background: var(--ink); color: var(--paper); }
 <div class="overlay" id="menu">
   <div class="panel">
     <h1>Bot Battle</h1>
-    <p class="sub">Stack Overflow, ChatGPT and Claude settle it on a sheet of paper.</p>
+    <div class="menu-body">
     <div class="modes">
       <button type="button" class="mode" data-mode="ffa"><h2>Free-for-all</h2><span>You against both CPUs at once. Last one standing wins.</span></button>
       <button type="button" class="mode" data-mode="duel"><h2>Duel</h2><span>One on one against a CPU you pick.</span></button>
@@ -429,15 +436,15 @@ button[aria-pressed="true"] { background: var(--ink); color: var(--paper); }
       <button type="button" class="mode" data-mode="watch"><h2>Watch</h2><span>Three CPUs fight it out while you watch.</span></button>
       <button type="button" class="mode" data-mode="online" hidden><h2>Online</h2><span>Fight your friends. Make a room, share its code, and play.</span></button>
     </div>
+    <nav class="brands" id="brands" aria-label="The real ones">
+      <canvas id="brandCanvas"></canvas>
+      <a href="https://stackoverflow.com" target="_blank" rel="noopener" title="stackoverflow.com" aria-label="Stack Overflow"><span class="logo3d" data-kind="so" aria-hidden="true"></span></a>
+      <a href="https://openai.com" target="_blank" rel="noopener" title="openai.com" aria-label="OpenAI"><span class="logo3d" data-kind="gpt" aria-hidden="true"></span></a>
+      <a href="https://claude.ai" target="_blank" rel="noopener" title="claude.ai" aria-label="Claude"><span class="logo3d" data-kind="claude" aria-hidden="true"></span></a>
+    </nav>
+    </div>
     <div class="mode-links" id="modeLinks" hidden><button type="button" id="boardBtn">Leaderboard</button></div>
-    <p class="keys">Move <kbd>A</kbd> <kbd>D</kbd> or <kbd>&larr;</kbd> <kbd>&rarr;</kbd>, double-tap to dash &middot; Jump <kbd>W</kbd> <kbd>&uarr;</kbd> <kbd>Space</kbd> &middot; Crouch <kbd>S</kbd> &middot; Shot <kbd>J</kbd> &middot; Melee <kbd>K</kbd> &middot; Power <kbd>L</kbd> &middot; Special <kbd>I</kbd> &middot; Parry <kbd>Backspace</kbd> toward the way you face or press, <kbd>W</kbd> + <kbd>Backspace</kbd> overhead &middot; Fall past an edge and you grab it; press toward the stage to climb up</p>
   </div>
-  <nav class="brands" id="brands" aria-label="The real ones">
-    <canvas id="brandCanvas"></canvas>
-    <a href="https://stackoverflow.com" target="_blank" rel="noopener" title="stackoverflow.com" aria-label="Stack Overflow"><span class="logo3d" data-kind="so" aria-hidden="true"></span></a>
-    <a href="https://openai.com" target="_blank" rel="noopener" title="openai.com" aria-label="OpenAI"><span class="logo3d" data-kind="gpt" aria-hidden="true"></span></a>
-    <a href="https://claude.ai" target="_blank" rel="noopener" title="claude.ai" aria-label="Claude"><span class="logo3d" data-kind="claude" aria-hidden="true"></span></a>
-  </nav>
 </div>
 
 <div class="overlay" id="select" hidden>
@@ -498,7 +505,6 @@ button[aria-pressed="true"] { background: var(--ink); color: var(--paper); }
       <aside class="invite">
         <div class="qr" id="qr" role="img" aria-label="QR code that joins this room"></div>
         <button type="button" id="copyLink">Copy invite link</button>
-        <small>Scan it or share the link to join without the password.</small>
       </aside>
     </div>
   </div>
@@ -620,10 +626,11 @@ button[aria-pressed="true"] { background: var(--ink); color: var(--paper); }
   // Ink outline for any solid: a back-facing copy pushed out along smoothed normals.
   // The same trick as the head outline, so logo pieces get the same line.
   const shellCache = new Map();
-  function inkShellGeo(geo, t) {
-    const key = geo.uuid + ':' + t;
-    if (shellCache.has(key)) return shellCache.get(key);
-    const g = geo.index ? geo.toNonIndexed() : geo.clone();
+  // Where each vertex of an ink shell goes: out along the normal averaged over every face meeting there.
+  // A flat shape (an extruded logo) is pushed out in its own plane only, and never past its front or back face:
+  // pushed forward too, one overlapping part's shell showed through the face of the part over it (black slivers
+  // across the OpenAI knot and a black star in Claude's centre).
+  function shellDirections(g, flat) {
     g.computeVertexNormals();
     const pos = g.attributes.position, nor = g.attributes.normal, sum = new Map();
     const k = i => `${pos.getX(i).toFixed(4)},${pos.getY(i).toFixed(4)},${pos.getZ(i).toFixed(4)}`;
@@ -632,31 +639,35 @@ button[aria-pressed="true"] { background: var(--ink); color: var(--paper); }
       a[0] += nor.getX(i); a[1] += nor.getY(i); a[2] += nor.getZ(i);
       sum.set(k(i), a);
     }
+    g.computeBoundingBox();
+    const zMin = g.boundingBox.min.z, zMax = g.boundingBox.max.z, inset = Math.min(0.003, (zMax - zMin) * 0.1);
+    const base = new Float32Array(pos.count * 3), dirs = new Float32Array(pos.count * 3);
     for (let i = 0; i < pos.count; i++) {
-      const [x, y, z] = sum.get(k(i)), l = Math.hypot(x, y, z) || 1;
-      pos.setXYZ(i, pos.getX(i) + x / l * t, pos.getY(i) + y / l * t, pos.getZ(i) + z / l * t);
+      let [x, y, z] = sum.get(k(i));
+      if (flat) z = 0;
+      const l = Math.hypot(x, y, z);
+      base[i * 3] = pos.getX(i); base[i * 3 + 1] = pos.getY(i);
+      base[i * 3 + 2] = flat ? THREE.MathUtils.clamp(pos.getZ(i), zMin + inset, zMax - inset) : pos.getZ(i);
+      if (l > 1e-6) { dirs[i * 3] = x / l; dirs[i * 3 + 1] = y / l; dirs[i * 3 + 2] = z / l; }
     }
+    return { pos, base, dirs };
+  }
+  function inkShellGeo(geo, t, flat = false) {
+    const key = geo.uuid + ':' + t + (flat ? ':flat' : '');
+    if (shellCache.has(key)) return shellCache.get(key);
+    const g = geo.index ? geo.toNonIndexed() : geo.clone();
+    const { pos, base, dirs } = shellDirections(g, flat);
+    for (let i = 0; i < pos.array.length; i++) pos.array[i] = base[i] + dirs[i] * t;
+    pos.needsUpdate = true;
     shellCache.set(key, g);
     return g;
   }
   const LOGO_LINE = LINE_W;           // logo pieces use the same line as the bodies
   // An ink shell whose thickness can change: when its piece is scaled up (ChatGPT's logo grows to inhale), the
   // shell is pushed out by line / scale instead, so the drawn line stays the same width
-  function adjustableShell(geo) {
+  function adjustableShell(geo, flat = false) {
     const g = geo.index ? geo.toNonIndexed() : geo.clone();
-    g.computeVertexNormals();
-    const pos = g.attributes.position, nor = g.attributes.normal, sum = new Map();
-    const k = i => `${pos.getX(i).toFixed(4)},${pos.getY(i).toFixed(4)},${pos.getZ(i).toFixed(4)}`;
-    for (let i = 0; i < pos.count; i++) {
-      const a = sum.get(k(i)) || [0, 0, 0];
-      a[0] += nor.getX(i); a[1] += nor.getY(i); a[2] += nor.getZ(i);
-      sum.set(k(i), a);
-    }
-    const base = Float32Array.from(pos.array), dirs = new Float32Array(pos.count * 3);
-    for (let i = 0; i < pos.count; i++) {
-      const [x, y, z] = sum.get(k(i)), l = Math.hypot(x, y, z) || 1;
-      dirs[i * 3] = x / l; dirs[i * 3 + 1] = y / l; dirs[i * 3 + 2] = z / l;
-    }
+    const { pos, base, dirs } = shellDirections(g, flat);
     const mesh = new THREE.Mesh(g, outlineBase);
     mesh.frustumCulled = false;
     let last = -1;
@@ -670,9 +681,9 @@ button[aria-pressed="true"] { background: var(--ink); color: var(--paper); }
     mesh.userData.setLine(LOGO_LINE);
     return mesh;
   }
-  function inked(geo, mat, t = LOGO_LINE) {
+  function inked(geo, mat, t = LOGO_LINE, flat = geo.userData.flat) {
     const m = shadowed(new THREE.Mesh(geo, mat));
-    m.add(new THREE.Mesh(inkShellGeo(geo, t), outlineBase));
+    m.add(new THREE.Mesh(inkShellGeo(geo, t, !!flat), outlineBase));
     return m;
   }
 
@@ -873,6 +884,7 @@ button[aria-pressed="true"] { background: var(--ink); color: var(--paper); }
     geo.center();
     const s = size / 24;
     geo.scale(s, -s, -s);
+    geo.userData.flat = true;           // outlined in its own plane (see shellDirections)
     return geo;
   }
   const openaiGeo = logoGeometry(OPENAI_PATH, 0.85);
@@ -1282,7 +1294,7 @@ button[aria-pressed="true"] { background: var(--ink); color: var(--paper); }
       } else {
         if (kind === 'gpt') {
           const m = shadowed(new THREE.Mesh(openaiGeo, logoMat));
-          f.logoShell = adjustableShell(openaiGeo);
+          f.logoShell = adjustableShell(openaiGeo, true);
           m.add(f.logoShell);
           logo.add(m);
         } else logo.add(inked(claudeGeo, logoMat));
@@ -2362,6 +2374,7 @@ button[aria-pressed="true"] { background: var(--ink); color: var(--paper); }
     }
   }
   function startRagdoll(f) {
+    f.vis.position.z = 0; f.vis.rotation.x = 0; f.z = 0; f.zVel = 0;
     f.root.updateMatrixWorld(true);
     const pts = {};
     const add = (name, local) => { const p = f.vis.localToWorld(local.clone()); pts[name] = { x: p.x, y: p.y, px: p.x, py: p.y }; };
@@ -2480,7 +2493,7 @@ button[aria-pressed="true"] { background: var(--ink); color: var(--paper); }
       // double-tap a direction: a quick dash that slips past anyone in the way
       f.passT = Math.max(0, f.passT - dt);
       if (inp.dash && !rooted && f.passT <= 0) {
-        f.passT = PASS_TIME; f.passDir = inp.dash; f.facing = inp.dash;
+        f.passT = PASS_TIME; f.passDir = inp.dash; f.facing = inp.dash; f.brushed = new Set();
         if (f.onGround) ring(V(f.x, 0.03, 0), '#141414', 0.35, true);
       }
       const rate = f.stumble > 0 ? 7 : f.onGround ? 30 : 12;     // a stumble slides to a stop
@@ -2545,6 +2558,14 @@ button[aria-pressed="true"] { background: var(--ink); color: var(--paper); }
     const c = f.compact;
     f.root.scale.set(1 + (1 - c) * 0.35, c, 1 + (1 - c) * 0.35);
     f.root.position.set(f.x, f.y, 0);
+    // brushed aside in depth by a dash (brushPast): a spring back into line, leaning the way it's going
+    f.zVel = (f.zVel || 0) + (-DEPTH_K * (f.z || 0) - DEPTH_C * (f.zVel || 0)) * dt;
+    f.z = (f.z || 0) + f.zVel * dt;
+    f.vis.position.z = f.z;
+    f.vis.rotation.x = THREE.MathUtils.clamp(f.zVel * 0.05, -0.3, 0.3);
+    // running: the face slides round the cup toward where it's going
+    const run = f.onGround && f.passT <= 0 ? Math.min(1, Math.abs(f.vx) / 5.5) : 0;
+    f.face.rotation.y += (run * 0.42 - f.face.rotation.y) * Math.min(1, dt * 10);
     updateLegs(f, dt);
     updateArms(f, dt);
     f.stars.visible = f.stun > 0;
@@ -2810,6 +2831,7 @@ button[aria-pressed="true"] { background: var(--ink); color: var(--paper); }
     }
     return 0;
   }
+  const _elbowDown = V(0, -1, 0.6);
   function updateArms(f, dt) {
     const now = performance.now() / 1000;
     f.arms.forEach((arm, i) => {
@@ -2870,8 +2892,10 @@ button[aria-pressed="true"] { background: var(--ink); color: var(--paper); }
         bend = f.guard.dir === 'up' && to.x < 0 ? 1 : -1;
       }
       const gh = f.gesture && gestureHand(f, i);
-      if (gh) { _hand.lerp(gh.at, gh.w); bend = gh.bend; }
-      const end = solveLimb(arm.limb, SHOULDER_LOCAL, _hand, planeHint(SHOULDER_LOCAL, _hand, bend));
+      if (gh) { _hand.lerp(gh.at, gh.w); _hand.z += gh.arc || 0; bend = gh.bend; }
+      // in a gesture the chatbots' elbows point down and toward you wherever the hand is, never up into the cup
+      const hint = gh && gh.elbowDown ? _elbowDown : planeHint(SHOULDER_LOCAL, _hand, bend);
+      const end = solveLimb(arm.limb, SHOULDER_LOCAL, _hand, hint);
       if (arm.hand) {
         arm.hand.position.copy(end);
         if (arm.hand.userData.aim) arm.hand.rotation.z = Math.atan2(end.y - arm.limb.b.y, end.x - arm.limb.b.x);
@@ -3679,8 +3703,11 @@ button[aria-pressed="true"] { background: var(--ink); color: var(--paper); }
     if (f.kind === 'so') {       // a hand on the hip, and a finger wagged at you
       return i === 0 ? { at: V(0.62 + 0.11 * Math.sin(t * 17), 2.35, 0.42), w, bend: -1 } : { at: V(-0.36, 1.2, 0.12), w, bend: 1 };
     }
-    if (f.kind === 'gpt') return i === 1 ? { at: V(0.55, 2.15, 0.38), w, bend: 1 } : null;          // thumbs up
-    return i === 1 ? { at: V(0.74 + 0.13 * Math.sin(t * 13), 2.42 + 0.06 * Math.cos(t * 13), 0.34), w, bend: 1 } : null;   // a wave, out beside the cup
+    // the elbows bend down and out, and the hands come forward, so the arms stay clear of the cup
+    // (arc: on the way there and back the hand swings round in front of the cup rather than through it)
+    const arc = 0.9 * 4 * w * (1 - w);
+    if (f.kind === 'gpt') return i === 1 ? { at: V(0.55, 2.15, 0.55), w, bend: -1, arc, elbowDown: true } : null;         // thumbs up
+    return i === 1 ? { at: V(0.76 + 0.13 * Math.sin(t * 13), 2.4 + 0.06 * Math.cos(t * 13), 0.66), w, bend: -1, arc, elbowDown: true } : null;   // a wave, out beside the cup
   }
   function updateVersus(dt) {
     if (!versus) return;
@@ -4259,8 +4286,83 @@ button[aria-pressed="true"] { background: var(--ink); color: var(--paper); }
   }
   // local testing only (?dev=<name> on localhost): where everyone is, as this browser sees it
   if (DEV_USER) {
-    window.__bb = () => fighters.map(f => ({ id: f.netId, x: f.x, y: f.y, hp: f.hp, dead: f.dead, out: !!f.out, stocks: f.stocks, versus: !!versus }));
+    window.__bb = () => fighters.map(f => ({ id: f.netId, kind: f.kind, x: f.x, y: f.y, z: f.z || 0, face: f.face.rotation.y, hp: f.hp, dead: f.dead, out: !!f.out, stocks: f.stocks, versus: !!versus }));
     window.__bbKO = i => { const f = fighters[i]; if (f && !f.dead) { f.hp = 0; die(f); } };   // knocks a fighter out, as this browser
+    // hands and heads in the versus gestures: steps one fighter's gesture through and reports how deep any part of
+    // an arm (upper arm, forearm, fist, Stack Overflow's finger) goes into its own cup, in body units
+    window.__bbGestureProbe = kind => {
+      const w = vsWorld(kind), f = w.fighters[0];
+      f.facing = f.prevFacing = 1;
+      f.gesture = { t: 0, dur: GESTURE_LEN };
+      const into = (p, r) => {        // how far a sphere of radius r at p (body frame) is inside the cup
+        const rad = Math.hypot(p.x, p.z), top = RIM_Y, bottom = HEAD_Y - DEPTH;
+        if (p.y > top + r || p.y < bottom - r) return 0;
+        // the cup: a cylinder down to HEAD_Y, then a rounded bottom (an ellipsoid) down to HEAD_Y - DEPTH
+        let wall = R + LINE_W;
+        if (p.y < HEAD_Y) { const k = (HEAD_Y - p.y) / DEPTH; wall = (R + LINE_W) * Math.sqrt(Math.max(0, 1 - k * k)); }
+        return Math.max(0, wall + r - rad);
+      };
+      let worst = 0, worstT = 0, frames = 0, hit = 0;
+      const dt = 1 / 60;
+      for (let t = 0; t < GESTURE_LEN; t += dt) {
+        f.gesture.t = t;
+        enterWorld(w);
+        f.x = 0; f.vx = 0;
+        updateFighter(f, NO_INPUT, dt);
+        leaveWorld(w);
+        let d = 0;
+        for (const arm of f.arms) {
+          const { a, b, c } = arm.limb;
+          for (let s = 0; s <= 1; s += 0.05) { d = Math.max(d, into(a.clone().lerp(b, s), LIMB_R), into(b.clone().lerp(c, s), LIMB_R)); }
+          d = Math.max(d, into(c, 0.07));
+          if (arm.hand && arm.hand.userData.aim) {
+            const dir = c.clone().sub(b).normalize();
+            for (let s = 0.05; s <= 0.26; s += 0.03) d = Math.max(d, into(c.clone().addScaledVector(dir, s), LIMB_R));
+          }
+        }
+        frames++; if (d > 0.001) hit++;
+        if (d > worst) { worst = d; worstT = t; }
+      }
+      f.gesture = null;
+      return { kind, worst: +worst.toFixed(3), at: +worstT.toFixed(2), framesInside: hit, frames };
+    };
+    // one moment of a gesture (t < 0: no gesture): each arm's elbow and hand, and how far each is inside the cup
+    window.__bbArms = (kind, t) => {
+      const w = vsWorld(kind), f = w.fighters[0];
+      f.facing = f.prevFacing = 1;
+      f.gesture = t < 0 ? null : { t, dur: GESTURE_LEN };
+      for (let k = 0; k < 3; k++) { enterWorld(w); f.x = 0; f.vx = 0; updateFighter(f, NO_INPUT, 1 / 60); leaveWorld(w); }
+      const r2 = v => [+v.x.toFixed(2), +v.y.toFixed(2), +v.z.toFixed(2)];
+      return f.arms.map((arm, i) => ({ arm: i, elbow: r2(arm.limb.b), hand: r2(arm.limb.c) }));
+    };
+    // the logos' ink outlines: renders a logo with and without its outline and counts dark pixels that land inside
+    // the logo (not on its rim). Returns { inside, rim, png } per call.
+    window.__bbLogoProbe = (kind, rx, ry, size = 512) => {
+      const r = window.__probeR || (window.__probeR = new THREE.WebGLRenderer({ antialias: false, preserveDrawingBuffer: true }));
+      r.setPixelRatio(1); r.setSize(size, size, false);
+      const L = logoScene(kind, new THREE.Color('#ffffff'));
+      L.logo.rotation.set(rx, ry, 0);
+      const cam = new THREE.OrthographicCamera(-0.62, 0.62, 0.62, -0.62, 0.1, 10); cam.position.z = 5;
+      const grab = () => { r.render(L.sc, cam); const gl = r.getContext(), px = new Uint8Array(size * size * 4); gl.readPixels(0, 0, size, size, gl.RGBA, gl.UNSIGNED_BYTE, px); return px; };
+      const withInk = grab(); const png = r.domElement.toDataURL();
+      const shells = []; L.logo.traverse(o => { if (o.material === outlineBase) shells.push(o); });
+      shells.forEach(o => { o.visible = false; });
+      const plain = grab();
+      // inside = covered by the logo with no outline, at least `band` px from its edge
+      const n = size, cov = new Uint8Array(n * n);
+      for (let i = 0; i < n * n; i++) cov[i] = plain[i * 4] + plain[i * 4 + 1] + plain[i * 4 + 2] < 720 ? 1 : 0;
+      const band = Math.ceil(LOGO_LINE / 1.24 * n) + 2;
+      let inside = 0, rim = 0;
+      for (let y = band; y < n - band; y++) for (let x = band; x < n - band; x++) {
+        const i = y * n + x;
+        const dark = (withInk[i * 4] + withInk[i * 4 + 1] + withInk[i * 4 + 2]) / 3 < 60 && (plain[i * 4] + plain[i * 4 + 1] + plain[i * 4 + 2]) / 3 >= 60;
+        if (!dark) continue;
+        let core = cov[i];
+        if (core) for (let d = 1; d <= band && core; d++) core = cov[i - d] && cov[i + d] && cov[i - d * n] && cov[i + d * n];
+        if (core) inside++; else rim++;
+      }
+      return { inside, rim, png };
+    };
   }
 
   document.getElementById('backBtn').addEventListener('click', () => {
@@ -4305,8 +4407,9 @@ button[aria-pressed="true"] { background: var(--ink); color: var(--paper); }
   resize();
 
   let camSnap = true;
+  const fitCam = new THREE.PerspectiveCamera(), _fit = V();
   function updateCamera(dt) {
-    let list = fighters.filter(f => alive(f) && (f.y > -2 || f.ledge || f.tether || (f.whip && !f.onGround)));
+    let list = fighters.filter(f => alive(f) && !f.out);
     if (!list.length) list = fighters.filter(f => f.y > -2);
     if (!list.length) return;
     let minX = Infinity, maxX = -Infinity, maxY = 0;
@@ -4317,15 +4420,22 @@ button[aria-pressed="true"] { background: var(--ink); color: var(--paper); }
     const want = Math.max(11, halfW / (tanH * camera.aspect), (3.4 + maxY * 0.5) / tanH);
     const MAX_DIST = 26;
     const maxDist = camera.aspect < 1 ? MAX_DIST * 1.6 : MAX_DIST;    // and it can pull back further
-    const dist = Math.min(maxDist, want);
-    if (want > maxDist && player && alive(player)) {
-      const visHalf = maxDist * tanH * camera.aspect - 1.2;
-      cx = THREE.MathUtils.clamp(cx, player.x - visHalf, player.x + visHalf);
-    }
-    const k = camSnap ? 1 : 1 - Math.exp(-dt * 3);
+    const lookY = 1.3 + maxY * 0.3;
+    // the comfortable distance, then as far back as it takes for every fighter to be in the picture
+    let dist = Math.min(maxDist, want);
+    const fits = d => {
+      fitCam.copy(camera); fitCam.position.set(cx, lookY + d * 0.5, d); fitCam.lookAt(cx, lookY, 0); fitCam.updateMatrixWorld();
+      return everyone.every(f => [[-0.7, -0.2], [0.7, -0.2], [-0.7, BOX_H + 1.3], [0.7, BOX_H + 1.3]].every(([ox, oy]) => {
+        const p = _fit.set(f.x + ox, f.y + oy, 0).project(fitCam);
+        return Math.abs(p.x) < 0.94 && Math.abs(p.y) < 0.9;
+      }));
+    };
+    const everyone = fighters.filter(f => alive(f) && !f.out);
+    for (let i = 0; i < 12 && !fits(dist); i++) dist *= 1.12;
+    // pulling back is quick, so no one leaves the picture; coming back in is gentle
+    const k = camSnap ? 1 : 1 - Math.exp(-dt * (dist > camera.position.z ? 9 : 3));
     camSnap = false;
     camera.position.x += (cx - camera.position.x) * k;
-    const lookY = 1.3 + maxY * 0.3;
     camera.position.y += (lookY + camera.position.z * 0.5 - camera.position.y) * k;
     camera.position.z += (dist - camera.position.z) * k;
     scene.fog.near = camera.position.z + 6; scene.fog.far = camera.position.z + 28;
@@ -4383,14 +4493,27 @@ button[aria-pressed="true"] { background: var(--ink); color: var(--paper); }
       if (!(m.stumble > 0)) shove(m, dir, 0.55);
     }
   }
+  // dashing through someone: the one passed is pushed away from the camera and the dasher swerves toward it,
+  // then both spring back into line (DEPTH_K, DEPTH_C), with the same discomfort as the other pushes
+  const DEPTH_K = 70, DEPTH_C = 10;
+  function brushPast(a, b) {
+    const [m, o] = a.passT > 0 ? [a, b] : [b, a];
+    if (o.passT > 0 || Math.abs(o.x - m.x) > BODY_GAP * 1.2 || !m.brushed || m.brushed.has(o.id)) return;
+    m.brushed.add(o.id);
+    o.zVel = (o.zVel || 0) - 12;
+    m.zVel = (m.zVel || 0) + 6;
+    o.jolt = 0.25; o.joltDir = m.passDir;
+    o.strain = Math.max(o.strain || 0, 0.35);
+  }
   function separateFighters(dt) {
     const live = fighters.filter(f => !f.dead);
     pushClock += dt;
     const now = new Set(), t = pushClock;
     for (let i = 0; i < live.length; i++) for (let j = i + 1; j < live.length; j++) {
       const a = live[i], b = live[j];
-      if (a.passT > 0 || b.passT > 0 || a.ledge || b.ledge || a.tether || b.tether) continue;
+      if (a.ledge || b.ledge || a.tether || b.tether) continue;
       if (Math.abs(a.y - b.y) > BOX_H * 0.7) continue;
+      if (a.passT > 0 || b.passT > 0) { brushPast(a, b); continue; }
       const dx = b.x - a.x, d = Math.abs(dx);
       const key = Math.min(a.id, b.id) + ':' + Math.max(a.id, b.id);
       const gap = pairGaps.get(key) || restGap(a, b);
@@ -4526,12 +4649,14 @@ button[aria-pressed="true"] { background: var(--ink); color: var(--paper); }
     const t = performance.now() / 1000;
     bRenderer.setViewport(0, 0, cr.width, cr.height);
     bRenderer.clear();
-    for (const b of brands) {
-      // drifting: a slow loop of its own, a few pixels each way
-      const dx = Math.sin(t * 0.55 + b.phase) * 16 + Math.sin(t * 1.3 + b.phase * 2) * 5;
+    const box = brandsEl.getBoundingClientRect(), radius = Math.min(box.width, box.height) * 0.31;
+    brands.forEach((b, i) => {
+      // the three sit at the corners of a triangle that slowly turns, each bobbing a little on its own
+      const ang = t * 0.3 + i * Math.PI * 2 / 3 - Math.PI / 2, half = b.a.offsetWidth / 2;
       // a click makes it hop
       const hop = b.jig > 0 ? Math.sin(Math.PI * (1 - b.jig)) * 22 : 0;
-      const dy = Math.sin(t * 0.8 + b.phase * 1.7) * 8 - hop;
+      const dx = box.width / 2 + Math.cos(ang) * radius - half;
+      const dy = box.height / 2 + Math.sin(ang) * radius - half + Math.sin(t * 0.8 + b.phase * 1.7) * 5 - hop;
       b.a.style.transform = `translate(${dx.toFixed(1)}px, ${dy.toFixed(1)}px)`;
       b.grow += ((b.hover ? 1.45 : 1) - b.grow) * Math.min(1, dt * 12);
       b.jig = Math.max(0, b.jig - dt * 2.6);
@@ -4544,7 +4669,7 @@ button[aria-pressed="true"] { background: var(--ink); color: var(--paper); }
       const spin = b.kind === 'so' ? 0 : (b.kind === 'gpt' ? 1 : -1) * t * 0.6;
       b.logo.rotation.set(Math.sin(t * 0.7 + b.phase) * 0.3, Math.sin(t * 0.9 + b.phase) * 0.45 + (b.hover ? Math.sin(t * 3) * 0.2 : 0), spin);
       bRenderer.render(b.sc, bCam);
-    }
+    });
   }
   const emptyHud = new THREE.Scene(); emptyHud.background = HUD_PAPER;
   function renderHudLogos(dt) {
