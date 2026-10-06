@@ -39,10 +39,11 @@ const HOOK = `
       for (const f of [...fighters]) if (!kinds.includes(f.kind)) {
         scene.remove(f.root); springs = springs.filter(sp => sp !== f.spring); fighters.splice(fighters.indexOf(f), 1);
       }
-      const xs = kinds.length === 2 ? [-3.5, 3.5] : [-6, 0, 6];
+      const xs = kinds.length === 2 ? [-3.5, 3.5] : [-4.2, 0, 4.2];
       kinds.forEach((k, i) => window.__app.place(k, xs[i], xs[i] < 0 ? 1 : -1));
       buildHud();
       window.__app.resultShown = false;
+      startVersus();          // the match opens on the versus screen, as a duel or free-for-all does in the game
     },
     autoResult() {
       const A = window.__app, left = fighters.filter(f => !f.out);
@@ -60,6 +61,19 @@ const HOOK = `
       for (const [kind, x, facing] of places) window.__app.place(kind, x, facing);
     },
   };
+  // What happens, for the sound effects: the game is silent, so its moments are logged here and read back each
+  // frame by annotate (state.ev). Wrapping the functions keeps the game itself unchanged.
+  window.__ev = [];
+  const __log = (...a) => window.__ev.push(a);
+  cue = (name, kind) => __log(name, kind || '');
+  { const f0 = hurt; hurt = function (h, dmg, ...rest) {
+      const hp = h.hp, r = f0.call(this, h, dmg, ...rest);
+      if (r === 'parry') __log('parry', h.kind); else if (h.hp < hp) __log('hit', h.kind, Math.round(hp - h.hp));
+      return r; }; }
+  { const f0 = die; die = function (h, ringOut) { const was = h.dead; f0.call(this, h, ringOut); if (!was && h.dead) __log(ringOut ? 'ringout' : 'ko', h.kind); }; }
+  { const f0 = tryAbility; tryAbility = function (f, slot) { const ok = f0.call(this, f, slot); if (ok && !previewing) __log('move', f.kind, slot); return ok; }; }
+  { const f0 = spawnProjectile; spawnProjectile = function (o) { const r = f0.call(this, o); if (!previewing && o.owner && o.dmg > 0) __log('shot', o.owner.kind, o.kind); return r; }; }
+  { const f0 = respawn; respawn = function (f, drop) { f0.call(this, f, drop); if (drop) __log('drop', f.kind); }; }
 `;
 
 const INJECT_BASE = [
@@ -80,7 +94,7 @@ const INJECT_PHONE = [
       { replace: '@media (pointer: coarse) and (orientation: landscape) and (max-height: 540px) {', code: '@media (orientation: landscape) and (max-height: 540px) {' },
     ];
 // CPU matches show the health plates (they sit at the top, clear of the text)
-const CSS_MATCH = `.moves, .touch, .corner, .trainbar, .status { display: none !important; }`;
+const CSS_MATCH = `.moves, .touch, .corner, .trainbar, .status, .vs-skip { display: none !important; }`;
 
 export default {
   app: '../public/games/botbattle',
@@ -101,7 +115,17 @@ export default {
     // each fighter: kind, health, lives, knocked out, out of the match
     out.state = { ctx: g ? Math.round(g.context) : null, inhale: A.inhaling('gpt'),
       f: A.fighters.map(f => [f.kind, Math.round(f.hp), Number.isFinite(f.stocks) ? f.stocks : -1, f.dead ? 1 : 0, f.out ? 1 : 0]),
-      result: !document.getElementById('result').hidden };
+      result: !document.getElementById('result').hidden, ev: window.__ev.splice(0) };
+    // jumps and landings, from each fighter's state since the last frame
+    const seen = window.__seen || (window.__seen = {});
+    for (const f of A.fighters) {
+      const was = seen[f.id];
+      if (was && !f.dead) {
+        if (f.jumpT < was.jumpT) out.state.ev.push(['jump', f.kind]);
+        if (f.onGround && !was.onGround && was.vy < -6) out.state.ev.push(['land', f.kind, Math.round(-was.vy)]);
+      }
+      seen[f.id] = { jumpT: f.jumpT, onGround: f.onGround, vy: f.vy };
+    }
     // practice: name what Stack Overflow is doing, at its stack
     const so = A.get('so');
     if (window.__labelMoves && so && !so.dead) {
@@ -176,24 +200,24 @@ export default {
       ] },
 
     // the showcase: the game being played on a phone held upright, on a desktop, and on a phone on its side
-    show_phone: { seconds: 26, inject: INJECT_PHONE, css: '',
+    show_phone: { seconds: 30, inject: INJECT_PHONE, css: '',
       script: [
         [1.5, page => page.click({ text: 'Free-for-all' })],
         [3.2, page => page.click('#nextBtn')],
         [4.4, page => page.click('#prevBtn')],
-        [5.8, page => page.click('#pickBtn')],
-        [7.0, page => page.down('ArrowRight')],
-        [8.6, page => page.up('ArrowRight')],
-        [9.0, page => page.click('[data-key="KeyJ"]')], [9.25, page => page.click('[data-key="KeyJ"]')], [9.5, page => page.click('[data-key="KeyJ"]')],
-        [11.0, page => page.click('[data-key="KeyK"]')],
-        [13.0, page => page.click('[data-key="Space"]')],
-        [14.5, page => page.click('[data-key="KeyL"]')],
-        [17.5, page => page.click('[data-key="Backspace"]')],
-        [19.0, page => page.click('[data-key="KeyI"]')],
-        [21.0, page => page.click('[data-key="KeyK"]')],
-        [23.0, page => page.click('[data-key="KeyJ"]')], [23.25, page => page.click('[data-key="KeyJ"]')],
+        [6.7, page => page.click('#pickBtn')],
+        [11.5, page => page.down('ArrowRight')],
+        [13.1, page => page.up('ArrowRight')],
+        [13.5, page => page.click('[data-key="KeyJ"]')], [13.75, page => page.click('[data-key="KeyJ"]')], [14.0, page => page.click('[data-key="KeyJ"]')],
+        [15.5, page => page.click('[data-key="KeyK"]')],
+        [17.5, page => page.click('[data-key="Space"]')],
+        [19.0, page => page.click('[data-key="KeyL"]')],
+        [22.0, page => page.click('[data-key="Backspace"]')],
+        [23.5, page => page.click('[data-key="KeyI"]')],
+        [25.5, page => page.click('[data-key="KeyK"]')],
+        [27.5, page => page.click('[data-key="KeyJ"]')], [27.75, page => page.click('[data-key="KeyJ"]')],
       ] },
-    show_desktop: { seconds: 26, size: [1280, 720], dpr: 1, inject: INJECT_BASE, css: '',
+    show_desktop: { seconds: 30, size: [1280, 720], dpr: 1, inject: INJECT_BASE, css: '',
       script: [
         [1.2, page => page.glide([260, 160], { text: 'Duel' }, 0.8)],
         [2.2, page => page.click({ text: 'Duel' })],
@@ -201,18 +225,18 @@ export default {
         [4.6, page => page.press('ArrowRight')],
         [5.8, page => page.press('Enter')],
         [7.2, page => page.press('KeyR')],                                  // random opponent
-        [9.5, page => page.down('KeyD')],
-        [10.6, page => page.up('KeyD')],
-        [11.0, page => page.down('KeyJ')],
-        [12.2, page => page.up('KeyJ')],
-        [13.5, page => page.press('KeyK')],
-        [15.0, page => page.press('KeyL')],
-        [17.5, page => page.press('KeyW')],
-        [17.8, page => page.press('KeyW')],
-        [19.0, page => page.press('Backspace')],
-        [20.5, page => page.down('KeyJ')],
-        [21.6, page => page.up('KeyJ')],
-        [23.0, page => page.press('KeyK')],
+        [13.1, page => page.down('KeyD')],
+        [14.2, page => page.up('KeyD')],
+        [14.6, page => page.down('KeyJ')],
+        [15.8, page => page.up('KeyJ')],
+        [17.1, page => page.press('KeyK')],
+        [18.6, page => page.press('KeyL')],
+        [21.1, page => page.press('KeyW')],
+        [21.4, page => page.press('KeyW')],
+        [22.6, page => page.press('Backspace')],
+        [24.1, page => page.down('KeyJ')],
+        [25.2, page => page.up('KeyJ')],
+        [26.6, page => page.press('KeyK')],
       ] },
     show_landscape: { seconds: 24, size: [740, 360], inject: INJECT_PHONE, css: '',
       script: [

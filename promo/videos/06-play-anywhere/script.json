@@ -1,20 +1,8 @@
 [
- {
-  "say": "Bot Battle runs in the browser, on a phone held upright."
- },
- {
-  "say": "Each fighter is a logo with its lives on the corner, and the moves are buttons."
- },
- {
-  "say": "On a desktop, the mouse and keyboard pick the mode and the fighter."
- },
- {
-  "say": "In a match, the moves are listed along the bottom."
- },
- {
-  "say": "With the phone on its side, the buttons fold into two rows."
- },
- {
-  "say": "There, ChatGPT's cursor takes control of Stack Overflow."
- }
+ {"say": "Bot Battle runs in the browser, here on a phone held upright."},
+ {"say": "Before the fight, all three bots show off, and then you play with the buttons on screen."},
+ {"say": "On a computer, you pick your mode and fighter with the mouse or the keyboard."},
+ {"say": "During the match, the keys for every move are listed along the bottom."},
+ {"say": "Turn the phone on its side and the buttons fold into two rows."},
+ {"say": "Here, ChatGPT's cursor takes control of Stack Overflow."}
 ]

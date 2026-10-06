@@ -233,6 +233,8 @@ button[aria-pressed="true"] { background: var(--ink); color: var(--paper); }
 /* touch pad */
 .touch { display: none; }
 @media (pointer: coarse) {
+  .vs-skip .keys { display: none; }
+  .vs-skip .tap { display: inline; }
   body { touch-action: manipulation; }
   .moves, .keys { display: none; }
   .hud { top: calc(env(safe-area-inset-top, 0px) + 10px); left: 12px; right: 12px; gap: 18px; grid-template-columns: repeat(var(--n, 3), 52px); }
@@ -283,6 +285,39 @@ button[aria-pressed="true"] { background: var(--ink); color: var(--paper); }
 @media (max-width: 560px) {
   .plate-tag { display: none; }
 }
+/* versus: one panel per fighter, before a duel or free-for-all starts */
+.versus { position: fixed; inset: 0; z-index: 40; display: flex; overflow: hidden; background: var(--paper); transition: opacity .4s ease; }
+.versus.leaving { opacity: 0; }
+.vs-panel {
+  position: relative; flex: 1 1 0; min-width: 0; border-left: 3px solid var(--ink);
+  background: color-mix(in srgb, var(--c) 13%, var(--paper));
+  animation: vsIn .42s cubic-bezier(.2, .9, .3, 1.15) both; animation-delay: calc(var(--i) * 80ms);
+}
+.vs-panel:first-child { border-left: 0; }
+.vs-panel:nth-child(odd) { --from: -100%; }
+.vs-panel:nth-child(even) { --from: 100%; }
+@keyframes vsIn { from { transform: translateY(var(--from)); } }
+.vs-floor { position: absolute; left: 14%; right: 14%; top: 74%; border-top: 3px solid var(--ink); }
+.vs-tag { position: absolute; top: 14px; left: 14px; font: 600 11px/1 var(--mono); letter-spacing: .08em; text-transform: uppercase; background: var(--ink); color: var(--paper); padding: 5px 8px; }
+.vs-caption { position: absolute; top: calc(74% + 16px); left: 8px; right: 8px; display: grid; gap: 8px; justify-items: center; text-align: center; }
+.vs-name { margin: 0; font: 400 clamp(15px, 2.6vw, 34px)/1.05 var(--display); text-wrap: balance; }
+.vs-line { margin: 0; font: italic 400 clamp(11px, 1.3vw, 15px)/1.35 var(--mono); color: var(--ink-soft); opacity: 0; transform: translateY(6px); transition: opacity .25s, transform .25s; }
+.vs-line.on { opacity: 1; transform: none; }
+.vs-mark {
+  position: absolute; top: 40%; z-index: 3; transform: translate(-50%, -50%) rotate(-8deg);
+  font: 400 clamp(22px, 4vw, 52px)/1 var(--display); background: var(--ink); color: var(--paper); padding: .2em .32em .14em;
+  animation: vsStamp .35s cubic-bezier(.3, 1.6, .5, 1) both; animation-delay: .45s;
+}
+@keyframes vsStamp { from { transform: translate(-50%, -50%) rotate(-8deg) scale(2.4); opacity: 0; } }
+#vsCanvas { position: absolute; inset: 0; width: 100%; height: 100%; z-index: 2; pointer-events: none; }
+.vs-skip { position: absolute; bottom: 12px; left: 0; right: 0; z-index: 3; margin: 0; text-align: center; font: 500 11px/1 var(--mono); color: var(--ink-soft); }
+.fight-call {
+  position: fixed; inset: 0; z-index: 35; display: grid; place-items: center; pointer-events: none;
+  font: 400 clamp(48px, 11vw, 140px)/1 var(--display); color: var(--ink); animation: fightCall 1s ease-out both;
+}
+@keyframes fightCall { 0% { transform: scale(1.8); opacity: 0; } 15% { transform: scale(1); opacity: 1; } 70% { opacity: 1; } 100% { transform: scale(1.06); opacity: 0; } }
+.vs-skip .tap { display: none; }
+@media (prefers-reduced-motion: reduce) { .vs-panel, .vs-mark, .fight-call { animation-duration: .01s; } }
 </style>
 
 <div id="stage"></div>
@@ -376,6 +411,12 @@ button[aria-pressed="true"] { background: var(--ink); color: var(--paper); }
     </div>
   </div>
 </div>
+
+<div class="versus" id="versus" hidden>
+  <canvas id="vsCanvas"></canvas>
+  <p class="vs-skip"><span class="keys">Enter to skip</span><span class="tap">Tap to skip</span></p>
+</div>
+<div class="fight-call" id="fightCall" hidden>Fight!</div>
 
 <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/loaders/SVGLoader.js"></script>
@@ -891,7 +932,7 @@ button[aria-pressed="true"] { background: var(--ink); color: var(--paper); }
         a1: { name: 'Block shot', short: 'Block', cd: 0.06, desc: 'Fires blocks from the top of your stack. Hold to keep firing.' },
         a2: { name: 'Block whip', short: 'Whip', cd: 0.8, desc: 'Lashes your stack forward. Hold W to lash upward. Grabs ledges.' },
         a3: { name: 'Unified beam', short: 'Beam', cd: 1.2, desc: 'Fires all five blocks as one beam.' },
-        a4: { name: 'Correction', short: 'Correct', cd: 7, desc: 'A smug remark that stuns everyone nearby.' },
+        a4: { name: 'Correction', short: 'Correct', cd: 7, desc: 'Makes a smug remark that stuns everyone nearby.' },
       },
     },
     gpt: {
@@ -2705,6 +2746,8 @@ button[aria-pressed="true"] { background: var(--ink); color: var(--paper); }
         _hand.lerp(to, gw);
         bend = f.guard.dir === 'up' && to.x < 0 ? 1 : -1;
       }
+      const gh = f.gesture && gestureHand(f, i);
+      if (gh) { _hand.lerp(gh.at, gh.w); bend = gh.bend; }
       const end = solveLimb(arm.limb, SHOULDER_LOCAL, _hand, planeHint(SHOULDER_LOCAL, _hand, bend));
       if (arm.hand) {
         arm.hand.position.copy(end);
@@ -2726,6 +2769,7 @@ button[aria-pressed="true"] { background: var(--ink); color: var(--paper); }
     if (now - (lastTap[dir] || -1e9) < 280) { pressed.add(dir); lastTap[dir] = -1e9; } else lastTap[dir] = now;
   }
   addEventListener('keydown', e => {
+    if (versus && (e.code === 'Enter' || e.code === 'Space')) { e.preventDefault(); skipVersus(); return; }
     if (e.code === 'Escape' && inMatch()) { openMenu(); return; }
     if (e.code === 'Escape' && !selectEl.hidden) { document.getElementById('backBtn').click(); return; }
     if (!GAME_KEYS.has(e.code) || !player) return;
@@ -3046,6 +3090,8 @@ button[aria-pressed="true"] { background: var(--ink); color: var(--paper); }
     document.getElementById('touch').hidden = !player;
     trainEl.hidden = m.kind !== 'training';
     keys.clear(); pressed.clear();
+    stopVersus();
+    if (m.kind === 'duel' || m.kind === 'ffa') startVersus();
   }
   // back for another life: the body vanishes in a puff, and a fresh fighter drops in from above,
   // blinking and unhurtable for a moment
@@ -3407,6 +3453,141 @@ button[aria-pressed="true"] { background: var(--ink); color: var(--paper); }
     });
   }
 
+  // ---------- versus: before a duel or a free-for-all, each fighter gets a panel and a gesture ----------
+  // The panels are HTML; the fighters are drawn into them from little worlds of their own, like the cards'.
+  // Nobody in the match moves until it is over; Enter, Space or a tap skips it.
+  const versusEl = document.getElementById('versus');
+  const fightCallEl = document.getElementById('fightCall');
+  const vsRenderer = new THREE.WebGLRenderer({ canvas: document.getElementById('vsCanvas'), antialias: true, alpha: true });
+  vsRenderer.setPixelRatio(Math.min(devicePixelRatio, 2));
+  vsRenderer.setClearColor(0x000000, 0);
+  const vsCam = new THREE.OrthographicCamera(-1, 1, 1, -1, 0.1, 100);
+  const VS_LEN = 3.6, VS_FADE = 0.45, GESTURE_AT = 0.55, GESTURE_GAP = 0.55, GESTURE_LEN = 1.5, VS_FLOOR = 0.74;
+  const VS_LINES = { so: 'Closed as duplicate.', gpt: 'Great question!', claude: "You're absolutely right!" };
+  const vsWorlds = {};
+  let versus = null;
+  // a cue for the sound of something happening; the game itself is silent, and recordings listen here
+  function cue() {}
+  function vsWorld(kind) {
+    let w = vsWorlds[kind];
+    if (!w) {
+      const sc = new THREE.Scene();
+      sc.add(new THREE.HemisphereLight('#ffffff', '#d8d2c4', 0.8));
+      const l = new THREE.DirectionalLight('#ffffff', 0.75); l.position.set(3, 8, 6); sc.add(l);
+      w = vsWorlds[kind] = { scene: sc, fighters: [], projectiles: [], effects: [], transient: new Set(), springs: [] };
+    }
+    for (const f of w.fighters) w.scene.remove(f.root);
+    for (const p of w.projectiles) w.scene.remove(p.mesh);
+    for (const e of w.effects) w.scene.remove(e.mesh);
+    for (const m of w.transient) w.scene.remove(m);
+    Object.assign(w, { fighters: [], projectiles: [], effects: [], transient: new Set(), springs: [] });
+    w.fighters.push(buildFighter(kind, 0, false, w.scene, w.springs));
+    return w;
+  }
+  function startVersus() {
+    versusEl.querySelectorAll('.vs-panel, .vs-mark').forEach(el => el.remove());
+    const n = fighters.length;
+    const panels = fighters.map((mf, i) => {
+      const w = vsWorld(mf.kind), f = w.fighters[0];
+      f.facing = f.prevFacing = i === 0 ? 1 : -1;
+      // it drops in as its panel slides into place
+      f.y = 3; f.onGround = false; f.feet.forEach(ft => { ft.y = f.y; ft.air = true; });
+      f.gesture = { t: -(GESTURE_AT + i * GESTURE_GAP), dur: GESTURE_LEN };
+      const el = document.createElement('div');
+      el.className = 'vs-panel';
+      el.style.setProperty('--c', mf.kit.color);
+      el.style.setProperty('--i', i);
+      el.innerHTML = `<div class="vs-tag">${mf.isPlayer ? 'You' : 'CPU'}</div><div class="vs-floor"></div>
+        <div class="vs-caption"><h2 class="vs-name">${mf.kit.name}</h2><p class="vs-line">“${VS_LINES[mf.kind]}”</p></div>`;
+      versusEl.insertBefore(el, versusEl.querySelector('.vs-skip'));
+      return { w, f, el, line: el.querySelector('.vs-line'), started: false };
+    });
+    for (let k = 1; k < n; k++) {
+      const mark = document.createElement('div');
+      mark.className = 'vs-mark'; mark.textContent = 'VS'; mark.style.left = `${k / n * 100}%`;
+      versusEl.appendChild(mark);
+    }
+    versus = { t: 0, panels, skipped: false };
+    versusEl.classList.remove('leaving');
+    versusEl.hidden = false;
+    fightCallEl.hidden = true;
+    vsRenderer.setSize(innerWidth, innerHeight, false);
+    cue('vs-in');
+  }
+  function stopVersus() {
+    versus = null;
+    versusEl.hidden = true;
+    versusEl.classList.remove('leaving');
+  }
+  function skipVersus() { if (versus && versus.t < VS_LEN - VS_FADE) versus.t = VS_LEN - VS_FADE; }
+  versusEl.addEventListener('pointerdown', e => { e.preventDefault(); skipVersus(); });
+  addEventListener('resize', () => { if (versus) vsRenderer.setSize(innerWidth, innerHeight, false); });
+  // where a gesture puts each hand, in the fighter's own frame (facing +x), and how firmly
+  function gestureHand(f, i) {
+    const g = f.gesture, t = g.t;
+    if (t < 0) return null;
+    const w = Math.min(1, t / 0.18) * THREE.MathUtils.clamp((g.dur - t) / 0.3, 0, 1);
+    if (w <= 0) return null;
+    if (f.kind === 'so') {       // a hand on the hip, and a finger wagged at you
+      return i === 0 ? { at: V(0.62 + 0.11 * Math.sin(t * 17), 2.35, 0.42), w, bend: -1 } : { at: V(-0.36, 1.2, 0.12), w, bend: 1 };
+    }
+    if (f.kind === 'gpt') return i === 1 ? { at: V(0.55, 2.15, 0.38), w, bend: 1 } : null;          // thumbs up
+    return i === 1 ? { at: V(0.74 + 0.13 * Math.sin(t * 13), 2.42 + 0.06 * Math.cos(t * 13), 0.34), w, bend: 1 } : null;   // a wave, out beside the cup
+  }
+  function updateVersus(dt) {
+    if (!versus) return;
+    const v = versus;
+    v.t += dt;
+    if (v.t >= VS_LEN) {
+      stopVersus();
+      fightCallEl.hidden = false;
+      fightCallEl.style.animation = 'none'; void fightCallEl.offsetWidth; fightCallEl.style.animation = '';
+      setTimeout(() => { fightCallEl.hidden = true; }, 1000);
+      cue('fight');
+      return;
+    }
+    if (v.t >= VS_LEN - VS_FADE) versusEl.classList.add('leaving');
+    vsRenderer.setScissorTest(false);
+    vsRenderer.clear();
+    vsRenderer.setScissorTest(true);
+    const H = innerHeight;
+    for (const p of v.panels) {
+      const f = p.f, g = f.gesture;
+      g.t += dt;
+      if (g.t >= 0 && !p.started) {
+        p.started = true;
+        p.line.classList.add('on');
+        cue('gesture', f.kind);
+        if (f.rotor) f.rotorBoost = 1;
+        if (f.kind === 'gpt' && f.onGround) { f.vy = 5.5; f.onGround = false; }   // a little hop of delight
+      }
+      if (f.rotor && g.t > 0 && g.t < g.dur * 0.7) f.rotorBoost = 1;
+      enterWorld(p.w);
+      const wasAir = !f.onGround;
+      f.x = 0; f.vx = 0;
+      updateFighter(f, NO_INPUT, dt);
+      if (wasAir && f.onGround && v.t < 1) cue('land', f.kind);
+      f.root.rotation.y = -0.5 * f.facing;        // turned three-quarters toward you
+      scene.updateMatrixWorld();
+      for (const sp of springs) { stepSpring(sp, Math.max(dt, 1 / 240)); placeSpring(sp); }
+      if (f.kind === 'so') renderMagazine(f);
+      poseGuard(f);
+      leaveWorld(p.w);
+      // the fighter stands on its panel's floor line, as big as the panel allows
+      const r = p.el.getBoundingClientRect();
+      const ppu = Math.min(r.height * VS_FLOOR * 0.62 / 4.2, r.width / 2.8);
+      vsCam.left = -r.width / 2 / ppu; vsCam.right = r.width / 2 / ppu; vsCam.top = r.height / 2 / ppu; vsCam.bottom = -r.height / 2 / ppu;
+      vsCam.updateProjectionMatrix();
+      const ty = (r.height / 2 - r.height * (1 - VS_FLOOR)) / ppu / Math.cos(P_TILT);
+      vsCam.position.set(0, ty + Math.sin(P_TILT) * 30, Math.cos(P_TILT) * 30);
+      vsCam.lookAt(0, ty, 0);
+      const x = r.left, y = H - r.bottom;
+      vsRenderer.setViewport(x, y, r.width, r.height);
+      vsRenderer.setScissor(x, y, r.width, r.height);
+      vsRenderer.render(p.w.scene, vsCam);
+    }
+  }
+
   document.getElementById('backBtn').addEventListener('click', () => {
     if (pending && pending.step === 'opponent') { pending.step = 'pick'; showSelect(); return; }
     openMenu();
@@ -3725,7 +3906,7 @@ button[aria-pressed="true"] { background: var(--ink); color: var(--paper); }
     for (const f of fighters) {
       let inp;
       const ctrl = f.possessedBy || f;
-      if (f.dead) inp = NO_INPUT;
+      if (f.dead || versus) inp = NO_INPUT;
       else if (ctrl.isPlayer && !matchOver) inp = pin;
       else if (ctrl.isPlayer) inp = NO_INPUT;
       else inp = aiInput(f, dt);
@@ -3742,6 +3923,7 @@ button[aria-pressed="true"] { background: var(--ink); color: var(--paper); }
 
     updateCamera(dt);
     updatePreview(dt);
+    updateVersus(dt);
     updateBrands(dt);
     hud.hidden = !inMatch();          // the plates sit where the menu's logos float
     updateBubble(dt);

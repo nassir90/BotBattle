@@ -1,46 +1,50 @@
 {
- "duration": 26.48,
+ "duration": 33.88,
  "lines": [
   {
-   "line": "Bot Battle runs in the browser, on a phone held upright.",
+   "line": "Bot Battle runs in the browser, here on a phone held upright.",
    "start": 0.0,
-   "end": 4.158
+   "end": 4.973
   },
   {
-   "line": "Each fighter is a logo with its lives on the corner, and the moves are buttons.",
-   "start": 4.753,
-   "end": 9.732
+   "line": "Before the fight, all three bots show off, and then you play with the buttons on screen.",
+   "start": 5.929,
+   "end": 12.198
   },
   {
-   "line": "On a desktop, the mouse and keyboard pick the mode and the fighter.",
-   "start": 10.298,
-   "end": 14.319
+   "line": "On a computer, you pick your mode and fighter with the mouse or the keyboard.",
+   "start": 12.738,
+   "end": 17.281
   },
   {
-   "line": "In a match, the moves are listed along the bottom.",
-   "start": 14.691,
-   "end": 17.232
+   "line": "During the match, the keys for every move are listed along the bottom.",
+   "start": 18.052,
+   "end": 23.358
   },
   {
-   "line": "With the phone on its side, the buttons fold into two rows.",
-   "start": 17.726,
-   "end": 21.43
+   "line": "Turn the phone on its side and the buttons fold into two rows.",
+   "start": 24.015,
+   "end": 28.203
   },
   {
-   "line": "There, ChatGPT's cursor takes control of Stack Overflow.",
-   "start": 21.859,
-   "end": 26.172
+   "line": "Here, ChatGPT's cursor takes control of Stack Overflow.",
+   "start": 28.95,
+   "end": 33.532
   }
  ],
  "heard": [
   "Bot Battle runs in the browser.",
-  "on a phone held upright.",
-  "Each fighter is a logo.",
-  "with its lives on the corner and the moves are buttons",
-  "On a desktop, the mouse and keyboard pick the mode and the fighter.",
-  "In a match, the moves are listed along the bottom.",
-  "With the phone on its side?",
-  "The buttons fold into two rows.",
-  "There, Chat GPT's cursor takes control of stack overflow."
+  "here on a phone held upright.",
+  "Before the fight,",
+  "All three bots show off.",
+  "And then you play with the buttons on screen.",
+  "Oh",
+  "on a computer",
+  "You pick your mode and fighter with the mouse or the keyboard.",
+  "During the match, the keys for every move are listed along the bottom.",
+  "Transcribe this speech exactly.",
+  "Turn the phone on its side.",
+  "and the buttons fold into two rows.",
+  "Here, chat GPT's cursor takes control of stack overflow."
  ]
 }

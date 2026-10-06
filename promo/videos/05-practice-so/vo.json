@@ -1,54 +1,57 @@
 {
- "duration": 34.32,
+ "duration": 35.48,
  "lines": [
   {
    "line": "In training, Stack Overflow fires blocks from the top of its stack.",
    "start": 0.0,
-   "end": 4.559
+   "end": 5.288
   },
   {
-   "line": "Its whip lashes out low, and holding up sends it straight up.",
-   "start": 5.196,
-   "end": 9.417
+   "line": "Its whip lashes out low, or straight up if you hold up.",
+   "start": 6.245,
+   "end": 10.032
   },
   {
-   "line": "Its beam fires all five blocks at once.",
-   "start": 10.418,
-   "end": 12.972
+   "line": "The beam fires all five blocks at once.",
+   "start": 11.084,
+   "end": 13.782
   },
   {
-   "line": "A correction stuns everyone nearby.",
-   "start": 13.904,
-   "end": 16.01
+   "line": "Its correction stuns everyone nearby.",
+   "start": 14.529,
+   "end": 17.125
   },
   {
-   "line": "A parry to the side stops a rod, and an overhead parry stops ChatGPT's slab.",
-   "start": 16.985,
-   "end": 22.465
+   "line": "It parries Claude's rod from the side, and ChatGPT's slab from above.",
+   "start": 18.043,
+   "end": 23.035
   },
   {
-   "line": "Crouching lets Claude's fling pass overhead, and a double tap dashes past.",
-   "start": 23.501,
-   "end": 27.871
+   "line": "It crouches under Claude's fling, then double-taps to dash past.",
+   "start": 23.869,
+   "end": 28.42
   },
   {
-   "line": "With no jumps left below the stage, the upward whip grabs the ledge and pulls it back up.",
-   "start": 28.888,
-   "end": 34.045
+   "line": "Below the stage with no jumps left, it whips upward, grabs the ledge and climbs back up.",
+   "start": 29.268,
+   "end": 35.177
   }
  ],
  "heard": [
-  "In training",
+  "in training.",
   "Stack Overflow fires blocks from the top of its stack.",
-  "It's whip lashes out low.",
-  "and holding up, sends it straight up.",
-  "It's beam fires all five blocks at once.",
-  "A correction stuns everyone nearby.",
-  "A parry to the side stops a rod.",
-  "And an overhead parry stops chat GPT's slab.",
-  "Crouching lets Claude fling pass overhead.",
-  "and a double tap dashes past.",
-  "With no jumps left below the stage,",
-  "The upward whip grabs the ledge and pulls it back up."
+  "Its whip lashes out.",
+  "or straight up if you hold up.",
+  "The blue",
+  "Fires all five blocks at once.",
+  "Its correction stuns everyone nearby.",
+  "It parries Clod's rod from the side.",
+  "and chat GPT slab from above.",
+  "It crouches under clods, flings",
+  "then double taps to dash past.",
+  "Below the stage with no jumps left?",
+  "It whips upwards.",
+  "Grabs the ledge.",
+  "and climbs back up."
  ]
 }

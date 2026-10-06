@@ -23,9 +23,9 @@ Stack Overflow, ChatGPT and Claude settle it on a sheet of paper. It's a 3D stic
 All six are made in [`promo/`](promo/) with TapaTab (recording) and ShadowKit (compositing, narration, music): `takes.mjs` stages each scene, and `videos/<id>/edl.js` is each video's edit list.
 
 - The first two were recorded before the directional parry and lives existed, so they still show the old shield bubble.
-- The duel and the free-for-all are real CPU-against-CPU matches (`cpuMatch` in `takes.mjs`), cut down to their turning points. Stack Overflow won both.
+- The duel and the free-for-all are whole CPU-against-CPU matches (`cpuMatch` in `takes.mjs`), from the versus screen to the results table, with no narration. The game is silent, so the takes log what happens in it (hits, parries, knockouts, every move and shot) and `promo/fightcut.py` turns that log into a sound track and the edit list. Stack Overflow won both.
 - The practice video names each move with a callout as it's used.
-- The last one shows the same build on a phone held upright, a desktop, and a phone on its side.
+- The last one shows the same build on a phone held upright, a laptop, and a phone on its side, each drawn around its recording.
 
 ## Modes
 
@@ -43,6 +43,10 @@ The links at the foot of the menu go to the three real sites. Their logos are 3D
 Fighters are picked from a carousel: click a card, or rotate with the arrow buttons, the arrow keys, a drag or the mouse wheel, then press `Enter` (or Play). Clicking a card only selects it, and the card and its fighter give a little hop. The title says which mode you're picking for ("Pick your fighter · Free-for-all"). Each card has its fighter standing in its own little window, and the one in the middle works through its moves in turn, using the real game code, with the move it's showing highlighted in the card's list.
 
 Every match starts with **3 lives** each by default; the picker next to Play sets 1, 2, 3 or 5.
+
+Duels and free-for-alls open on a versus screen: a panel for each fighter in its colour, with VS between them. Each fighter drops into its panel and shows off in turn. Stack Overflow wags a finger ("Closed as duplicate."), ChatGPT hops and gives a thumbs-up ("Great question!"), and Claude waves ("You're absolutely right!"). Then "Fight!" and the match starts. `Enter`, `Space` or a tap skips it.
+
+![Versus screen before a duel: Claude and ChatGPT in their panels](docs/screenshots/versus.jpg)
 
 ![Fighter select: Stack Overflow's card firing blocks out of its bent stack, with Block shot highlighted](docs/screenshots/fighter-select.jpg)
 
@@ -110,7 +114,7 @@ Carries five orange blocks on a spring above its head. The spring is invisible a
 | `J` | **Block shot** | Rapid fire. The stack bends at the enemy exactly like the beam's barrel; the blocks rest at the bottom, thread up the bent stack, and leave from the tip along its direction, still lying across it the way they sat on the stack. New ones drop in on top. 3 damage each. Hold `J` to keep firing. |
 | `K` | **Block whip** | The spring stretches out in one continuous arc: the first block stays just above the tray, and the rest curls over and down, bending more toward the tip, so the end comes down to waist height about 3.4 units out (it used to reach 2 units with its tip above everyone's heads). The stack's own points are the hitbox. Hold `W` (or jump) for an **upward lash**, straight up about 3.9 units, that knocks whoever is overhead up and away. Off the stage, if the tip catches a ledge's corner it **latches on** and reels Stack Overflow in to hang there, since it has no hover to recover with. |
 | `L` | **Unified beam** | The stack bends toward the enemy like a barrel, and all five blocks feed up it into one glowing beam. |
-| `I` | **Correction** | A condescending remark ("Please provide a minimal reproducible example.") that stuns everyone nearby. |
+| `I` | **Correction** | Makes a condescending remark ("Please provide a minimal reproducible example.") that stuns everyone nearby. |
 
 ![Block shot: the stack bent at ChatGPT, blocks leaving the tip](docs/screenshots/blocks.jpg)
 ![The unified beam firing from the bent stack](docs/screenshots/beam.jpg)
@@ -123,9 +127,9 @@ Its logo spins on top of its head like rotor blades. On a double jump the blades
 
 | Key | Move | |
 |---|---|---|
-| `J` | **Computer use** | A homing mouse cursor: off-white, with a green outline and glow. |
+| `J` | **Computer use** | Fires a homing mouse cursor: off-white, with a green outline and glow. |
 | `K` | **Inhale** | ChatGPT tilts its head forward, the logo grows (its outline staying one line wide) and spins up a tornado that sucks in enemies and their attacks. The funnel wriggles: a wave runs down it, still at the mouth and swinging wider toward the open end. Builds **context**. |
-| `L` | **Computer use (advanced)** | A bigger cursor. Whoever it hits glows green and is yours to control for 2 seconds. |
+| `L` | **Computer use (advanced)** | Fires a bigger cursor. Whoever it hits glows green and is yours to control for 2 seconds. |
 | `I` | **Compaction** | Spends 50% context to slam a slab down on everyone in front of it, flattening them and dealing some damage. Flattened fighters grow back slowly, and faster as they land hits. |
 
 ![Taking control of Stack Overflow with the advanced cursor](docs/screenshots/takeover.jpg)

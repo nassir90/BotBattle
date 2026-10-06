@@ -1,23 +1,9 @@
 [
- {
-  "say": "In training, Stack Overflow fires blocks from the top of its stack."
- },
- {
-  "say": "Its whip lashes out low, and holding up sends it straight up."
- },
- {
-  "say": "Its beam fires all five blocks at once."
- },
- {
-  "say": "A correction stuns everyone nearby."
- },
- {
-  "say": "A parry to the side stops a rod, and an overhead parry stops ChatGPT's slab."
- },
- {
-  "say": "Crouching lets Claude's fling pass overhead, and a double tap dashes past."
- },
- {
-  "say": "With no jumps left below the stage, the upward whip grabs the ledge and pulls it back up."
- }
+ {"say": "In training, Stack Overflow fires blocks from the top of its stack."},
+ {"say": "Its whip lashes out low, or straight up if you hold up."},
+ {"say": "The beam fires all five blocks at once."},
+ {"say": "Its correction stuns everyone nearby."},
+ {"say": "It parries Claude's rod from the side, and ChatGPT's slab from above."},
+ {"say": "It crouches under Claude's fling, then double-taps to dash past."},
+ {"say": "Below the stage with no jumps left, it whips upward, grabs the ledge and climbs back up."}
 ]
