@@ -44,9 +44,9 @@ The three logos beside the modes link to the real sites. They're 3D models turni
 
 ![Play: three seats (white ChatGPT for User A, black Claude and Stack Overflow for the CPU), with remove buttons on their corners and + to add a fourth](docs/screenshots/play.jpg)
 
-On the Play screen, click a seat's fighter to pick it on the cards, click who plays it to cycle between User A, User B and CPU (each user has one seat at most; touch screens have no User B), `−` on a seat's corner removes it and `+` adds one. The seats are remembered on the device. Two of the same fighter get different colours.
+On the Play screen, click a seat's fighter to pick it on the cards, click who plays it to cycle between User A, User B and CPU (each user has one seat at most), `−` on a seat's corner removes it and `+` adds one. The seats are remembered on the device. Two of the same fighter get different colours.
 
-Fighters are picked from a carousel: click a card, or rotate with the arrow buttons, the arrow keys, a drag or the mouse wheel, then press `Enter`. Clicking a card only selects it, and the card and its fighter give a little hop. The swatches next to the button pick the fighter's colour: Stack Overflow in orange or blue, ChatGPT in green or white, Claude in orange or black. The colour carries through the fighter's logo, its blocks, rods and dots, the beam, the health plate and the versus panel. For a seat, Random (`R`) leaves it to chance. Each card has its fighter standing in its own little window, and the one in the middle works through its moves in turn, using the real game code, with the move it's showing highlighted in the card's list.
+Fighters are picked from a carousel: click a card, or rotate with the arrow buttons, the arrow keys, a drag or the mouse wheel, then press `Enter`. Clicking a card only selects it, and the card and its fighter give a little hop. The swatches next to the button pick the fighter's colour: Stack Overflow in orange or blue, ChatGPT in green or white, Claude in orange or black. The colour carries through the fighter's logo, its blocks, rods and dots, the cursor's glow (and the glow on anyone it takes over), the inhale and its rings, the beam and its explosion, the health plate and the versus panel. For a seat, Random (`R`) leaves it to chance. Each card has its fighter standing in its own little window, and the one in the middle works through its moves in turn, using the real game code, with the move it's showing highlighted in the card's list.
 
 Every match starts with **3 lives** each by default; the picker on the Play screen sets 1, 2, 3 or 5.
 
@@ -103,13 +103,19 @@ With User B in a Play match, the keyboard is split between the two:
 | Shot, melee, power, special | `F` `G` `H` `T` | `,` `.` `/` `'` (or numpad `1`–`4`) |
 | Parry (with up: overhead) | `Q` | right `Shift` (or numpad `0`) |
 
-Each user's moves are listed along the bottom with their own keys.
+Each user's moves are listed along the bottom with their own keys: User A's on the left, User B's on the right, in smaller chips, with the Menu button between them at the bottom so nothing crowds the plates. Measured at 1024×768, 1280×720, 1440×900 and 1920×1080 with two and four seats, no two of them overlap or come within 6px (before, up to 17 pairs did).
 
 On phones and tablets, the same controls appear as on-screen buttons (with ▼ to crouch and separate Parry and ↑ Parry buttons), held upright or on its side. Each fighter shows as its logo square with a thin health bar under it and an `x3` lives badge on its corner; held upright, the camera uses a wider lens so the whole fight fits across the screen.
 
 | Upright | On its side |
 |---|---|
 | ![A phone held upright: logo squares with health bars and lives badges along the top, the touch pad below](docs/screenshots/phone.jpg) | ![A phone on its side: the buttons in two short rows](docs/screenshots/phone-landscape.jpg) |
+
+With User B in a Play match on a phone, the phone is shared across a table: the screen splits across the middle into two views of the same fight. User A's half is at the bottom, the right way up; User B's is at the top, turned round so it's the right way up for the person sitting opposite, with its own smaller pad and its own row of plates. Each pad moves only its own fighter, and User B's arrows follow their view (their → walks toward their right, which is the arena's left). The Menu button sits on the left edge between the halves. The versus screen is skipped, since it can't face both players at once.
+
+![A phone split in two: User B's view and buttons turned round at the top, User A's the right way up at the bottom, the plates and Menu between them](docs/screenshots/phone-split.jpg)
+
+The camera keeps every fighter on screen (and a knocked-out one's comeback spot), moving sideways and up with easing and zooming on a spring: it pulls back quickly when someone gets near an edge and closes in slowly, and doesn't close in at all for small changes, so jumps don't make it pump in and out. Measured in a duel with User A jumping from the start, the old camera snapped 13 to 14 times (up to 75 units a second in one frame); this one has no snaps and no back-and-forth jitter (`tests/camera_test.py`).
 
 Fighters are solid to each other, and they push:
 
@@ -261,6 +267,8 @@ BOTBATTLE_URL=http://localhost:5173/games/botbattle/ ~/projects/ShadowKit/.venv/
 BOTBATTLE_URL=http://localhost:5173/games/botbattle/ ~/projects/ShadowKit/.venv/bin/python tests/invite_test.py
 BOTBATTLE_URL=http://localhost:5173/games/botbattle/ ~/projects/ShadowKit/.venv/bin/python tests/visual_test.py
 BOTBATTLE_URL=http://localhost:5173/games/botbattle/ ~/projects/ShadowKit/.venv/bin/python tests/play_test.py
+BOTBATTLE_URL=http://localhost:5173/games/botbattle/ ~/projects/ShadowKit/.venv/bin/python tests/split_test.py
+BOTBATTLE_URL=http://localhost:5173/games/botbattle/ ~/projects/ShadowKit/.venv/bin/python tests/camera_test.py
 ```
 
-`online_test.py` makes a room, refuses a wrong password, joins by password and by invite link, picks, readies, plays (both screens agree on positions and health), emotes, has a player leave, and checks the leaderboard. `play_test.py` goes through Play: the seats, a colour, User B, removing and adding seats, both users' keys moving only their own fighter, the result, and the leaderboard's benchmark table. `visual_test.py` measures three things on the real page: ink blobs inside the OpenAI and Claude logos, arms going into heads during the versus gestures, and controls cut off by a phone's rounded corners (55px, with no safe area reported). `invite_test.py` checks that an invite opened while signed out survives signing up and lands you in the room. `ko_test.py` checks that only the host knocks anyone out, that comebacks and the result reach every screen, and that the win is recorded.
+`online_test.py` makes a room, refuses a wrong password, joins by password and by invite link, picks, readies, plays (both screens agree on positions and health), emotes, has a player leave, and checks the leaderboard. `split_test.py` plays User A against User B on a phone: the split screen, User B's pad and plates turned round at the top, the pads apart and in their own halves, each pad moving only its own fighter (User B's arrows the other way round), and the Menu clear of the plates. `camera_test.py` records the camera through a duel while User A jumps and counts jitter and snaps. `play_test.py` goes through Play: the seats, a colour, User B, removing and adding seats, both users' keys moving only their own fighter, the result, and the leaderboard's benchmark table. `visual_test.py` measures three things on the real page: ink blobs inside the OpenAI and Claude logos, arms going into heads during the versus gestures, and controls cut off by a phone's rounded corners (55px, with no safe area reported). `invite_test.py` checks that an invite opened while signed out survives signing up and lands you in the room. `ko_test.py` checks that only the host knocks anyone out, that comebacks and the result reach every screen, and that the win is recorded.

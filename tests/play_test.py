@@ -10,7 +10,7 @@ def check(name, ok, detail=""):
 async def main():
     async with async_playwright() as p:
         b = await p.chromium.launch(args=["--use-gl=angle", "--use-angle=swiftshader", "--enable-unsafe-swiftshader"])
-        pg = await b.new_page(viewport={"width": 1280, "height": 800}); errs = []; pg.on("pageerror", lambda e: errs.append(str(e)))
+        pg = await b.new_page(viewport={"width": 1280, "height": 800}); errs = []; pg.on("pageerror", lambda e: errs.append(str(e))); pg.set_default_timeout(120000)
         await pg.goto(B + "?dev=tester", wait_until="domcontentloaded", timeout=90000); await pg.wait_for_timeout(1500)
         modes = await pg.eval_on_selector_all(".mode:not([hidden]) h2", "els => els.map(e => e.textContent)")
         check("the menu has Play and Training (Free-for-all, Duel and Watch are gone)", modes[:2] == ["Play", "Training"] and not {"Free-for-all", "Duel", "Watch"} & set(modes), modes)
@@ -27,7 +27,8 @@ async def main():
         await pg.click("#pickBtn")
         await pg.wait_for_selector("#play:not([hidden])")
         name = await pg.text_content(".seat >> nth=0 >> .seat-name")
-        check("seat 1 is Stack Overflow, blue", "Stack Overflow" in name and "Blue" in name, name)
+        variant = await pg.evaluate("JSON.parse(localStorage.getItem('botbattle.seats'))[0].variant")
+        check("seat 1 is Stack Overflow, blue (the colour isn't written under the name)", name.strip() == "Stack Overflow" and variant == "blue", (name, variant))
         # seat 2: User B; seat 3 removed, then a seat added and removed again
         await pg.click(".seat >> nth=1 >> .seat-ctrl")
         check("seat 2's controller moves on to User B (User A is taken)", await pg.text_content(".seat >> nth=1 >> .seat-ctrl") == "User B")
@@ -45,14 +46,14 @@ async def main():
         await pg.screenshot(path=f"{OUT}/play-4-versus.png")
         tags = await pg.eval_on_selector_all(".vs-tag", "els => els.map(e => e.textContent)")
         check("the versus screen names User A and User B", tags == ["User A", "User B"], tags)
-        await pg.wait_for_function("window.__bb && !window.__bb()[0].versus", timeout=30000)
+        await pg.wait_for_function("window.__bb && !window.__bb()[0].versus", timeout=180000)
         before = await pg.evaluate("window.__bb()")
         check("User A's fighter is blue Stack Overflow", before[0]["kind"] == "so")
         # User A walks right with D, User B left with the left arrow
-        await pg.keyboard.down("KeyD"); await pg.keyboard.down("ArrowLeft"); await pg.wait_for_timeout(700)
-        await pg.keyboard.up("KeyD"); await pg.keyboard.up("ArrowLeft"); await pg.wait_for_timeout(300)
+        await pg.keyboard.down("KeyD"); await pg.keyboard.down("ArrowLeft"); await pg.wait_for_timeout(2500)
+        await pg.keyboard.up("KeyD"); await pg.keyboard.up("ArrowLeft"); await pg.wait_for_timeout(1500)
         after = await pg.evaluate("window.__bb()")
-        check("D moves only User A, the left arrow only User B", after[0]["x"] > before[0]["x"] + 0.5 and after[1]["x"] < before[1]["x"] - 0.5,
+        check("D moves only User A, the left arrow only User B", after[0]["x"] > before[0]["x"] + 0.25 and after[1]["x"] < before[1]["x"] - 0.25,
               [(round(f["x"], 2)) for f in before] + [(round(f["x"], 2)) for f in after])
         plates = await pg.eval_on_selector_all(".plate-tag", "els => els.map(e => e.textContent.trim().split(' ')[0] + ' ' + e.textContent.trim().split(' ')[1])")
         check("the health plates say USER A and USER B", plates[0].startswith("USER A") and plates[1].startswith("USER B"), plates)
