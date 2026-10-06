@@ -37,8 +37,8 @@ button[aria-pressed="true"] { background: var(--ink); color: var(--paper); }
   position: fixed; top: calc(env(safe-area-inset-top, 0px) + 12px); left: 16px; right: 16px;
   display: grid; grid-template-columns: repeat(var(--n, 3), minmax(0, 1fr)); gap: 12px; pointer-events: none;
 }
-.plate { display: grid; gap: 4px; min-width: 0; }
-.plate-top { display: flex; justify-content: space-between; align-items: baseline; gap: 6px; }
+.plate { display: grid; grid-template-columns: minmax(0, 1fr); gap: 4px; min-width: 0; }
+.plate-top { display: flex; justify-content: space-between; align-items: center; gap: 6px; min-width: 0; }
 .plate-name { font-family: var(--display); font-size: clamp(11px, 1.6vw, 15px); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 .plate-tag { font-size: 10px; letter-spacing: 0.08em; color: var(--ink-soft); white-space: nowrap; }
 .plate-tag.you { color: var(--ink); font-weight: 600; }
@@ -49,6 +49,11 @@ button[aria-pressed="true"] { background: var(--ink); color: var(--paper); }
 .ctx { height: 5px; border: 1.5px solid var(--ink); background: var(--paper-2); position: relative; overflow: hidden; }
 .ctx i { position: absolute; inset: 0; transform-origin: left; background: var(--gpt); }
 .plate.out .plate-name { text-decoration: line-through; color: var(--ink-soft); }
+.plate-id { display: flex; align-items: center; gap: 6px; min-width: 0; }
+.plate-id .plate-name { min-width: 0; }
+.stocks { display: inline-flex; gap: 3px; flex: none; }
+.stocks i { width: 8px; height: 8px; border: 1.5px solid var(--ink); background: var(--c); }
+.stocks i.lost { background: transparent; opacity: 0.45; }
 
 /* move list */
 .moves {
@@ -128,20 +133,27 @@ button[aria-pressed="true"] { background: var(--ink); color: var(--paper); }
 #menu .panel { padding-bottom: 72px; }
 
 /* fighter carousel: cards on a ring, the 3D fighter stands on top of each card */
-.carousel { position: relative; height: 590px; overflow: hidden; touch-action: pan-y; cursor: grab; }
+.carousel { position: relative; height: 640px; overflow: hidden; touch-action: pan-y; cursor: grab; }
 .carousel:active { cursor: grabbing; }
 .carousel .slot {
   position: absolute; left: 50%; top: 0; width: var(--cw); margin-left: calc(var(--cw) / -2);
   transition: transform 0.38s cubic-bezier(.2,.8,.2,1), opacity 0.38s; will-change: transform;
 }
 .carousel .card { width: 100%; padding-top: 0; }
-.carousel .card .pedestal { height: 230px; margin: 0 -14px 4px; border-bottom: 2px solid var(--ink); background: linear-gradient(var(--paper), color-mix(in srgb, var(--c) 10%, var(--paper))); }
+.carousel .card .pedestal { position: relative; height: 270px; margin: 0 -14px 4px; border-bottom: 2px solid var(--ink); background: linear-gradient(var(--paper), color-mix(in srgb, var(--c) 10%, var(--paper))); }
 .carousel .slot.side .card { pointer-events: auto; }
 #previewCanvas { position: absolute; inset: 0; width: 100%; height: 100%; pointer-events: none; z-index: 3; }
 .carousel .nav { position: absolute; top: 100px; z-index: 4; width: 44px; height: 44px; padding: 0; font-size: 16px; }
 .carousel .nav.prev { left: 6px; } .carousel .nav.next { right: 6px; }
 .pickrow { display: flex; gap: 12px; align-items: center; flex-wrap: wrap; }
 .pickrow .hint { font-size: 11px; color: var(--ink-soft); }
+.lives { display: flex; gap: 5px; align-items: center; font-size: 11px; color: var(--ink-soft); }
+.lives button { padding: 6px 9px; font-size: 11px; box-shadow: 2px 2px 0 var(--ink); }
+/* the move the fighter on the card is showing right now */
+.card li { padding: 2px 4px; margin: 0 -4px; transition: background 0.15s, box-shadow 0.15s; }
+.card li.now { background: color-mix(in srgb, var(--c) 18%, var(--paper)); box-shadow: inset 3px 0 0 var(--c); }
+.say { position: absolute; right: 14px; top: 12px; max-width: 58%; background: var(--paper); border: 2px solid var(--ink); padding: 6px 8px; font-size: 11px; line-height: 1.35; box-shadow: 2px 2px 0 var(--ink); }
+.say b { font-family: var(--display); font-weight: 400; display: block; font-size: 10px; color: var(--so); }
 .ringdots { display: flex; gap: 6px; }
 .ringdots i { width: 9px; height: 9px; border: 1.5px solid var(--ink); }
 .ringdots i.on { background: var(--ink); }
@@ -238,7 +250,8 @@ button[aria-pressed="true"] { background: var(--ink); color: var(--paper); }
     <button type="button" data-key="KeyK" data-slot="a2"><span></span><i class="cool"></i></button>
     <button type="button" data-key="KeyL" data-slot="a3"><span></span><i class="cool"></i></button>
     <button type="button" data-key="KeyI" data-slot="a4"><span></span><i class="cool"></i></button>
-    <button type="button" data-key="Backspace" aria-label="Shield, release to parry">Shield</button>
+    <button type="button" data-key="Backspace" aria-label="Parry to the side">Parry</button>
+    <button type="button" data-key="ParryUp" aria-label="Parry overhead">&uarr; Parry</button>
     <button type="button" data-key="Space" aria-label="Jump">Jump</button>
   </div>
 </div>
@@ -253,7 +266,7 @@ button[aria-pressed="true"] { background: var(--ink); color: var(--paper); }
       <button type="button" class="mode" data-mode="training"><h2>Training</h2><span>Play-test one fighter against dummies. Health refills and knockouts respawn.</span><span class="go">Practise &rarr;</span></button>
       <button type="button" class="mode" data-mode="watch"><h2>Watch</h2><span>Three CPUs fight it out while you watch.</span><span class="go">Watch &rarr;</span></button>
     </div>
-    <p class="keys">Move <kbd>A</kbd> <kbd>D</kbd> or <kbd>&larr;</kbd> <kbd>&rarr;</kbd> &middot; Jump <kbd>W</kbd> <kbd>&uarr;</kbd> <kbd>Space</kbd> &middot; Abilities <kbd>J</kbd> <kbd>K</kbd> <kbd>L</kbd> <kbd>I</kbd> &middot; Hold <kbd>Backspace</kbd> to shield, let go just before a hit lands to parry &middot; Fall off the edge and you're out.</p>
+    <p class="keys">Move <kbd>A</kbd> <kbd>D</kbd> or <kbd>&larr;</kbd> <kbd>&rarr;</kbd> &middot; Jump <kbd>W</kbd> <kbd>&uarr;</kbd> <kbd>Space</kbd> &middot; Shot <kbd>J</kbd> &middot; Melee <kbd>K</kbd> &middot; Power <kbd>L</kbd> &middot; Special <kbd>I</kbd> &middot; Parry <kbd>Backspace</kbd> toward the way you face or press, <kbd>W</kbd> + <kbd>Backspace</kbd> overhead &middot; Three lives each; fall off the edge and you lose one.</p>
   </div>
   <nav class="brands" aria-label="The real ones">
     <a href="https://stackoverflow.com" target="_blank" rel="noopener" title="stackoverflow.com"><svg viewBox="0 0 24 24" aria-hidden="true"><path fill="#bcbbbb" d="M3 13h2.2v6.6h12.6V13H20v9H3z"/><g fill="#f48024"><rect x="6.8" y="17.0" width="9.4" height="1.9" transform="rotate(0 7.4 18.2) translate(0 0.00)"/><rect x="6.8" y="16.8" width="9.4" height="1.9" transform="rotate(-10 7.4 18.0) translate(0 -2.25)"/><rect x="6.8" y="16.6" width="9.4" height="1.9" transform="rotate(-22 7.4 17.8) translate(0 -4.50)"/><rect x="6.8" y="16.4" width="9.4" height="1.9" transform="rotate(-38 7.4 17.6) translate(0 -6.75)"/><rect x="6.8" y="16.2" width="9.4" height="1.9" transform="rotate(-58 7.4 17.4) translate(0 -9.00)"/></g></svg>Stack Overflow</a>
@@ -276,7 +289,8 @@ button[aria-pressed="true"] { background: var(--ink); color: var(--paper); }
     <div class="pickrow">
       <button type="button" id="pickBtn">Play</button>
       <div class="ringdots" id="ringdots"></div>
-      <span class="hint">&larr; &rarr; or drag to browse &middot; Enter to choose</span>
+      <div class="lives" id="livesPick" role="group" aria-label="Lives"><span>Lives</span><button type="button" data-lives="1">1</button><button type="button" data-lives="2">2</button><button type="button" data-lives="3">3</button><button type="button" data-lives="5">5</button></div>
+      <span class="hint">Click a card or use &larr; &rarr; to pick &middot; Enter to play</span>
     </div>
   </div>
 </div>
@@ -309,7 +323,7 @@ button[aria-pressed="true"] { background: var(--ink); color: var(--paper); }
   renderer.shadowMap.type = THREE.PCFSoftShadowMap;
   stage.appendChild(renderer.domElement);
 
-  const scene = new THREE.Scene();
+  let scene = new THREE.Scene();      // swapped for a card's own little scene while its preview runs
   scene.background = new THREE.Color('#fbfaf7');
   scene.fog = new THREE.Fog('#fbfaf7', 24, 46);
 
@@ -755,9 +769,9 @@ button[aria-pressed="true"] { background: var(--ink); color: var(--paper); }
       name: 'Stack Overflow', short: 'SO', color: '#f48024', jumps: 1, range: 4,
       blurb: 'Angry, well-sourced, and already closed your question.',
       abilities: {
-        a1: { name: 'Block shot', short: 'Block', cd: 0.06, desc: 'Rapid fire: the top block slides up the stack and flies off. Hold to empty the stack.' },
-        a2: { name: 'Unified beam', short: 'Beam', cd: 1.2, desc: 'Bend the stack at the enemy and feed all five blocks up it into a beam.' },
-        a3: { name: 'Block whip', short: 'Whip', cd: 0.8, desc: 'The spring stretches out to rod length and lashes the blocks forward.' },
+        a1: { name: 'Block shot', short: 'Block', cd: 0.06, desc: 'Rapid fire: the stack bends at the enemy like the beam, and blocks thread up it and fly out of the top. Hold to keep firing.' },
+        a2: { name: 'Block whip', short: 'Whip', cd: 0.8, desc: 'The spring stretches out to rod length and lashes the blocks forward.' },
+        a3: { name: 'Unified beam', short: 'Beam', cd: 1.2, desc: 'Bend the stack at the enemy and feed all five blocks up it into a beam.' },
         a4: { name: 'Correction', short: 'Correct', cd: 7, desc: 'A condescending remark that stuns everyone nearby.' },
       },
     },
@@ -766,8 +780,8 @@ button[aria-pressed="true"] { background: var(--ink); color: var(--paper); }
       blurb: 'Borrows your body, eats your attacks, and compacts you.',
       abilities: {
         a1: { name: 'Computer use', short: 'Cursor', cd: 0.8, desc: 'Launch a homing mouse cursor.' },
-        a2: { name: 'Computer use (advanced)', short: 'Take over', cd: 9, desc: 'Bigger cursor that takes control of whoever it hits for 2 seconds.' },
-        a3: { name: 'Inhale', short: 'Inhale', cd: 3.5, desc: 'The logo bends down, grows and spins up a tornado that sucks in enemies and their attacks. Builds context.' },
+        a2: { name: 'Inhale', short: 'Inhale', cd: 3.5, desc: 'The head tips forward, the logo grows and spins up a tornado that sucks in enemies and their attacks. Builds context.' },
+        a3: { name: 'Computer use (advanced)', short: 'Take over', cd: 9, desc: 'Bigger cursor that takes control of whoever it hits for 2 seconds.' },
         a4: { name: 'Compaction', short: 'Compact', cd: 2, desc: 'Spend 50% context to flatten everyone in front. They grow back slowly, faster as they land hits.' },
       },
       passive: 'Double jump: the logo spins up like a rotor.',
@@ -776,9 +790,9 @@ button[aria-pressed="true"] { background: var(--ink); color: var(--paper); }
       name: 'Claude', short: 'Claude', color: '#d97757', jumps: 2, range: 3,
       blurb: 'Thinks in threes and fours. Has rods to spare.',
       abilities: {
-        a1: { name: 'Combobulating', short: 'Dots', cd: 2.4, desc: 'Alternates three dots in a line and four in a square; Claude punches them out one by one.' },
+        a1: { name: 'Shoot', short: 'Shoot', cd: 0.12, desc: 'Rapid fire: rods leave the logo one after another. Light damage, real knockback. Rods grow back. Hold to keep firing.' },
         a2: { name: 'Fling', short: 'Fling', cd: 0.9, desc: 'Fling one rod out of the logo to poke whoever is in front. It has to grow back.' },
-        a3: { name: 'Shoot', short: 'Shoot', cd: 0.12, desc: 'Rapid fire: rods leave the logo one after another. Light damage, real knockback. Rods grow back.' },
+        a3: { name: 'Combobulating', short: 'Dots', cd: 2.4, desc: 'Alternates three dots in a line and four in a square; Claude punches them out one by one.' },
       },
       passive: 'Double jump.',
     },
@@ -794,8 +808,93 @@ button[aria-pressed="true"] { background: var(--ink); color: var(--paper); }
     'Off-topic. Voting to close.',
   ];
 
+  // ================= Guard poses =================
+  // Where the held piece goes in each guard, in the fighter's own frame (facing +x): its position, rotation
+  // and size, where each hand goes, and (for the chatbots) the bar each hand's fingers wrap around.
+  // Side guards turn their face partway toward the camera so the shield reads from the side-on view.
+  const SHIELD_TURN = 0.75, SHIELD_TIP = 0.3;      // turned toward the camera, and tipped up a little to catch the light
+  const FACE_N = V(Math.cos(SHIELD_TURN), SHIELD_TIP, Math.sin(SHIELD_TURN)).normalize();
+  // the direction in the shield's face nearest to d
+  const inFace = d => d.clone().addScaledVector(FACE_N, -d.dot(FACE_N)).normalize();
+  const basisQuat = (X, Y, Z) => new THREE.Quaternion().setFromRotationMatrix(new THREE.Matrix4().makeBasis(X, Y, Z));
+  const CROWN_Y = RIM_Y + LIP_R + TRAY_T / 2;
+  const GUARD_POSES = (() => {
+    const out = {};
+    // Stack Overflow: the tray comes off the head into the left hand as a shield, and the right hand drapes
+    // the blocks over it as slats; overhead, the tray is lifted with the blocks laid flat in it as a roof
+    const soDown = inFace(V(0, -1, 0));
+    const soSideQ = basisQuat(soDown, FACE_N, soDown.clone().cross(FACE_N));
+    const soSideP = V(0.6, 2.06, 0.12);
+    out.so = {
+      side: { pos: soSideP, quat: soSideQ, scale: 1,
+        hands: [soSideP.clone().addScaledVector(soDown, -0.5).addScaledVector(FACE_N, 0.12), soSideP.clone().addScaledVector(FACE_N, -0.08)] },
+      up: { pos: V(0, CROWN_Y + 0.3, 0), quat: new THREE.Quaternion(), scale: 1,
+        hands: [V(0.6, CROWN_Y + 0.27, 0.14), V(-0.6, CROWN_Y + 0.27, 0.14)] },
+    };
+    // The chatbots: the logo leaves the spinning stalk and is held as a disc, upright in front or flat overhead
+    const sideY = inFace(V(0, 1, 0)), sideX = sideY.clone().cross(FACE_N);
+    const side = { pos: V(0.68, 2.05, 0.14), quat: basisQuat(sideX, sideY, FACE_N), scale: 1.3, X: sideX, Y: sideY };
+    const upX = V(1, 0, 0), upY = V(0, 0, -1);
+    const up = { pos: V(0, 3.0, 0.02), quat: basisQuat(upX, upY, V(0, 1, 0)), scale: 1.35, X: upX, Y: upY };
+    // a point on the logo (logo units) to the fighter's frame, for a pose
+    const onLogo = (pose, x, y) => pose.pos.clone().addScaledVector(pose.X, x * pose.scale).addScaledVector(pose.Y, y * pose.scale);
+    // ChatGPT: the thumb hand goes through the hole in the middle; the other braces the bottom rim
+    const holeEdge = onLogo(side, 0, -0.09);
+    out.gpt = {
+      side: { ...side, hands: [onLogo(side, 0, -0.42).addScaledVector(FACE_N, -0.05), holeEdge.clone().addScaledVector(FACE_N, -0.05)],
+        grips: [null, { at: holeEdge, axis: side.X.clone() }] },
+      up: { ...up, hands: [V(0.58, 2.95, 0.1), V(-0.58, 2.95, 0.1)],
+        grips: [{ at: V(0.58, 3.0, 0.1), axis: V(0, 0, 1) }, { at: V(-0.58, 3.0, 0.1), axis: V(0, 0, 1) }] },
+    };
+    // Claude: each hand's fingers wrap round a spoke, about halfway out
+    const spoke = (pose, angle, along = 0.55) => {
+      let best = null, bd = Infinity;
+      for (const r of claudeRays || []) {
+        const d = Math.abs(Math.atan2(Math.sin(Math.atan2(r.tip.y, r.tip.x) - angle), Math.cos(Math.atan2(r.tip.y, r.tip.x) - angle)));
+        if (d < bd) { bd = d; best = r.tip; }
+      }
+      const t = best || V(Math.cos(angle) * 0.4, Math.sin(angle) * 0.4, 0);
+      const at = onLogo(pose, t.x * along, t.y * along);
+      const axis = V().addScaledVector(pose.X, t.x).addScaledVector(pose.Y, t.y).normalize();
+      return { at, axis };
+    };
+    const cs = [spoke(side, -1.75), spoke(side, 2.6)], cu = [spoke(up, -0.2, 0.9), spoke(up, Math.PI + 0.2, 0.9)];
+    out.claude = {
+      side: { ...side, hands: cs.map(g => g.at.clone().addScaledVector(FACE_N, -0.04)), grips: cs },
+      up: { ...up, hands: cu.map(g => g.at.clone().add(V(0, -0.05, 0))), grips: cu },
+    };
+    return out;
+  })();
+  // the guard's centre, in the fighter's root frame (for the glint and the parry ring)
+  function guardCenter(f) {
+    const pose = GUARD_POSES[f.kind][f.guard ? f.guard.dir : 'side'];
+    return V(pose.pos.x * f.facing, pose.pos.y, pose.pos.z);
+  }
+  // a four-point glint in the fighter's colour, drawn in ink so it reads on white paper
+  const glintTex = new Map();
+  function glintTexture(color) {
+    if (glintTex.has(color)) return glintTex.get(color);
+    const t = gradTex((ctx, w, h) => {
+      const g = ctx.createRadialGradient(w / 2, h / 2, 0, w / 2, h / 2, w / 2);
+      g.addColorStop(0, color); g.addColorStop(0.35, color + '88'); g.addColorStop(1, color + '00');
+      ctx.fillStyle = g; ctx.fillRect(0, 0, w, h);
+      ctx.beginPath();
+      for (let i = 0; i < 8; i++) {
+        const a = i / 8 * Math.PI * 2 - Math.PI / 2, r = i % 2 ? 9 : 58;
+        ctx.lineTo(w / 2 + Math.cos(a) * r, h / 2 + Math.sin(a) * r);
+      }
+      ctx.closePath();
+      ctx.fillStyle = '#ffffff'; ctx.fill();
+      ctx.lineWidth = 4; ctx.strokeStyle = '#141414'; ctx.stroke();
+    }, 128, 128);
+    glintTex.set(color, t);
+    return t;
+  }
+  const gripGeo = new THREE.TorusGeometry(0.055, LIMB_R, 6, 16, Math.PI * 1.4);
+
   // ================= Building a fighter =================
   let fighters = [], projectiles = [], effects = [], transient = new Set();
+  let previewing = null;        // a fighter-select card's own world, while its demo runs (see the carousel)
   let nextId = 1;
   const addT = m => { scene.add(m); transient.add(m); return m; };
   const dropT = m => { scene.remove(m); transient.delete(m); };
@@ -814,9 +913,9 @@ button[aria-pressed="true"] { background: var(--ink); color: var(--paper); }
       hp: 100, stun: 0, flash: 0, busy: 0, dead: false, deadT: 0, lastHitT: 0,
       cd: { a1: 0, a2: 0, a3: 0, a4: 0 },
       possessedBy: null, possessing: null, possessTimer: 0,
-      shield: false, shieldHP: 60, shieldDrop: 0, parryWin: 0, compact: 1, context: 0,
+      guard: null, guardCd: 0, parryGrace: 0, parryFrom: null, invuln: 0, jumpT: 9, compact: 1, context: 0,
       stats: { dmg: 0, hits: 0, kos: 0, taken: 0, parries: 0, moves: 0, ctx: 0 },
-      ai: { t: 0, move: 0, jump: false, act: null, rest: 1 + Math.random(), target: null, targetT: 0, shieldT: 0, burstT: 0 },
+      ai: { t: 0, move: 0, jump: false, act: null, rest: 1 + Math.random(), target: null, targetT: 0, burstT: 0 },
     };
     f.team = f.id;
 
@@ -839,7 +938,7 @@ button[aria-pressed="true"] { background: var(--ink); color: var(--paper); }
       vis.add(g);
       return g;
     };
-    const arm = (rest, L1, L2, bend, hand) => ({ limb: makeLimb(vis, mats.ink, L1, L2), rest: V(...rest), bend, hand });
+    const arm = (rest, L1, L2, bend, hand) => ({ limb: makeLimb(vis, mats.ink, L1, L2), rest: V(...rest), bend, hand, L1, L2 });
 
     const head = cupHead(kind === 'so' ? angryFace : happyFace, mats);
     head.position.y = HEAD_Y;
@@ -848,16 +947,19 @@ button[aria-pressed="true"] { background: var(--ink); color: var(--paper); }
 
     if (kind === 'so') {
       const crown = new THREE.Group();
-      crown.position.set(0, RIM_Y + LIP_R + TRAY_T / 2, 0);
-      crown.add(inked(trayBaseGeo, trayMat));
+      crown.position.set(0, CROWN_Y, 0);
+      const tray = trayMat.clone(), bars = barMat.clone();
+      f.propMats = [tray, bars];
+      crown.add(inked(trayBaseGeo, tray));
       for (const sx of [-1, 1]) {
-        const side = inked(traySideGeo, trayMat);
+        const side = inked(traySideGeo, tray);
         side.position.set(0.44 * sx, 0.17, 0); crown.add(side);
       }
       vis.add(crown);
+      f.crown = crown;
       f.spring = makeSpring(crown, { n: 5, gap: 0.19, first: 0.44, stiff: 38, arcDamp: 2.8, gain: 0.85 }, springList);
       // the blocks are a magazine: they sit at the top of the stack and slide up as the top one fires
-      f.barMeshes = [0, 1, 2, 3, 4, 5, 6].map(() => { const m = makeBlock(); crown.add(m); return m; });
+      f.barMeshes = [0, 1, 2, 3, 4, 5, 6].map(() => { const m = inked(barGeo, bars); crown.add(m); return m; });
       f.bars = 5;
       f.magSlots = [0, 1, 2, 3, 4];
       f.launch = [];
@@ -883,16 +985,18 @@ button[aria-pressed="true"] { background: var(--ink); color: var(--paper); }
       f.rotor.position.y = 0.08;
       const logo = new THREE.Group();
       logo.rotation.x = -Math.PI / 2;
+      const logoMat = (kind === 'gpt' ? openaiMat : claudeMat).clone();
+      f.propMats = [logoMat];
       if (kind === 'claude' && claudeRays) {
         f.rods = claudeRays.map(ray => {
-          const m = shadowed(new THREE.Mesh(ray.geo, claudeMat));
+          const m = shadowed(new THREE.Mesh(ray.geo, logoMat));
           m.add(new THREE.Mesh(ray.shell, outlineBase));
           logo.add(m);
           return { mesh: m, tip: ray.tip, present: true, grow: 1 };
         });
         f.rodTimer = 0;
       } else {
-        logo.add(kind === 'gpt' ? inked(openaiGeo, openaiMat) : inked(claudeGeo, claudeMat));
+        logo.add(inked(kind === 'gpt' ? openaiGeo : claudeGeo, logoMat));
       }
       f.logo = logo;
       f.logoScale = 1;
@@ -928,14 +1032,11 @@ button[aria-pressed="true"] { background: var(--ink); color: var(--paper); }
     f.marker.visible = false;
     root.add(f.marker);
 
-    // shield bubble
-    f.bubble = new THREE.Mesh(new THREE.SphereGeometry(1, 32, 20),
-      new THREE.MeshBasicMaterial({ color: kit.color, transparent: true, opacity: 0.22, depthWrite: false }));
-    f.bubbleRim = new THREE.Mesh(new THREE.TorusGeometry(1, 0.025, 8, 48), new THREE.MeshBasicMaterial({ color: '#141414' }));
-    f.bubble.add(f.bubbleRim);
-    f.bubble.position.y = 1.55;
-    f.bubble.visible = false;
-    root.add(f.bubble);
+    // the guard's glint, and the curled fingers that wrap round whatever a hand is gripping
+    f.glint = new THREE.Sprite(new THREE.SpriteMaterial({ map: glintTexture(kit.color), transparent: true, depthWrite: false }));
+    f.glint.visible = false; f.glint.renderOrder = 4;
+    root.add(f.glint);
+    f.grips = [0, 1].map(() => { const g = new THREE.Mesh(gripGeo, mats.ink); g.visible = false; vis.add(g); return g; });
 
     root.position.set(x, 0, 0);
     return f;
@@ -970,6 +1071,7 @@ button[aria-pressed="true"] { background: var(--ink); color: var(--paper); }
     return [(v.x + 1) / 2 * innerWidth, (1 - v.y) / 2 * innerHeight];
   }
   function floatText(x, y, text, cls = '') {
+    if (previewing) return;                // nothing floats over the menu from a card's demo
     const [sx, sy] = project(x, y);
     const el = document.createElement('div');
     el.className = 'dmg ' + cls;
@@ -979,38 +1081,48 @@ button[aria-pressed="true"] { background: var(--ink); color: var(--paper); }
     setTimeout(() => el.remove(), 850);
   }
 
-  // ================= Hits, shields and parries =================
-  // Parry works like Super Smash Bros. Ultimate: hold to shield; letting go starts an
-  // 11-frame shield drop, and the first 5 frames of that drop are the parry window.
-  // A parry takes no damage, freezes the action for a moment, skips the rest of the
-  // shield drop, and leaves a nearby attacker stuck in extra lag.
-  const DROP_TIME = 11 / 60, PARRY_TIME = 5 / 60, SHIELD_MAX = 60;
+  // ================= Hits and parries =================
+  // Parry: Backspace snaps the fighter into a guard pose facing one way (side, toward where it faces or the
+  // key held; overhead with W). The guard forms, shines for a moment, then loosens. Only hits that arrive
+  // from the guarded side while it shines are parried: no damage, a freeze, and a nearby attacker is left
+  // stuck. A hit from anywhere else lands as normal and breaks the pose.
+  const GUARD_IN = 4 / 60, GUARD_SHINE = 14 / 60, GUARD_OUT = 16 / 60, GUARD_END = GUARD_IN + GUARD_SHINE + GUARD_OUT;
   const KB_MAX = 10;
+  const smooth = x => x * x * (3 - 2 * x);
+  const shining = f => !!f.guard && f.guard.t >= GUARD_IN && f.guard.t < GUARD_IN + GUARD_SHINE;
+  function guardWeight(f) {
+    const g = f.guard;
+    if (!g) return 0;
+    if (g.t < GUARD_IN) return smooth(g.t / GUARD_IN);
+    if (g.t < GUARD_IN + GUARD_SHINE) return 1;
+    return 1 - smooth(Math.min(1, (g.t - GUARD_IN - GUARD_SHINE) / GUARD_OUT));
+  }
+  // dir is the way the attack travels: overhead guards stop what comes down, side guards what comes at their face
+  function guarding(h, dir) {
+    if (!shining(h)) return false;
+    return h.guard.dir === 'up' ? dir.y < -0.3 : dir.x * h.guard.side < -0.3 && dir.y > -0.85;
+  }
   let hitstop = 0;
   let trainDamage = 0;
   function hurt(h, dmg, kbx, kby, from, opts = {}) {
-    if (h.dead) return 'none';
-    if (h.parryWin > 0) {
-      h.parryWin = 0; h.shieldDrop = 0;
+    if (h.dead || h.invuln > 0) return 'none';
+    const src = from && from !== h ? (from.possessedBy || from) : null;
+    // a successful parry also turns away the rest of that attacker's hits for a moment (a beam's later pulses)
+    if (h.parryGrace > 0 && src && src === h.parryFrom) return 'parry';
+    const dir = opts.dir ? V(opts.dir.x, opts.dir.y, 0).normalize() : V(Math.sign(kbx) || 1, 0, 0);
+    if (guarding(h, dir)) {
+      h.guard.t = Math.max(h.guard.t, GUARD_IN + GUARD_SHINE + GUARD_OUT * 0.5);   // skip most of the loosening
+      h.parryGrace = 0.45; h.parryFrom = src;
       hitstop = Math.max(hitstop, 0.12);
-      const atk = from && from !== h ? (from.possessedBy || from) : null;
       const real = from && from !== h ? from : null;
       if (real && Math.abs(real.x - h.x) < 4) { real.stun = Math.max(real.stun, 0.6); real.busy = Math.max(real.busy, 0.6); }
       h.stats.parries++;
       floatText(h.x, h.y + boxH(h) + 0.4, 'Parry!', 'parry');
-      ring(V(h.x, h.y + 1.55, 0.3), h.kit.color, 1.2);
+      ring(h.root.localToWorld(guardCenter(h)), h.kit.color, 1.2);
       flashScreen();
       return 'parry';
     }
-    if (h.shield) {
-      h.shieldHP -= dmg * 1.4 + 2;
-      h.vx += Math.sign(kbx || 1) * 1.6;
-      if (h.shieldHP <= 0) {
-        h.shield = false; h.shieldHP = 0; h.stun = 2; h.vy = 8; h.onGround = false;
-        floatText(h.x, h.y + boxH(h) + 0.4, 'Shield break', 'info');
-      }
-      return 'shield';
-    }
+    if (h.guard) h.guard = null;               // a hit from an unguarded side breaks the pose
     const dealt = Math.min(dmg, h.hp);         // damage past zero health doesn't count in the stats
     h.hp = Math.max(0, h.hp - dmg);
     // knockback stacks from rapid fire, up to a limit, so a single burst can't clear the stage
@@ -1019,7 +1131,6 @@ button[aria-pressed="true"] { background: var(--ink); color: var(--paper); }
     h.lastKb = { x: kbx, y: kby };
     h.flash = 0.18;
     h.lastHitT = 0;
-    const src = from && from !== h ? (from.possessedBy || from) : null;
     h.stats.taken += dealt;
     if (src) {
       src.stats.dmg += dealt; src.stats.hits++;
@@ -1035,11 +1146,17 @@ button[aria-pressed="true"] { background: var(--ink); color: var(--paper); }
   }
   function die(h, ringOut = false) {
     if (h.dead) return;
-    h.dead = true; h.deadT = 0; h.stun = 0; h.shield = false; h.bubble.visible = false;
+    h.dead = true; h.deadT = 0; h.stun = 0; h.guard = null;
+    if (Number.isFinite(h.stocks)) { h.stocks = Math.max(0, h.stocks - 1); if (h.stocks === 0) h.out = true; }
     if (h.lastHitBy && h.lastHitBy !== h) h.lastHitBy.stats.kos++;
     if (h.possessing) release(h.possessing);
     if (h.possessedBy) release(h);
     endInhale(h);
+    // whatever it was doing stops; the stack and stalk go stiff so they lie on the paper with the body
+    h.whip = null; h.shot = null; h.launch = [];
+    if (h.beam) { if (h.beam.mesh) dropT(h.beam.mesh); h.beam = null; }
+    if (h.compaction) { dropT(h.compaction.slab); h.compaction = null; }
+    if (h.spring) { h.spring.stretch = 1; h.spring.profile = null; h.spring.override = sp => { sp.theta *= 0.8; sp.omega = 0; }; }
     h.stars.visible = false;
     if (!ringOut) floatText(h.x, h.y + BOX_H + 0.6, 'KO', 'info');
     startRagdoll(h);
@@ -1220,7 +1337,7 @@ button[aria-pressed="true"] { background: var(--ink); color: var(--paper); }
         if (!alive(h) || h.team === p.team) continue;
         if (overlapsBox(h, p.pos.x - p.radius, p.pos.x + p.radius, p.pos.y - p.radius, p.pos.y + p.radius)) {
           const dir = Math.sign(p.vel.x) || 1;
-          const out = hurt(h, p.dmg, dir * p.kb, p.kbUp, p.owner);
+          const out = hurt(h, p.dmg, dir * p.kb, p.kbUp, p.owner, { dir: p.vel });
           burst(p.pos, out === 'parry' ? '#ffffff' : p.color);
           if (out === 'hit' && p.onHit) p.onHit(h);
           p.life = 0;
@@ -1240,7 +1357,7 @@ button[aria-pressed="true"] { background: var(--ink); color: var(--paper); }
   // ================= Abilities =================
   function tryAbility(f, slot) {
     const ab = f.kit.abilities[slot];
-    if (!ab || f.cd[slot] > 0 || f.busy > 0 || f.shield || f.shieldDrop > 0) return false;
+    if (!ab || f.cd[slot] > 0 || f.busy > 0 || f.guard) return false;
     const ok = ABILITY[f.kind][slot](f);
     if (ok !== false) { f.cd[slot] = ab.cd; f.stats.moves++; }
     return ok !== false;
@@ -1249,24 +1366,29 @@ button[aria-pressed="true"] { background: var(--ink); color: var(--paper); }
   const wp = V();
   const ABILITY = {
     so: {
-      a1(f) {       // Block shot: the top block of the stack slides up and off the end (it fires when it gets there)
+      a1(f) {       // Block shot: the stack bends at the enemy exactly like the beam's barrel, and the top block
+                    // threads up it and leaves from the tip along the barrel (it fires when it gets there)
         const top = f.magSlots.length - 1;
         if (f.bars < 1 || top < 0 || Math.abs(f.magSlots[top] - top) > 0.35) return false;
+        if (!f.shot) {
+          f.shot = { t: 0, idle: 0, aim: beamAim(f) };
+          f.shot.bend = f.spring.override = barrelBend(() => f.shot ? f.shot.aim : 0);
+        }
+        f.shot.idle = 0;
+        f.shot.aim = beamAim(f);
         f.launch.push({ s: f.magSlots.pop() });
         f.bars -= 1;
       },
-      a2(f) {       // Unified beam: the stack bends toward the enemy like a barrel; blocks feed up it into the beam
+      a3(f) {       // Unified beam: the stack bends toward the enemy like a barrel; blocks feed up it into the beam
         if (f.bars < 5) { floatText(f.x, f.y + BOX_H + 0.4, 'Needs 5 blocks', 'info'); return false; }
         f.busy = BEAM_AIM + BEAM_FEED * 5 + BEAM_TAIL;
         const b = { t: 0, shift: 0, fed: 0, mesh: null, aim: beamAim(f), dir: V(), origin: V(), len: BEAM_LEN };
         f.beam = b;
         f.magSlots = [0, 1, 2, 3, 4];
-        f.spring.override = (sp, dt) => {
-          sp.theta += (b.aim - sp.theta) * Math.min(1, dt * 18);
-          sp.omega = 0;
-        };
+        f.shot = null;
+        f.spring.override = barrelBend(() => b.aim);
       },
-      a3(f) {       // Block whip: the spring stretches to rod length and lashes the stack forward
+      a2(f) {       // Block whip: the spring stretches to rod length and lashes the stack forward
         f.busy = 0.42;
         f.whip = { t: 0, dur: 0.46, hit: new Set() };
         f.spring.override = sp => {
@@ -1305,10 +1427,9 @@ button[aria-pressed="true"] { background: var(--ink); color: var(--paper); }
           orient: 'cursor', color: GPT_GREEN,
         });
       },
-      a2(f) {       // Computer use (advanced)
+      a3(f) {       // Computer use (advanced)
         f.rotor.getWorldPosition(wp);
         const target = nearestEnemy(f);
-        if (!target) return false;
         spawnProjectile({
           mesh: makeCursor(CURSOR_ADV_SIZE, 1), pos: wp.clone(), vel: aimFrom(f, wp, 10, false), kind: 'cursor',
           team: f.team, owner: f, dmg: 4, kb: 1, radius: 0.3, life: 3, homing: target, turn: 6,
@@ -1316,7 +1437,7 @@ button[aria-pressed="true"] { background: var(--ink); color: var(--paper); }
           onHit(h) { if (alive(f) && alive(h) && !h.possessedBy && !f.possessing) possess(f, h); },
         });
       },
-      a3(f) {       // Inhale
+      a2(f) {       // Inhale
         startInhale(f);
       },
       a4(f) {       // Compaction
@@ -1327,7 +1448,7 @@ button[aria-pressed="true"] { background: var(--ink); color: var(--paper); }
       },
     },
     claude: {
-      a1(f) {       // Combobulating: alternates a line of three and a square of four, punched out one at a time
+      a3(f) {       // Combobulating: alternates a line of three and a square of four, punched out one at a time
         f.comboShape = f.comboShape === 'square' ? 'line' : 'square';
         const layout = f.comboShape === 'line'
           ? [[-1.15, 0], [0, 0], [1.15, 0]]
@@ -1356,7 +1477,7 @@ button[aria-pressed="true"] { background: var(--ink); color: var(--paper); }
         f.busy = 0.3;
         f.fling = { t: 0, dur: 0.45, mesh, tip, hit: new Set(), dir: f.facing };
       },
-      a3(f) {       // Shoot: launch one of the logo's rods
+      a1(f) {       // Shoot: launch one of the logo's rods
         const rod = takeRod(f);
         if (!rod) return false;
         const mesh = inked(rodGeoCentered, claudeMat);
@@ -1390,6 +1511,11 @@ button[aria-pressed="true"] { background: var(--ink); color: var(--paper); }
   const rodsLeft = f => f.rods ? f.rods.filter(r => r.present).length : Infinity;
 
   const BEAM_AIM = 0.22, BEAM_FEED = 0.11, BEAM_TAIL = 0.2, BEAM_LEN = 15;
+  const SHOT_AIM = 0.16;    // the first block of a burst waits this long for the barrel to bend
+  // The beam and the block shot share one bend: the whole stack swings toward the aim angle like a barrel
+  function barrelBend(aim) {
+    return (sp, dt) => { sp.theta += (aim() - sp.theta) * Math.min(1, dt * 18); sp.omega = 0; };
+  }
   function beamAim(f) {
     const base = f.spring.base.getWorldPosition(V());
     const t = nearestEnemy(f, true);
@@ -1413,7 +1539,8 @@ button[aria-pressed="true"] { background: var(--ink); color: var(--paper); }
   }
 
   // ---------- ChatGPT: Inhale (tornado) ----------
-  const VORTEX_N = 160;
+  const VORTEX_N = 160, INHALE_WAVE = 0.6;
+  const _ringN = V(), _zAxis = V(0, 0, 1), _spinQ = new THREE.Quaternion();
   function startInhale(f) {
     f.busy = 1.9;
     const geo = new THREE.BufferGeometry();
@@ -1457,13 +1584,16 @@ button[aria-pressed="true"] { background: var(--ink); color: var(--paper); }
     const fade = Math.min(1, ih.t / 0.25) * Math.min(1, (ih.dur - ih.t) / 0.25);
     const m = mouthOf(f), ax = inhaleAxis(f);
     const side = V(-ax.y, ax.x, 0), depth = V(0, 0, 1);
+    // the funnel wriggles: a wave runs down its axis, still at the mouth and swinging wider toward the open end
+    const wave = d => INHALE_WAVE * (d / INHALE_LEN) * Math.sin(d * 1.25 - ih.t * 8);
+    const slope = d => (wave(d + 0.05) - wave(d - 0.05)) / 0.1;
     const arr = ih.points.geometry.attributes.position.array;
     ih.parts.forEach((p, i) => {
       p.u -= dt * (0.55 + (1 - p.u) * 1.7) * p.s;
       p.a += dt * (5 + 14 * (1 - p.u));
       if (p.u <= 0.02) { p.u = 1; p.a = Math.random() * Math.PI * 2; }
       const d = p.u * INHALE_LEN, r = 0.15 + p.u * 2.3;
-      const q = m.clone().addScaledVector(ax, d).addScaledVector(side, Math.cos(p.a) * r).addScaledVector(depth, Math.sin(p.a) * r);
+      const q = m.clone().addScaledVector(ax, d).addScaledVector(side, Math.cos(p.a) * r + wave(d)).addScaledVector(depth, Math.sin(p.a) * r);
       arr[i * 3] = q.x; arr[i * 3 + 1] = q.y; arr[i * 3 + 2] = q.z;
     });
     ih.points.geometry.attributes.position.needsUpdate = true;
@@ -1471,9 +1601,11 @@ button[aria-pressed="true"] { background: var(--ink); color: var(--paper); }
     ih.rings.forEach(r => {
       r.userData.u -= dt * 0.9;
       if (r.userData.u <= 0) r.userData.u += 1;
-      const u = r.userData.u;
-      r.position.copy(m).addScaledVector(ax, u * INHALE_LEN);
-      r.rotation.set(0, Math.PI / 2, ih.t * 6);
+      const u = r.userData.u, d = u * INHALE_LEN;
+      r.position.copy(m).addScaledVector(ax, d).addScaledVector(side, wave(d));
+      // each ring stays square to the bent axis where it sits
+      _ringN.copy(ax).addScaledVector(side, slope(d)).normalize();
+      r.quaternion.setFromUnitVectors(_zAxis, _ringN).multiply(_spinQ.setFromAxisAngle(_zAxis, ih.t * 6));
       r.scale.setScalar(0.15 + u * 2.3);
       r.material.opacity = 0.5 * fade * Math.sin(Math.PI * u);
     });
@@ -1481,8 +1613,8 @@ button[aria-pressed="true"] { background: var(--ink); color: var(--paper); }
     ih.chompT -= dt;
     for (const h of enemiesOf(f)) {
       const c = centerOf(h);
-      if (!inCone(f, c) || h.shield) continue;
       const dx = m.x - h.x;
+      if (!inCone(f, c) || guarding(h, V(-Math.sign(dx) || 1, 0, 0)) || h.invuln > 0) continue;   // a guard facing the mouth holds firm
       h.vx += Math.sign(dx) * 26 * dt;
       if (c.y < m.y - 0.3 && !h.onGround) h.vy += 6 * dt;
       gainContext(f, 7 * dt);
@@ -1520,7 +1652,7 @@ button[aria-pressed="true"] { background: var(--ink); color: var(--paper); }
       for (const e of enemiesOf(f)) {
         const ahead = (e.x - f.x) * c.dir;
         if (ahead > -0.2 && ahead < 5.6 && Math.abs(e.y - f.y) < 2.6) {
-          const out = hurt(e, 7, c.dir * 2, 1, f);
+          const out = hurt(e, 7, c.dir * 2, 1, f, { dir: V(c.dir * 0.25, -1, 0) });   // the slab comes down from above
           if (out === 'hit') {
             e.compact = Math.min(e.compact, 0.45);
             floatText(e.x, e.y + BOX_H * 0.6, 'Compacted', 'info');
@@ -1539,6 +1671,14 @@ button[aria-pressed="true"] { background: var(--ink); color: var(--paper); }
     if (f.kind === 'so') {
       if (!f.beam) f.bars = Math.min(5, f.bars + dt * 1.6);
       if (f.beam) updateBeam(f, dt);
+      if (f.shot) {
+        // the barrel holds its bend while the burst lasts, then springs back
+        f.shot.t += dt; f.shot.idle += dt;
+        if (f.shot.idle > 0.28 && !f.launch.length) {
+          if (f.spring.override === f.shot.bend) { f.spring.override = null; f.spring.omega = -3; }
+          f.shot = null;
+        }
+      }
       if (f.whip) {
         const w = f.whip; w.t += dt;
         const p = w.t / w.dur;
@@ -1557,7 +1697,7 @@ button[aria-pressed="true"] { background: var(--ink); color: var(--paper); }
               w.t = Math.max(w.t, w.dur * 0.8);
               continue;
             }
-            hurt(h, 10, f.facing * 7, 5, f);
+            hurt(h, 10, f.facing * 7, 5, f, { dir: V(f.facing, -0.6, 0) });   // the lash comes over and down
           }
         }
         if (p >= 1) { f.whip = null; f.spring.override = null; f.spring.stretch = 1; f.spring.profile = null; }
@@ -1568,8 +1708,8 @@ button[aria-pressed="true"] { background: var(--ink); color: var(--paper); }
       f.rotorBoost = Math.max(0, f.rotorBoost - dt * 1.2);
       f.rotor.rotation.y += dt * (5 + f.rotorBoost * 45) * f.spinDir;
       const flap = (0.05 + 0.1 * f.rotorBoost + 0.012 * Math.abs(f.vx)) * Math.sin(performance.now() / 45 + f.id);
-      f.logo.rotation.x = -Math.PI / 2 + flap;
-      f.logo.rotation.y = flap * 0.6;
+      f.logo.position.set(0, 0, 0);            // (a guard moves the logo; this is where it sits otherwise)
+      f.logo.rotation.set(-Math.PI / 2 + flap, flap * 0.6, 0);
       // the logo grows while inhaling or compacting
       const want = f.inhale ? 2.1 : f.compaction ? 1.7 : 1;
       f.logoScale += (want - f.logoScale) * Math.min(1, dt * 10);
@@ -1726,22 +1866,26 @@ button[aria-pressed="true"] { background: var(--ink); color: var(--paper); }
       for (let d = 0; d < b.len; d += 0.3) {
         const px = b.origin.x + b.dir.x * d, py = b.origin.y + b.dir.y * d;
         if (overlapsBox(h, px - 0.3, px + 0.3, py - 0.3, py + 0.3)) {
-          hurt(h, 5, Math.sign(b.dir.x) * kbScale * 2, kbScale, f);
+          hurt(h, 5, Math.sign(b.dir.x) * kbScale * 2, kbScale, f, { dir: b.dir });
           break;
         }
       }
     }
   }
 
-  function fireBlock(f, local) {
+  // A block leaves the tip straight along the barrel, still lying across it the way it sat on the stack
+  function fireBlock(f, local, tang) {
     const from = f.spring.base.localToWorld(local.clone());
+    const mesh = makeBlock();
+    mesh.rotation.z = -f.facing * tang;
     spawnProjectile({
-      mesh: makeBlock(), pos: from, vel: aimFrom(f, from, 18), team: f.team, owner: f, kind: 'block',
-      dmg: 3, kb: 2.4, kbUp: 2, radius: 0.28, life: 1.8, gravity: -3, color: '#f48024', spin: 10,
+      mesh, pos: from, vel: V(f.facing * Math.sin(tang), Math.cos(tang), 0).multiplyScalar(18), team: f.team, owner: f,
+      kind: 'block', dmg: 3, kb: 2.4, kbUp: 2, radius: 0.28, life: 1.8, color: '#f48024',
     });
   }
   // The block magazine, drawn after the spring is placed each frame. Blocks rest at the bottom of the
   // stack (index 0 lowest); new ones drop in on top; a fired block travels up and leaves from the tip.
+  const _slat = V(), _slatQ = new THREE.Quaternion().setFromAxisAngle(V(0, 1, 0), Math.PI / 2);
   function renderMagazine(f) {
     const sp = f.spring, n = sp.n, dt = lastDt;
     if (f.beam) {
@@ -1756,9 +1900,11 @@ button[aria-pressed="true"] { background: var(--ink); color: var(--paper); }
       });
     }
     const pos = V();
+    const aimed = !f.shot || f.shot.t >= SHOT_AIM;
     f.launch = f.launch.filter(l => {
-      l.s += dt * 24;
-      if (l.s >= n - 0.4) { slotPose(sp, n - 0.4, pos); if (alive(f)) fireBlock(f, pos); return false; }
+      if (aimed) l.s += dt * 24;
+      // it leaves from the tip along the tip's direction, the same line the beam fires along
+      if (l.s >= n - 0.4) { slotPose(sp, n - 0.4, pos); if (alive(f)) fireBlock(f, pos, sp.tangents[n]); return false; }
       return true;
     });
     const shown = f.magSlots.concat(f.launch.map(l => l.s));
@@ -1770,8 +1916,15 @@ button[aria-pressed="true"] { background: var(--ink); color: var(--paper); }
       m.position.copy(pos);
       m.rotation.set(0, 0, -tang);
       const exit = s > n - 1 ? 1 - (s - (n - 1)) * (f.beam ? 1 : 0.7) : 1;
-      const enter = 1;
-      m.scale.setScalar(Math.max(0.01, Math.min(enter, exit)));
+      m.scale.setScalar(Math.max(0.01, exit));
+      // guarding: the blocks are draped over the tray as slats, one after another
+      const gw = guardWeight(f);
+      if (gw > 0 && j < f.magSlots.length) {
+        const k = THREE.MathUtils.clamp(gw * 1.6 - j * 0.12, 0, 1);
+        m.position.lerp(_slat.set((j - 2) * 0.19, 0.1, 0), k);
+        m.quaternion.slerp(_slatQ, k);
+        m.scale.setScalar(1);
+      }
     });
   }
 
@@ -1787,6 +1940,7 @@ button[aria-pressed="true"] { background: var(--ink); color: var(--paper); }
   // ================= Speech bubble =================
   let bubble = null;
   function showBubble(f, text, eater) {
+    if (previewing) { sayOnCard(previewing, text); return; }
     if (bubble) bubble.el.remove();
     bubble?.flyers?.forEach(w => w.el.remove());
     const el = document.createElement('div');
@@ -1852,7 +2006,41 @@ button[aria-pressed="true"] { background: var(--ink); color: var(--paper); }
     ['hip', 'knee0'], ['knee0', 'foot0'], ['hip', 'knee1'], ['knee1', 'foot1'],
     ['sho', 'elb0'], ['elb0', 'hand0'], ['sho', 'elb1'], ['elb1', 'hand1'],
   ];
-  const RAG_FLOOR = { head: 0.42, neck: 0.12 };
+  // Collision against the paper slab. Each point is a small ball; the head is the real cup shape (a cylinder
+  // with a flattened round bottom) with the tray and stack, or the logo, on top, all measured along the
+  // body's axis from the neck. Whatever part of it is lowest is what rests on the paper.
+  const CUP_S0 = HEAD_Y - 2.0, CUP_S1 = CUP_S0 + CUP_H;
+  const TOP_SHAPES = {
+    so: [[CROWN_Y - 2.0, 0.48], [CROWN_Y - 2.0 + 0.44, 0.31], [CROWN_Y - 2.0 + 0.44 + 4 * 0.19, 0.31]],
+    gpt: [[0.93, 0.47]], claude: [[0.93, 0.52]],
+  };
+  // how far each point's part reaches past the point: feet are little boxes, fists are balls, and Stack
+  // Overflow's front hand has its pointing finger
+  const ragRadius = (f, name) => name.startsWith('foot') ? 0.11 : name.startsWith('hand') ? (f.kind === 'so' && name === 'hand0' ? 0.17 : 0.08) : 0.03;
+  function collidePoint(p, r) {
+    if (Math.abs(p.x) >= STAGE_HALF + r || p.y >= r || p.y <= -STAGE_H - r) return;
+    if (p.py >= r - 0.05 || Math.abs(p.px) < STAGE_HALF) {
+      p.y = r;
+      p.px = p.x - (p.x - p.px) * 0.55;            // friction on the paper
+    } else {
+      p.x = Math.sign(p.x) * (STAGE_HALF + r);     // came in from the side: pushed back out, not up on top
+      p.px = p.x;
+    }
+  }
+  function collideHead(f) {
+    const { pts } = f.rag, H = pts.hip, N = pts.neck;
+    let ax = N.x - H.x, ay = N.y - H.y;
+    const l = Math.hypot(ax, ay) || 1; ax /= l; ay /= l;
+    const across = Math.sqrt(Math.max(0, 1 - ay * ay));     // how far a disc square to the axis reaches down
+    let low = Infinity, lowX = N.x;
+    const consider = (s, half, y = N.y + ay * s - half * across) => { if (y < low) { low = y; lowX = N.x + ax * s; } };
+    consider(CUP_S0, R); consider(CUP_S1, R + LINE_W);
+    if (ay > 0) consider(CUP_S0, 0, N.y + ay * CUP_S0 - Math.sqrt(R * R * across * across + DEPTH * DEPTH * ay * ay));
+    for (const [sAt, half] of TOP_SHAPES[f.kind]) consider(sAt, half);
+    if (low < 0 && low > -STAGE_H && Math.abs(lowX) < STAGE_HALF) {
+      for (const q of [pts.head, N]) { q.y -= low; q.px = q.x - (q.x - q.px) * 0.55; }
+    }
+  }
   function startRagdoll(f) {
     f.root.updateMatrixWorld(true);
     const pts = {};
@@ -1869,6 +2057,7 @@ button[aria-pressed="true"] { background: var(--ink); color: var(--paper); }
       p.px = p.x - (vx + extra + (Math.random() - 0.5)) * dt0;
       p.py = p.y - vy * dt0;
     }
+    f.arms.forEach(a => { a.limb.L1 = a.L1; a.limb.L2 = a.L2; });     // undo an overhead guard's stretch
     f.rag = {
       pts,
       links: RAG_LINKS.map(([a, b]) => [a, b, Math.hypot(pts[a].x - pts[b].x, pts[a].y - pts[b].y)]),
@@ -1888,13 +2077,8 @@ button[aria-pressed="true"] { background: var(--ink); color: var(--paper); }
         const dx = B.x - A.x, dy = B.y - A.y, d = Math.hypot(dx, dy) || 1e-6, k = (d - L) / d * 0.5;
         A.x += dx * k; A.y += dy * k; B.x -= dx * k; B.y -= dy * k;
       }
-      for (const [name, p] of Object.entries(pts)) {
-        const fl = RAG_FLOOR[name] || 0.03;
-        if (overStage(p.x) && p.y < fl && p.y > -STAGE_H) {
-          p.y = fl;
-          p.px = p.x - (p.x - p.px) * 0.55;            // friction on the paper
-        }
-      }
+      for (const [name, p] of Object.entries(pts)) collidePoint(p, ragRadius(f, name));
+      collideHead(f);
     }
   }
   const _rw = V(), _rk = V(), _mid = V();
@@ -1938,34 +2122,33 @@ button[aria-pressed="true"] { background: var(--ink); color: var(--paper); }
 
     if (f.stun > 0) { f.stun -= dt; inp = NO_INPUT; }
     if (f.possessing) inp = NO_INPUT;
-    const rooted = f.busy > 0 || f.shieldDrop > 0;
+    f.invuln = Math.max(0, f.invuln - dt);
+    f.parryGrace = Math.max(0, f.parryGrace - dt);
+    f.jumpT += dt;
+
+    // guard: forms, shines, loosens; nothing else happens until it has loosened
+    f.guardCd = Math.max(0, f.guardCd - dt);
+    if (f.guard) {
+      f.guard.t += dt;
+      if (f.guard.t >= GUARD_END) { f.guard = null; f.guardCd = 0.15; }
+    }
+    if (inp.parry && !f.guard && f.guardCd <= 0 && f.busy <= 0) startGuard(f, inp);
+
+    const rooted = f.busy > 0 || !!f.guard;
     f.busy = Math.max(0, f.busy - dt);
 
-    // shield: hold to raise; releasing starts the shield drop with its parry window
-    f.parryWin = Math.max(0, f.parryWin - dt);
-    f.shieldDrop = Math.max(0, f.shieldDrop - dt);
-    const wantShield = inp.shield && f.onGround && f.busy <= 0 && f.shieldDrop <= 0 && f.stun <= 0 && f.shieldHP > 4;
-    if (wantShield) {
-      f.shield = true;
-      f.shieldHP = Math.max(0, f.shieldHP - dt * 9);
-    } else if (f.shield) {
-      f.shield = false;
-      f.shieldDrop = DROP_TIME; f.parryWin = PARRY_TIME;
-    } else f.shieldHP = Math.min(SHIELD_MAX, f.shieldHP + dt * 12);
-
     let move = (inp.right ? 1 : 0) - (inp.left ? 1 : 0);
-    if (rooted || f.shield) move = 0;
+    if (rooted) move = 0;
     const rate = f.onGround ? 30 : 12;
     const speed = 5.5 * (0.7 + 0.3 * f.compact);
     f.vx += THREE.MathUtils.clamp(move * speed - f.vx, -rate * dt, rate * dt);
     if (move) f.facing = move;
 
     if (inp.jump && !rooted && f.jumpsLeft > 0) {
-      if (f.shield) f.shield = false;          // jump straight out of shield
       const air = !f.onGround;
       f.jumpsLeft--;
       if (air) airJump(f);
-      else { f.vy = 9.6; f.onGround = false; }
+      else { f.vy = 9.6; f.onGround = false; f.jumpT = 0; }
     }
     if (f.lift > 0) {
       f.lift -= dt;
@@ -2014,13 +2197,8 @@ button[aria-pressed="true"] { background: var(--ink); color: var(--paper); }
     f.stars.rotation.y += dt * 6;
     f.marker.visible = !!f.possessedBy;
     f.marker.position.y = RIM_Y + 0.9 + Math.sin(performance.now() / 120) * 0.05;
-    f.bubble.visible = f.shield || f.shieldDrop > 0;
-    if (f.bubble.visible) {
-      const s = 0.65 + 0.85 * (f.shieldHP / SHIELD_MAX);
-      f.bubble.scale.setScalar(f.shield ? s : s * (f.shieldDrop / DROP_TIME));
-      f.bubble.material.opacity = f.parryWin > 0 ? 0.5 : 0.22;
-      f.bubbleRim.quaternion.copy(camera.quaternion);
-    }
+    // just back from losing a life: blink while nothing can hurt it
+    f.root.visible = !(f.invuln > 0 && Math.floor(f.invuln * 12) % 2);
 
     const glow = f.possessedBy ? 0.55 + 0.25 * Math.sin(performance.now() / 90) : 0;
     if (f.flash > 0) {
@@ -2034,10 +2212,68 @@ button[aria-pressed="true"] { background: var(--ink); color: var(--paper); }
     }
     f.mats.outline.color.set(glow ? GPT_GREEN : '#141414');
   }
+  function startGuard(f, inp) {
+    const dir = inp.up ? 'up' : 'side';
+    const side = inp.right ? 1 : inp.left ? -1 : f.facing;
+    if (dir === 'side') f.facing = side;
+    // W then Backspace in quick succession: the W started a jump, so take it back and guard from the ground
+    if (dir === 'up' && f.jumpT < 0.1 && f.vy > 0 && f.y < 1.2) {
+      f.y = 0; f.vy = 0; f.onGround = true; f.jumpsLeft = f.kit.jumps;
+    }
+    f.guard = { t: 0, dir, side };
+    if (f.shot && f.spring.override === f.shot.bend) f.spring.override = null;
+    f.shot = null;
+    if (f.launch && f.launch.length) { f.bars += f.launch.length; f.launch = []; }   // blocks on their way up go back
+  }
   function ringOut(f) {
     f.hp = 0;
     floatText(THREE.MathUtils.clamp(f.x, -STAGE_HALF, STAGE_HALF), 0.5, 'Ring out', 'info');
     die(f, true);
+  }
+
+  // ================= Guard: the held piece, its glint, the gripping fingers =================
+  // Runs after the springs are placed, so a piece that normally rides the stalk lands exactly in the hands.
+  const _home = new THREE.Matrix4(), _rel = new THREE.Matrix4(), _blend = new THREE.Matrix4();
+  const _hp = V(), _hq = new THREE.Quaternion(), _hs = V(), _bp = V(), _bq = new THREE.Quaternion();
+  function poseGuard(f) {
+    const w = guardWeight(f), g = f.guard;
+    const pose = g ? GUARD_POSES[f.kind][g.dir] : null;
+    if (f.crown) {
+      // the tray is a child of the body: blend straight between its seat on the head and the guard
+      f.crown.position.set(0, CROWN_Y, 0);
+      f.crown.quaternion.identity();
+      if (w > 0) { f.crown.position.lerp(pose.pos, w); f.crown.quaternion.slerp(pose.quat, w); }
+    } else if (f.logo && w > 0) {
+      // the logo rides the spinning stalk: work out where it would be, blend that toward the guard,
+      // then express the result back in the stalk's frame
+      f.root.updateMatrixWorld(true);
+      _rel.copy(f.vis.matrixWorld).invert().multiply(f.rotor.matrixWorld);          // stalk top, in the body's frame
+      _home.compose(f.logo.position, f.logo.quaternion, f.logo.scale);
+      _blend.multiplyMatrices(_rel, _home).decompose(_hp, _hq, _hs);
+      _bp.copy(_hp).lerp(pose.pos, w);
+      _bq.copy(_hq).slerp(pose.quat, w);
+      const sc = _hs.x + (pose.scale - _hs.x) * w;
+      _blend.compose(_bp, _bq, _hs.set(sc, sc, sc));
+      _blend.premultiply(_rel.invert()).decompose(f.logo.position, f.logo.quaternion, f.logo.scale);
+    }
+    // fingers curl round the bar each hand holds once the hands are there
+    f.grips.forEach((m, i) => {
+      const gr = pose && pose.grips && pose.grips[i];
+      m.visible = !!gr && w > 0.7;
+      if (!m.visible) return;
+      m.position.copy(f.arms[i].limb.c);
+      m.quaternion.setFromUnitVectors(_zAxis, gr.axis);
+    });
+    // the shine: a glint over the piece and the piece itself lit up, strongest as the shine starts
+    const shine = shining(f) ? 1 - Math.pow((g.t - GUARD_IN) / GUARD_SHINE, 2) : 0;
+    f.glint.visible = shine > 0;
+    if (shine > 0) {
+      f.glint.position.copy(guardCenter(f)).add(V(0, 0, 0.35));
+      f.glint.scale.setScalar(0.32 + 0.38 * shine);
+      f.glint.material.rotation = g.t * 4;
+      f.glint.material.opacity = Math.min(1, shine * 1.4);
+    }
+    for (const m of f.propMats) { m.emissive.set('#ffffff'); m.emissiveIntensity = 0.55 * shine; }
   }
 
   // ================= Legs: planted feet =================
@@ -2114,12 +2350,12 @@ button[aria-pressed="true"] { background: var(--ink); color: var(--paper); }
       let bend = arm.bend;
       if (f.onGround && Math.abs(f.vx) > 0.3) _hand.x += Math.sin(now * 12 + i * Math.PI) * 0.05;
       if (f.kind !== 'so' && i === 1) _hand.y += Math.sin(now * 2.5 + f.id) * 0.04;
-      if (f.shield) { _hand.lerp(i === 0 ? V(0.45, 1.9, 0.3) : V(0.3, 1.75, 0.32), 0.8); bend = -1; }
       if (f.kind === 'so' && i === 0 && f.whip) {
         const p = Math.sin(Math.min(1, f.whip.t / f.whip.dur) * Math.PI);
         _hand.lerp(V(0.85, 2.45, 0.1), p);
       }
       if (f.kind === 'so' && i === 0 && f.beam) _hand.lerp(V(0.9, 2.2, 0.1), Math.min(1, f.beam.t * 6));
+      if (f.kind === 'so' && i === 0 && f.shot) _hand.lerp(V(0.9, 2.2, 0.1), Math.min(1, f.shot.t * 8));
       if (f.inhale && i === 0) { _hand.lerp(V(0.5, 2.3, 0.2), 0.7); bend = -1; }
       if (f.combo) {
         const guard = i === 0 ? V(0.5, 1.95, 0.2) : V(0.38, 1.8, 0.26);
@@ -2133,6 +2369,16 @@ button[aria-pressed="true"] { background: var(--ink); color: var(--paper); }
           const at = d.pos ? f.vis.worldToLocal(d.pos.clone()) : d.local.clone();
           _hand.lerp(V(at.x - 0.16, at.y, at.z), reach);
         });
+      }
+      // guarding: the hands go to the held piece
+      const gw = guardWeight(f);
+      // overhead the arms stretch a little (they are short, and the cup is in the way) with the elbows out wide
+      const reachUp = gw > 0 && f.guard.dir === 'up' ? 1 + 0.3 * gw : 1;
+      arm.limb.L1 = arm.L1 * reachUp; arm.limb.L2 = arm.L2 * reachUp;
+      if (gw > 0) {
+        const to = GUARD_POSES[f.kind][f.guard.dir].hands[i];
+        _hand.lerp(to, gw);
+        bend = f.guard.dir === 'up' && to.x < 0 ? 1 : -1;
       }
       const end = solveLimb(arm.limb, SHOULDER_LOCAL, _hand, planeHint(SHOULDER_LOCAL, _hand, bend));
       if (arm.hand) {
@@ -2174,10 +2420,11 @@ button[aria-pressed="true"] { background: var(--ink); color: var(--paper); }
       left: k('KeyA') || k('ArrowLeft'),
       right: k('KeyD') || k('ArrowRight'),
       jump: p('KeyW') || p('ArrowUp') || p('Space'),
-      shield: k('Backspace'),
-      a1: p('KeyJ') || p('Digit1') || (k('KeyJ') && controlledBody()?.kind === 'so'),     // hold J to keep firing blocks
+      parry: p('Backspace') || p('ParryUp'),
+      up: k('KeyW') || k('ArrowUp') || p('ParryUp'),
+      a1: p('KeyJ') || p('Digit1') || (k('KeyJ') && controlledBody()?.kind !== 'gpt'),     // hold J to keep firing blocks or rods
       a2: p('KeyK') || p('Digit2'),
-      a3: p('KeyL') || p('Digit3') || (k('KeyL') && controlledBody()?.kind === 'claude'), // hold L to keep shooting rods
+      a3: p('KeyL') || p('Digit3'),
       a4: p('KeyI') || p('Digit4'),
     };
   }
@@ -2188,18 +2435,18 @@ button[aria-pressed="true"] { background: var(--ink); color: var(--paper); }
     if (f.ai.rest > 0 || Math.random() > 0.5) return null;
     const ahead = (t.x - f.x) * f.facing > 0;
     if (f.kind === 'so') {
-      if (f.bars >= 5 && dy < 1.2 && dist < 12 && Math.random() < 0.4) return 'a2';
-      if (dist < 3.2 && ready('a3')) return 'a3';
+      if (f.bars >= 5 && dy < 1.2 && dist < 12 && Math.random() < 0.4) return 'a3';
+      if (dist < 3.2 && ready('a2')) return 'a2';
       if (dist < 5.5 && ready('a4') && Math.random() < 0.3) return 'a4';
       if (f.bars >= 1 && dist < 11) return 'burst';
     } else if (f.kind === 'gpt') {
       if (f.context >= 50 && dist < 5 && ready('a4')) return 'a4';
-      if (ready('a3') && dist < 6 && f.context < 85 && Math.random() < 0.35) return 'a3';
-      if (ready('a2') && Math.random() < 0.3 && enemiesOf(f).length > 1) return 'a2';
+      if (ready('a2') && dist < 6 && f.context < 85 && Math.random() < 0.35) return 'a2';
+      if (ready('a3') && Math.random() < 0.3 && enemiesOf(f).length > 1) return 'a3';
       return 'a1';
     } else {
       if (dist < 2.6) return 'a2';
-      if (ready('a1') && Math.random() < 0.35) return 'a1';
+      if (ready('a3') && Math.random() < 0.35) return 'a3';
       return 'burst';
     }
     return null;
@@ -2216,7 +2463,7 @@ button[aria-pressed="true"] { background: var(--ink); color: var(--paper); }
       }
       return inp;
     }
-    ai.rest -= dt; ai.targetT -= dt; ai.shieldT -= dt; ai.burstT -= dt;
+    ai.rest -= dt; ai.targetT -= dt; ai.burstT -= dt;
     // off the edge: steer home and use every jump to get back
     if (!overStage(f.x) || (f.y < -0.1)) {
       const home = -Math.sign(f.x);
@@ -2232,8 +2479,17 @@ button[aria-pressed="true"] { background: var(--ink); color: var(--paper); }
     const t = ai.target;
     if (!t) return inp;
     const dx = t.x - f.x, dist = Math.abs(dx), dy = Math.abs(t.y - f.y);
-    if (ai.shieldT > 0) { inp.shield = true; return inp; }
     const incoming = projectiles.find(p => p.team !== f.team && !p.suckedBy && Math.abs(p.pos.x - f.x) < 3 && Math.sign(f.x - p.pos.x) === Math.sign(p.vel.x));
+    // sometimes guard the way the danger is coming from: overhead against things dropping in, else to the side
+    if (!f.guard && f.guardCd <= 0 && f.busy <= 0) {
+      const lash = dist < 3.4 && (t.whip || t.fling || t.compaction) && Math.random() < dt * 6;
+      if ((incoming && Math.abs(incoming.pos.x - f.x) < 2.2 && Math.random() < dt * 9) || lash) {
+        inp.parry = true;
+        if (t.compaction || (incoming && incoming.vel.y < -0.45 * incoming.vel.length())) inp.up = true;
+        else { const from = incoming && !lash ? incoming.pos.x : t.x; inp.right = from > f.x; inp.left = !inp.right; }
+        return inp;
+      }
+    }
     ai.t -= dt;
     if (ai.t <= 0) {
       ai.t = 0.16 + Math.random() * 0.26;
@@ -2245,14 +2501,13 @@ button[aria-pressed="true"] { background: var(--ink); color: var(--paper); }
       if (Math.abs(f.x + ai.move * 1.5) > STAGE_HALF - 1.2) ai.move = -Math.sign(f.x);
       ai.jump = Math.random() < 0.12 || (t.y > f.y + 1.2 && Math.random() < 0.6);
       if (incoming && Math.random() < 0.35) ai.jump = true;
-      else if (incoming && Math.random() < 0.3 && f.onGround) ai.shieldT = 0.15 + Math.random() * 0.35;   // sometimes lands a parry
-      if (incoming && f.kind === 'gpt' && f.cd.a3 <= 0 && Math.random() < 0.5) ai.act = 'a3';
+      if (incoming && f.kind === 'gpt' && f.cd.a2 <= 0 && Math.random() < 0.5) ai.act = 'a2';
       else ai.act = chooseAction(f, t, dist, dy);
     }
     inp.left = ai.move < 0; inp.right = ai.move > 0;
     if (ai.jump) { inp.jump = true; ai.jump = false; }
     if (ai.act === 'burst') { ai.burstT = 0.25 + Math.random() * 0.3; ai.act = null; ai.rest = 0.6 + Math.random() * 0.8; }
-    if (ai.burstT > 0) { inp[f.kind === 'claude' ? 'a3' : 'a1'] = true; inp.face = Math.sign(dx) || f.facing; }
+    if (ai.burstT > 0) { inp.a1 = true; inp.face = Math.sign(dx) || f.facing; }
     if (ai.act) { inp[ai.act] = true; inp.face = Math.sign(dx) || f.facing; ai.act = null; ai.rest = 0.55 + Math.random() * 0.9; }
     return inp;
   }
@@ -2271,7 +2526,7 @@ button[aria-pressed="true"] { background: var(--ink); color: var(--paper); }
       el.className = 'plate';
       el.style.setProperty('--c', f.kit.color);
       const tag = f.isPlayer ? 'YOU' : f.dummy ? 'DUMMY' : 'CPU';
-      el.innerHTML = `<div class="plate-top"><span class="plate-name"></span><span class="plate-tag${f.isPlayer ? ' you' : ''}">${tag}</span></div>
+      el.innerHTML = `<div class="plate-top"><span class="plate-id"><span class="plate-name"></span><span class="stocks" aria-label="Lives"></span></span><span class="plate-tag${f.isPlayer ? ' you' : ''}">${tag}</span></div>
         <div class="bar"><div class="bar-lag"></div><div class="bar-fill"></div></div>
         ${f.kind === 'gpt' ? '<div class="ctx" title="Context"><i></i></div>' : ''}
         <div class="plate-meta"><span class="plate-hp"></span><span class="plate-ctx"></span></div>`;
@@ -2286,7 +2541,14 @@ button[aria-pressed="true"] { background: var(--ink); color: var(--paper); }
       el.querySelector('.bar-fill').style.transform = `scaleX(${f.hp / 100})`;
       el.querySelector('.bar-lag').style.transform = `scaleX(${f.hp / 100})`;
       el.querySelector('.plate-hp').textContent = `${Math.ceil(f.hp)} / 100`;
-      el.classList.toggle('out', f.dead);
+      el.classList.toggle('out', !!f.out);
+      const st = el.querySelector('.stocks');
+      const total = mode.lives || 0, key = `${f.stocks}/${total}`;
+      if (Number.isFinite(f.stocks) && st.dataset.k !== key) {
+        st.dataset.k = key;
+        st.innerHTML = Array.from({ length: total }, (_, i) => `<i class="${i < f.stocks ? '' : 'lost'}"></i>`).join('');
+        st.setAttribute('aria-label', `${f.stocks} of ${total} lives left`);
+      }
     }
   }
   function updatePlatesLive() {
@@ -2318,7 +2580,7 @@ button[aria-pressed="true"] { background: var(--ink); color: var(--paper); }
       el.className = 'move'; el.dataset.slot = s;
       el.innerHTML = `<kbd>${KEY_LABEL[s]}</kbd><span></span><i class="cool"></i>`;
       el.querySelector('span').textContent = ab.name;
-      if ((body.rods && (s === 'a2' || s === 'a3')) || (body.kind === 'gpt' && s === 'a4')) {
+      if ((body.rods && (s === 'a1' || s === 'a2')) || (body.kind === 'gpt' && s === 'a4')) {
         const cnt = document.createElement('span');
         cnt.className = 'count';
         el.querySelector('span').appendChild(cnt);
@@ -2331,7 +2593,7 @@ button[aria-pressed="true"] { background: var(--ink); color: var(--paper); }
       }
       movesEl.appendChild(el);
     }
-    const extra = [['W', body.kit.jumps > 1 ? 'Double jump' : 'Jump'], ['\u232B', 'Shield / parry']];
+    const extra = [['W', body.kit.jumps > 1 ? 'Double jump' : 'Jump'], ['\u232B', 'Parry'], ['W+\u232B', 'Overhead parry']];
     for (const [k, label] of extra) {
       const el = document.createElement('div');
       el.className = 'move static';
@@ -2353,9 +2615,9 @@ button[aria-pressed="true"] { background: var(--ink); color: var(--paper); }
       const s = el.dataset.slot, ab = body.kit.abilities[s];
       const frac = ab.cd ? body.cd[s] / ab.cd : 0;
       let wait = frac > 0;
-      if (body.kind === 'so' && s === 'a2' && body.bars < 5) wait = true;
+      if (body.kind === 'so' && s === 'a3' && body.bars < 5) wait = true;
       if (body.kind === 'so' && s === 'a1' && body.bars < 1) wait = true;
-      if (body.rods && (s === 'a2' || s === 'a3')) {
+      if (body.rods && (s === 'a1' || s === 'a2')) {
         const left = rodsLeft(body);
         if (left < 1) wait = true;
         el.querySelector('.count').textContent = ` ${left}/${body.rods.length}`;
@@ -2407,9 +2669,11 @@ button[aria-pressed="true"] { background: var(--ink); color: var(--paper); }
     else if (m.kind === 'duel') placement = [[m.pick, -4, true], [m.opponent, 4]];
     else if (m.kind === 'training') { const o = order.filter(k => k !== m.pick); placement = [[m.pick, -4, true], [o[0], 1], [o[1], 5]]; }
     else placement = [['so', -6], ['gpt', 0], ['claude', 6]];
+    if (m.kind !== 'training') m.lives = m.lives || 3;
     fighters = placement.map(([k, x, me]) => {
       const f = buildFighter(k, x, !!me);
       if (m.kind === 'training' && !me) f.dummy = true;
+      f.stocks = m.kind === 'training' ? Infinity : m.lives;
       return f;
     });
     player = fighters.find(f => f.isPlayer) || null;
@@ -2421,32 +2685,42 @@ button[aria-pressed="true"] { background: var(--ink); color: var(--paper); }
     trainEl.hidden = m.kind !== 'training';
     keys.clear(); pressed.clear();
   }
-  function respawn(f) {
+  // back for another life: the body vanishes in a puff, and a fresh fighter drops in from above,
+  // blinking and unhurtable for a moment
+  function respawn(f, drop = false) {
     const i = fighters.indexOf(f);
+    if (drop && f.rag) { const h = f.rag.pts.hip; if (h.y > -3) { burst(V(h.x, h.y + 0.6, 0), f.kit.color); ring(V(h.x, h.y + 0.6, 0), '#141414', 0.9); } }
     scene.remove(f.root);
     springs = springs.filter(sp => sp !== f.spring);
     const nf = buildFighter(f.kind, f.spawnX, f.isPlayer);
-    nf.dummy = f.dummy;
+    nf.dummy = f.dummy; nf.stocks = f.stocks; nf.stats = f.stats;
+    if (drop) {
+      nf.y = 4; nf.onGround = false; nf.invuln = 2;
+      nf.feet.forEach(ft => { ft.y = nf.y; ft.air = true; });
+      nf.root.position.set(nf.x, nf.y, 0);
+      floatText(nf.x, 4 + BOX_H * 0.8, `${f.stocks} ${f.stocks === 1 ? 'life' : 'lives'} left`, 'info');
+    }
     fighters[i] = nf;
     if (f.isPlayer) player = nf;
     buildHud();
     refreshMoves();
   }
   const BENCH_ROWS = [
+    { label: 'Lives left', sub: 'StockRetention@n', get: f => f.stocks },
     { label: 'Damage dealt', sub: 'PaperFight-Bench v1', get: f => f.stats.dmg, fmt: v => v.toFixed(0) },
     { label: 'Hits landed', sub: 'HitCount@match', get: f => f.stats.hits },
     { label: 'Knockouts', sub: 'KO-Eval, ring outs included', get: f => f.stats.kos },
     { label: 'Survival', sub: 'Health at the final bell', get: f => f.dead ? 0 : Math.ceil(f.hp), fmt: v => v + '%' },
     { label: 'Damage taken', sub: 'Lower is better', get: f => f.stats.taken, fmt: v => v.toFixed(0), low: true },
-    { label: 'Parries', sub: 'Parry-Bench, 5-frame window', get: f => f.stats.parries },
+    { label: 'Parries', sub: 'Parry-Bench, directional', get: f => f.stats.parries },
     { label: 'Moves used', sub: 'Ability calls, verified', get: f => f.stats.moves },
     { label: 'Context gathered', sub: 'Inhale-Bench (ChatGPT only)', get: f => f.kind === 'gpt' ? f.stats.ctx : null, fmt: v => v.toFixed(0) + '%' },
   ];
   function renderBench(winner, leading) {
     // winner first, like the featured model column
-    const cols = [...fighters].sort((a, b) => (b === winner) - (a === winner) || (b.hp - a.hp));
+    const cols = [...fighters].sort((a, b) => (b === winner) - (a === winner) || (b.stocks - a.stocks) || (b.hp - a.hp));
     const head = cols.map(f => {
-      const tag = f === winner ? (leading ? 'Leading' : 'Winner') : f.isPlayer ? 'You' : f.dead ? 'Out' : 'CPU';
+      const tag = f === winner ? (leading ? 'Leading' : 'Winner') : f.isPlayer ? 'You' : f.out ? 'Out' : 'CPU';
       return `<th scope="col" class="${f === winner ? 'win' : ''}" style="--c:${f.kit.color}"><span class="sw"></span>${f.kit.name}<small>${tag}${f.isPlayer && f !== winner ? '' : f.isPlayer ? ' \u00b7 you' : ''}</small></th>`;
     }).join('');
     const body = BENCH_ROWS.map(row => {
@@ -2458,7 +2732,7 @@ button[aria-pressed="true"] { background: var(--ink); color: var(--paper); }
         const cls = [cols[i] === winner ? 'win' : '', v === null ? 'none' : '', v !== null && useful && v === best ? 'best' : ''].join(' ');
         return `<td class="${cls}">${v === null ? '&mdash;' : (row.fmt ? row.fmt(v) : v)}</td>`;
       }).join('');
-      return `<tr><th scope="row">${row.label}<small>${row.sub}</small></th>${cells}</tr>`;
+      return `<tr><th scope="row">${row.label}<small>${row.sub.replace('@n', '@' + (mode.lives || 3))}</small></th>${cells}</tr>`;
     }).join('');
     document.getElementById('benchWrap').innerHTML =
       `<table class="bench"><thead><tr><th></th>${head}</tr></thead><tbody>${body}</tbody></table>`;
@@ -2467,14 +2741,14 @@ button[aria-pressed="true"] { background: var(--ink); color: var(--paper); }
     matchOver = true;
     document.getElementById('resultTitle').textContent = title;
     document.getElementById('resultSub').textContent = sub;
-    const living = fighters.filter(alive);
-    const winner = living.length === 1 ? living[0] : [...living].sort((a, b) => b.hp - a.hp)[0] || null;
+    const living = fighters.filter(f => !f.out);
+    const winner = living.length === 1 ? living[0] : [...living].sort((a, b) => (b.stocks - a.stocks) || (b.hp - a.hp))[0] || null;
     renderBench(winner, living.length > 1);
     setTimeout(() => { resultEl.hidden = false; document.getElementById('rematchBtn').focus(); }, 1100);
   }
   function checkResult(dt) {
     if (matchOver) return;
-    const living = fighters.filter(alive);
+    const living = fighters.filter(f => !f.out);
     if (mode.kind === 'training') {
       for (const f of fighters) {
         if (f.dead && f.deadT > 1.6) respawn(f);
@@ -2483,16 +2757,19 @@ button[aria-pressed="true"] { background: var(--ink); color: var(--paper); }
       document.getElementById('trainStat').textContent = `Damage dealt: ${Math.round(trainDamage)}`;
       return;
     }
+    // a knocked-out fighter with lives left comes back
+    if (living.length > 1) for (const f of [...fighters]) if (f.dead && !f.out && f.deadT > 1.8) respawn(f, true);
     if (!player) {
       if (living.length <= 1) { attractTimer += dt; if (attractTimer > 2.5) startMatch({ kind: 'watch' }); }
       return;
     }
-    if (player.dead) {
+    if (player.out) {
       const by = player.lastHitBy ? player.lastHitBy.kit.name : null;
-      const how = player.rag && player.rag.pts.hip.y < -2 ? 'You fell off the stage.' : by ? `${by} landed the final hit.` : 'You were knocked out.';
-      endMatch('Knocked out', how);
+      const how = player.rag && player.rag.pts.hip.y < -2 ? 'Your last life went off the edge of the stage.' : by ? `${by} took your last life.` : 'You lost your last life.';
+      endMatch('Out of lives', how);
     } else if (living.length === 1) {
-      endMatch('You win', `${player.kit.name} is the last one standing with ${Math.ceil(player.hp)} health left.`);
+      const w = living[0], left = w.stocks === 1 ? '1 life' : `${w.stocks} lives`;
+      endMatch('You win', `${w.kit.name} is the last one standing, with ${left} left.`);
     }
   }
 
@@ -2519,10 +2796,11 @@ button[aria-pressed="true"] { background: var(--ink); color: var(--paper); }
     const slot = document.createElement('div');
     slot.className = 'slot';
     const list = SLOTS.filter(s => kit.abilities[s]).map(s =>
-      `<li><kbd>${KEY_LABEL[s]}</kbd><span><strong>${kit.abilities[s].name}.</strong> ${kit.abilities[s].desc}</span></li>`).join('');
+      `<li data-slot="${s}"><kbd>${KEY_LABEL[s]}</kbd><span><strong>${kit.abilities[s].name}.</strong> ${kit.abilities[s].desc}</span></li>`).join('');
     const passive = kit.passive ? `<li><kbd>W</kbd><span>${kit.passive}</span></li>` : '';
     slot.innerHTML = `<div class="card" role="group" aria-label="${kit.name}" style="--c:${kit.color}"><div class="pedestal"></div><h2>${kit.name}</h2><span>${kit.blurb}</span><ul>${list}${passive}</ul></div>`;
-    slot.addEventListener('click', () => { const i = ORDER.indexOf(kind); if (i !== carIndex) rotateTo(i); else choose(); });
+    // clicking a card only selects it; Enter (or the Play button) goes ahead
+    slot.addEventListener('click', () => { const i = ORDER.indexOf(kind); if (i !== carIndex) rotateTo(i); });
     track.appendChild(slot);
     return { kind, slot };
   });
@@ -2548,15 +2826,27 @@ button[aria-pressed="true"] { background: var(--ink); color: var(--paper); }
     pickBtn.disabled = !!taken;
     pickBtn.textContent = taken ? `${KITS[kind].name} is you` : pending && pending.step === 'opponent' ? `Fight ${KITS[kind].short}` : `Play as ${KITS[kind].short}`;
   }
-  function rotateTo(i) { carIndex = (i + 3) % 3; layoutCarousel(); previewDemoT = 0.6; }
+  function rotateTo(i) { carIndex = (i + 3) % 3; layoutCarousel(); demoT = 0; demoStep = -1; }
   function choose() {
     const kind = ORDER[carIndex];
     if (pending.step === 'opponent' && kind === pending.pick) return;
     if (pending.kind === 'duel' && pending.step !== 'opponent') { pending.pick = kind; pending.step = 'opponent'; showSelect(); return; }
     if (pending.step === 'opponent') pending.opponent = kind; else pending.pick = kind;
     selectEl.hidden = true; cornerEl.hidden = false;
-    startMatch({ kind: pending.kind, pick: pending.pick, opponent: pending.opponent });
+    startMatch({ kind: pending.kind, pick: pending.pick, opponent: pending.opponent, lives: livesSetting });
   }
+  // how many lives a match starts with (remembered on this device)
+  let livesSetting = 3;
+  try { livesSetting = Number(localStorage.getItem('botbattle.lives')) || 3; } catch (e) { /* storage blocked */ }
+  const livesEl = document.getElementById('livesPick');
+  function showLives() { livesEl.querySelectorAll('button').forEach(b => b.setAttribute('aria-pressed', String(Number(b.dataset.lives) === livesSetting))); }
+  livesEl.querySelectorAll('button').forEach(b => b.addEventListener('click', e => {
+    e.stopPropagation();
+    livesSetting = Number(b.dataset.lives);
+    try { localStorage.setItem('botbattle.lives', String(livesSetting)); } catch (err) { /* storage blocked */ }
+    showLives();
+  }));
+  showLives();
   document.getElementById('prevBtn').addEventListener('click', e => { e.stopPropagation(); rotateTo(carIndex - 1); });
   document.getElementById('nextBtn').addEventListener('click', e => { e.stopPropagation(); rotateTo(carIndex + 1); });
   pickBtn.addEventListener('click', choose);
@@ -2594,6 +2884,8 @@ button[aria-pressed="true"] { background: var(--ink); color: var(--paper); }
         ? 'Training: try every move on two dummies. They refill their health, knockouts respawn, and you can make them move or fight back.'
         : pending.kind === 'duel' ? 'Duel: first pick yourself, then your opponent.' : `${title}: you against the other two.`;
     if (opp && ORDER[carIndex] === pending.pick) carIndex = (carIndex + 1) % 3;
+    livesEl.hidden = pending.kind === 'training';
+    demoT = 0; demoStep = -1;
     resizePreview();
     layoutCarousel();
     selectEl.scrollTop = 0;
@@ -2601,78 +2893,118 @@ button[aria-pressed="true"] { background: var(--ink); color: var(--paper); }
   }
 
   // ---------- the 3D fighters standing on the carousel cards ----------
+  // Each card has its own little world: a scene, its fighter, and its own projectiles and effects. The game's
+  // update code runs on it unchanged (the globals are swapped in while it does), and it is drawn into the card's
+  // window only, so nothing spills over the card. The middle card's fighter works through its moves in turn,
+  // and the move it is showing is highlighted in the card's list.
   const previewCanvas = document.getElementById('previewCanvas');
   const pRenderer = new THREE.WebGLRenderer({ canvas: previewCanvas, antialias: true, alpha: true });
   pRenderer.setPixelRatio(Math.min(devicePixelRatio, 2));
-  const pScene = new THREE.Scene();
-  pScene.add(new THREE.HemisphereLight('#ffffff', '#d8d2c4', 0.8));
-  const pSun = new THREE.DirectionalLight('#ffffff', 0.75); pSun.position.set(3, 8, 6); pScene.add(pSun);
+  pRenderer.setClearColor(0x000000, 0);
   const pCam = new THREE.OrthographicCamera(-1, 1, 1, -1, 0.1, 100);
-  pCam.position.set(0, 0, 30);
-  const pSprings = [];
-  const previews = ORDER.map(kind => {
-    const f = buildFighter(kind, 0, false, pScene, pSprings);
-    f.root.rotation.x = 0.32;              // tipped toward the viewer so the logos show
-    return f;
+  const P_TILT = 0.32;                     // looking down a little, so the logos show
+  const worlds = ORDER.map((kind, i) => {
+    const sc = new THREE.Scene();
+    sc.add(new THREE.HemisphereLight('#ffffff', '#d8d2c4', 0.8));
+    const l = new THREE.DirectionalLight('#ffffff', 0.75); l.position.set(3, 8, 6); sc.add(l);
+    const w = { scene: sc, fighters: [], projectiles: [], effects: [], transient: new Set(), springs: [], slot: slots[i] };
+    w.fighters.push(buildFighter(kind, 0, false, sc, w.springs));
+    w.fighters[0].facing = 1;
+    return w;
   });
-  let pxPerUnit = 48, previewDemoT = 0;
+  function enterWorld(w) {
+    w.saved = { scene, fighters, projectiles, effects, transient, springs };
+    ({ scene, fighters, projectiles, effects, transient, springs } = w);
+    previewing = w;
+  }
+  function leaveWorld(w) {
+    Object.assign(w, { fighters, projectiles, effects, transient, springs });
+    ({ scene, fighters, projectiles, effects, transient, springs } = w.saved);
+    previewing = null;
+  }
+  // what each fighter shows off, in turn: which move, how long the key is held, and how long the turn lasts
+  const DEMOS = {
+    so: [{ slot: 'a1', hold: 0.55, dur: 1.7 }, { slot: 'a2', dur: 1.4 }, { slot: 'a3', dur: 2.0, prep: f => { f.bars = 5; f.magSlots = [0, 1, 2, 3, 4]; } }, { slot: 'a4', dur: 2.4 }],
+    gpt: [{ slot: 'a1', dur: 1.6 }, { slot: 'a2', dur: 2.5 }, { slot: 'a3', dur: 1.9 }, { slot: 'a4', dur: 1.5, prep: f => { f.context = 100; } }],
+    claude: [{ slot: 'a1', hold: 0.6, dur: 1.7 }, { slot: 'a2', dur: 1.3 }, { slot: 'a3', dur: 2.0 }],
+  };
+  let demoT = 0, demoStep = -1, ppu = 50;
+  const DEMO_LEAD = 0.5;
   function resizePreview() {
     const w = carouselEl.clientWidth, h = carouselEl.clientHeight;
     if (!w) return;
     pRenderer.setSize(w, h, false);
-    pxPerUnit = Math.min(58, carouselEl.clientWidth * 0.78 / 5.6);
-    pCam.left = -w / 2 / pxPerUnit; pCam.right = w / 2 / pxPerUnit;
-    pCam.top = h / 2 / pxPerUnit; pCam.bottom = -h / 2 / pxPerUnit;
-    pCam.updateProjectionMatrix();
   }
   addEventListener('resize', () => { if (!selectEl.hidden) { resizePreview(); layoutCarousel(); } });
-  const _rest = V();
+  // a Correction said on a card shows up as a small bubble inside that card's window
+  function sayOnCard(w, text) {
+    const ped = w.slot.slot.querySelector('.pedestal');
+    ped.querySelector('.say')?.remove();
+    const el = document.createElement('div');
+    el.className = 'say';
+    el.innerHTML = '<b>Correction</b>';
+    el.append(text);
+    ped.appendChild(el);
+    setTimeout(() => el.remove(), 2000);
+  }
   function updatePreview(dt) {
     if (selectEl.hidden) return;
     const cr = carouselEl.getBoundingClientRect();
-    previewDemoT += dt;
-    const t = performance.now() / 1000;
-    previews.forEach((f, i) => {
-      const sl = slots[i];
-      const ped = sl.slot.querySelector('.pedestal').getBoundingClientRect();
-      const scale = ped.width / (parseFloat(carouselEl.style.getPropertyValue('--cw')) || ped.width);
-      const cx = ped.left + ped.width / 2 - cr.left, cy = ped.bottom - cr.top - 14 * scale;
+    const cw = parseFloat(carouselEl.style.getPropertyValue('--cw')) || 300;
+    demoT += dt;
+    pRenderer.setScissorTest(false);
+    pRenderer.clear();
+    pRenderer.setScissorTest(true);
+    worlds.forEach((w, i) => {
+      const f = w.fighters[0], sl = w.slot, kind = ORDER[i];
       const selected = sl.offset === 0;
-      // a little hop for the chatbots, a whip for Stack Overflow, every few seconds on the selected card
-      const demo = selected ? (previewDemoT % 3.4) : 9;
-      let hop = 0;
-      if (f.kind !== 'so' && demo < 0.55) { hop = Math.sin(demo / 0.55 * Math.PI) * 0.9; f.rotorBoost = 1; }
-      f.root.position.set((cx - cr.width / 2) / pxPerUnit, (cr.height / 2 - cy) / pxPerUnit + hop * scale, 0);
-      f.root.scale.setScalar(scale * (selected ? 1 : 0.92));
-      f.root.rotation.y = selected ? Math.sin(t * 0.8) * 0.5 : 0;
-      f.x = f.root.position.x; f.y = f.root.position.y;
-      // stand in the stance, legs solved locally
-      for (const ft of f.feet) {
-        _rest.set(ft.s * FOOT_SPREAD, ANKLE_H + (hop > 0.05 ? 0.18 : 0), 0.04);
-        const end = solveLimb(ft.limb, HIP_LOCAL, _rest, _kh.set(ft.s, 0, 0.3));
-        ft.mesh.position.set(end.x + ft.s * (FOOT_L / 2 - LIMB_R), end.y - ANKLE_H + LINE_W / 2, end.z);
+      // the middle card's script
+      const inp = { left: false, right: false, jump: false };
+      let showing = null;
+      if (selected) {
+        const steps = DEMOS[kind], cycle = steps.reduce((a, st) => a + st.dur, 0);
+        let t = demoT - DEMO_LEAD;
+        if (t >= 0) {
+          t %= cycle;
+          let k = 0;
+          while (t >= steps[k].dur) { t -= steps[k].dur; k++; }
+          const st = steps[k];
+          showing = st.slot;
+          if (k !== demoStep) {
+            demoStep = k;
+            st.prep?.(f);
+            f.cd[st.slot] = 0;
+            inp[st.slot] = true;
+          } else if (st.hold && t < st.hold) inp[st.slot] = true;
+        }
       }
-      f.onGround = hop === 0; f.vx = 0;
-      updateArms(f, dt);
-      if (f.rotor) {
-        f.rotorBoost = Math.max(0, f.rotorBoost - dt * 1.2);
-        f.rotor.rotation.y += dt * (5 + f.rotorBoost * 45) * f.spinDir;
-      }
-      if (f.kind === 'so') {
-        const w = demo < 0.46 ? demo / 0.46 : -1;
-        if (w >= 0) {
-          const sN = Math.sin(w * Math.PI);
-          f.spring.theta = sN * 1.75; f.spring.omega = 0;
-          f.spring.stretch = 1 + sN * (WHIP_REACH / 1.2 - 1);
-          const k = 3.4 - 2.2 * w; f.spring.profile = u => 1 - Math.pow(1 - u, k);
-          f.arms[0].rest.set(0.85, 2.3, 0.1);
-        } else if (f.spring.profile) { f.spring.profile = null; f.spring.stretch = 1; f.arms[0].rest.set(1.15, 1.89, 0.08); }
-      }
+      sl.slot.querySelectorAll('li[data-slot]').forEach(li => li.classList.toggle('now', li.dataset.slot === showing));
+      // run the game on this card's world
+      enterWorld(w);
+      f.x = 0; f.vx = 0; f.facing = 1;
+      updateFighter(f, inp, dt);
+      updateProjectiles(dt);
+      updateEffects(dt);
+      scene.updateMatrixWorld();
+      for (const sp of springs) { stepSpring(sp, Math.max(dt, 1 / 240)); placeSpring(sp); }
+      if (f.kind === 'so') renderMagazine(f);
+      poseGuard(f);
+      leaveWorld(w);
+      // draw it into the card's window: the fighter stands a little left of centre so its moves have room
+      const ped = sl.slot.querySelector('.pedestal').getBoundingClientRect();
+      const scale = ped.width / cw;
+      const x = ped.left - cr.left, y = cr.bottom - ped.bottom, pw = ped.width, ph = ped.height;
+      ppu = Math.min(56, (ph / scale - 40) / 4.1, cw / 6.2) * scale;
+      const groundUp = 16 * scale, anchor = 0.36;
+      pCam.left = -pw / 2 / ppu; pCam.right = pw / 2 / ppu; pCam.top = ph / 2 / ppu; pCam.bottom = -ph / 2 / ppu;
+      pCam.updateProjectionMatrix();
+      const ty = (ph / 2 - groundUp) / ppu / Math.cos(P_TILT), tx = (0.5 - anchor) * pw / ppu;
+      pCam.position.set(tx, ty + Math.sin(P_TILT) * 30, Math.cos(P_TILT) * 30);
+      pCam.lookAt(tx, ty, 0);
+      pRenderer.setViewport(x, y, pw, ph);
+      pRenderer.setScissor(x, y, pw, ph);
+      pRenderer.render(w.scene, pCam);
     });
-    pScene.updateMatrixWorld();
-    for (const sp of pSprings) { stepSpring(sp, Math.max(dt, 1 / 240)); placeSpring(sp); }
-    renderMagazine(previews[0]);
-    pRenderer.render(pScene, pCam);
   }
 
   document.getElementById('backBtn').addEventListener('click', () => {
@@ -2733,6 +3065,30 @@ button[aria-pressed="true"] { background: var(--ink); color: var(--paper); }
     sun.target.position.set(camera.position.x, 0, 0);
   }
 
+  function updateEffects(dt) {
+    effects = effects.filter(e => {
+      e.life -= dt; e.update(e, dt);
+      if (e.life > 0) return true;
+      scene.remove(e.mesh); return false;
+    });
+  }
+  // Bodies are solid to each other: two fighters at the same height can't stand inside one another
+  const BODY_GAP = BOX_W * 1.5;
+  function separateFighters() {
+    const live = fighters.filter(f => !f.dead);
+    for (let i = 0; i < live.length; i++) for (let j = i + 1; j < live.length; j++) {
+      const a = live[i], b = live[j];
+      if (Math.abs(a.y - b.y) > BOX_H * 0.7) continue;
+      const dx = b.x - a.x, d = Math.abs(dx);
+      if (d >= BODY_GAP) continue;
+      const sgn = Math.sign(dx) || (a.id < b.id ? 1 : -1), push = (BODY_GAP - d) / 2;
+      a.x -= sgn * push; b.x += sgn * push;
+      // they stop walking into each other; momentum toward the other is shared out
+      const closing = (a.vx - b.vx) * sgn;
+      if (closing > 0) { const mid = (a.vx + b.vx) / 2; a.vx = mid; b.vx = mid; }
+    }
+  }
+
   // ================= Main loop =================
   const clock = new THREE.Clock();
   let lastDt = 1 / 60;
@@ -2759,16 +3115,14 @@ button[aria-pressed="true"] { background: var(--ink); color: var(--paper); }
       else inp = aiInput(f, dt);
       updateFighter(f, inp, dt);
     }
+    separateFighters();
     updateProjectiles(dt);
-    effects = effects.filter(e => {
-      e.life -= dt; e.update(e, dt);
-      if (e.life > 0) return true;
-      scene.remove(e.mesh); return false;
-    });
+    updateEffects(dt);
 
     scene.updateMatrixWorld();
     for (const sp of springs) { stepSpring(sp, dt); placeSpring(sp); }
     for (const f of fighters) if (f.kind === 'so') renderMagazine(f);
+    for (const f of fighters) poseGuard(f);
 
     updateCamera(dt);
     updatePreview(dt);

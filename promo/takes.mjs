@@ -73,15 +73,15 @@ export default {
       },
       script: [] },
 
-    // Stack Overflow: a burst of blocks off the top of the stack, the beam once the stack refills, then the whip
+    // Stack Overflow: a burst of blocks out of the bent stack, the beam once the stack refills, then the whip
     so: { seconds: 20,
       setup: () => window.__app.stage('so', [['so', -3, 1], ['gpt', 0.2, -1], ['claude', 2.6, -1]]),
       script: [
         [0.8, page => page.down('KeyJ')],
         [1.7, page => page.up('KeyJ')],
-        [5.2, page => page.press('KeyK')],
+        [5.2, page => page.press('KeyL')],
         [10.9, page => page.js(() => window.__app.place('gpt', -0.9, -1))],
-        [11.5, page => page.press('KeyL')],
+        [11.5, page => page.press('KeyK')],
       ] },
 
     // ChatGPT: inhale against blocks and rods, against dots, against the beam, against a correction; then compaction
@@ -89,34 +89,34 @@ export default {
       setup: () => window.__app.stage('gpt', [['gpt', -2.2, 1], ['claude', 0.9, -1], ['so', 3, -1]]),
       script: [
         // the tornado on its own, under the title and the first line
-        [1.4, page => page.press('KeyL')],
-        [5.6, page => page.press('KeyL')],
-        [8.6, page => page.press('KeyL')],
+        [1.4, page => page.press('KeyK')],
+        [5.6, page => page.press('KeyK')],
+        [8.6, page => page.press('KeyK')],
         // blocks and rods
-        [11.7, page => page.press('KeyL')],
+        [11.7, page => page.press('KeyK')],
         [12.0, page => page.js(() => window.__app.fire('so', 'a1', -1))],
         [12.15, page => page.js(() => window.__app.fire('so', 'a1', -1))],
-        [12.3, page => page.js(() => window.__app.fire('claude', 'a3', -1))],
-        [12.45, page => page.js(() => window.__app.fire('claude', 'a3', -1))],
-        [12.6, page => page.js(() => window.__app.fire('claude', 'a3', -1))],
-        [16.2, page => page.press('KeyL')],
-        [16.5, page => page.js(() => window.__app.fire('claude', 'a3', -1))],
-        [16.65, page => page.js(() => window.__app.fire('claude', 'a3', -1))],
+        [12.3, page => page.js(() => window.__app.fire('claude', 'a1', -1))],
+        [12.45, page => page.js(() => window.__app.fire('claude', 'a1', -1))],
+        [12.6, page => page.js(() => window.__app.fire('claude', 'a1', -1))],
+        [16.2, page => page.press('KeyK')],
+        [16.5, page => page.js(() => window.__app.fire('claude', 'a1', -1))],
+        [16.65, page => page.js(() => window.__app.fire('claude', 'a1', -1))],
         [16.8, page => page.js(() => window.__app.fire('so', 'a1', -1))],
         [16.95, page => page.js(() => window.__app.fire('so', 'a1', -1))],
         // dots
-        [21.5, page => page.press('KeyL')],
-        [21.65, page => page.js(() => window.__app.fire('claude', 'a1', -1))],
-        [25.2, page => page.press('KeyL')],
-        [25.35, page => page.js(() => window.__app.fire('claude', 'a1', -1))],
+        [21.5, page => page.press('KeyK')],
+        [21.65, page => page.js(() => window.__app.fire('claude', 'a3', -1))],
+        [25.2, page => page.press('KeyK')],
+        [25.35, page => page.js(() => window.__app.fire('claude', 'a3', -1))],
         // the beam: Claude steps out of the line of fire right at the cut
         [28.3, page => page.js(() => window.__app.place('claude', -4.6, 1))],
-        [28.9, page => page.press('KeyL')],
-        [29.1, page => page.js(() => window.__app.fire('so', 'a2', -1))],
-        [33.4, page => page.press('KeyL')],
-        [33.6, page => page.js(() => window.__app.fire('so', 'a2', -1))],
+        [28.9, page => page.press('KeyK')],
+        [29.1, page => page.js(() => window.__app.fire('so', 'a3', -1))],
+        [33.4, page => page.press('KeyK')],
+        [33.6, page => page.js(() => window.__app.fire('so', 'a3', -1))],
         // a correction
-        [37.9, page => page.press('KeyL')],
+        [37.9, page => page.press('KeyK')],
         [38.2, page => page.js(() => window.__app.fire('so', 'a4', -1))],
         // compaction, with both of them in front again right at the cut
         [44.78, page => page.js(() => { window.__app.place('claude', 0.6, -1); window.__app.place('so', 2.4, -1); })],
@@ -127,21 +127,25 @@ export default {
     claude: { seconds: 14,
       setup: () => window.__app.stage('claude', [['claude', -2.4, 1], ['so', 1.2, -1], ['gpt', 3.4, -1]]),
       script: [
-        [0.7, page => page.press('KeyJ')],
-        [3.4, page => page.press('KeyJ')],
-        [6.4, page => page.down('KeyL')],
-        [7.9, page => page.up('KeyL')],
+        [0.7, page => page.press('KeyL')],
+        [3.4, page => page.press('KeyL')],
+        [6.4, page => page.down('KeyJ')],
+        [7.9, page => page.up('KeyJ')],
       ] },
 
-    // shield, a parried block, then a fling that knocks Stack Overflow off the end of the stage
+    // a side parry against a block (Claude's fingers round the spokes), an overhead parry against the whip,
+    // then a fling that knocks Stack Overflow off the end of the stage. A block leaves the stack about 0.4 s
+    // after it is fired (the barrel bends first), the whip connects 0.12 s after it starts, and the guard shines from
+    // 0.07 s to 0.3 s after Backspace.
     parry: { seconds: 10,
       setup: () => window.__app.stage('claude', [['claude', -1.2, 1], ['so', 2.6, -1], ['gpt', -4.5, 1]]),
       script: [
-        [0.8, page => page.down('Backspace')],
         [1.2, page => page.js(() => window.__app.fire('so', 'a1', -1))],
-        [1.45, page => page.js(() => window.__app.fire('so', 'a1', -1))],
-        [2.6, page => page.js(() => window.__app.fire('so', 'a1', -1))],
-        [2.78, page => page.up('Backspace')],
+        [1.36, page => page.press('Backspace')],
+        [2.54, page => page.down('KeyW')],
+        [2.6, page => page.js(() => { window.__app.place('so', 0.9, -1); window.__app.fire('so', 'a2', -1); })],
+        [2.6, page => page.press('Backspace')],
+        [2.9, page => page.up('KeyW')],
         [5.0, page => page.js(() => { const A = window.__app; A.place('claude', 7.7, 1); A.place('so', 9.95, -1); A.place('gpt', 4.5, 1); })],
         [5.9, page => page.press('KeyK')],
       ] },
