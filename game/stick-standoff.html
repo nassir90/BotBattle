@@ -3362,6 +3362,9 @@ button[aria-pressed="true"] { background: var(--ink); color: var(--paper); }
   const bRenderer = new THREE.WebGLRenderer({ canvas: brandCanvas, antialias: true, alpha: true });
   bRenderer.setPixelRatio(Math.min(devicePixelRatio, 2));
   bRenderer.setClearColor(0x000000, 0);
+  // the logos' drawing boxes overlap, so the canvas is cleared once a frame and each logo is drawn over it
+  // without clearing (a per-logo clear wiped the right half of the logo drawn before it)
+  bRenderer.autoClear = false;
   const bCam = new THREE.OrthographicCamera(-0.62, 0.62, 0.62, -0.62, 0.1, 10);
   bCam.position.z = 5;
   const brands = [...brandsEl.querySelectorAll('a')].map((a, i) => {
@@ -3382,9 +3385,8 @@ button[aria-pressed="true"] { background: var(--ink); color: var(--paper); }
     const key = `${Math.round(cr.width)}x${Math.round(cr.height)}`;
     if (key !== brandSize) { brandSize = key; bRenderer.setSize(cr.width, cr.height, false); }
     const t = performance.now() / 1000;
-    bRenderer.setScissorTest(false);
+    bRenderer.setViewport(0, 0, cr.width, cr.height);
     bRenderer.clear();
-    bRenderer.setScissorTest(true);
     for (const b of brands) {
       // drifting: a slow loop of its own, a few pixels each way
       const dx = Math.sin(t * 0.55 + b.phase) * 14 + Math.sin(t * 1.3 + b.phase * 2) * 4;
@@ -3395,9 +3397,10 @@ button[aria-pressed="true"] { background: var(--ink); color: var(--paper); }
       const wob = Math.sin((1 - b.jig) * 30) * b.jig;
       const r = b.a.querySelector('.logo3d').getBoundingClientRect();
       // the drawing box is bigger than the slot so a swollen logo has room
-      const size = r.width * 1.9, x = r.left + r.width / 2 - cr.left - size / 2, y = cr.bottom - (r.top + r.height / 2) - size / 2;
-      bRenderer.setViewport(x, y, size, size); bRenderer.setScissor(x, y, size, size);
-      b.logo.scale.setScalar(b.grow / 1.9 * (1 + 0.18 * wob));
+      const size = r.width * 2.4, x = r.left + r.width / 2 - cr.left - size / 2, y = cr.bottom - (r.top + r.height / 2) - size / 2;
+      bRenderer.setViewport(x, y, size, size);
+      bRenderer.clearDepth();
+      b.logo.scale.setScalar(b.grow / 2.4 * (1 + 0.18 * wob));
       const spin = b.kind === 'so' ? 0 : (b.kind === 'gpt' ? 1 : -1) * t * 0.6;
       b.logo.rotation.set(Math.sin(t * 0.7 + b.phase) * 0.3, Math.sin(t * 0.9 + b.phase) * 0.45 + (b.hover ? Math.sin(t * 3) * 0.2 : 0), spin + wob * 0.5);
       bRenderer.render(b.sc, bCam);
