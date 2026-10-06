@@ -32,15 +32,17 @@ button:active { transform: translate(2px, 2px); box-shadow: 1px 1px 0 var(--ink)
 button:focus-visible { outline: 3px solid var(--so); outline-offset: 2px; }
 button[aria-pressed="true"] { background: var(--ink); color: var(--paper); }
 
-/* health plates, along the bottom: a square with the fighter's 3D logo (drawn into the game canvas behind the
-   transparent square), lives as x3, and the health bar along the bottom of the plate */
+/* health plates along the top: a square with the fighter's 3D logo (drawn into the game canvas behind the
+   see-through square), lives as x3, and the health bar along the bottom of the plate. On touch screens each
+   plate shrinks to just the square, a thin health bar under it and an x3 badge on its corner. */
 .hud {
-  position: fixed; bottom: calc(env(safe-area-inset-bottom, 0px) + 14px); left: 16px; right: 16px;
+  position: fixed; top: calc(env(safe-area-inset-top, 0px) + 12px); left: 16px; right: 16px;
   display: grid; grid-template-columns: repeat(var(--n, 3), minmax(0, 250px)); justify-content: center; gap: 14px; pointer-events: none;
 }
 .plate { --sq: 60px; display: grid; grid-template-columns: var(--sq) minmax(0, 1fr); min-width: 0; border: 2px solid var(--ink); box-shadow: 3px 3px 0 var(--ink); }
 .plate-logo { height: var(--sq); border-right: 2px solid var(--ink); position: relative; }
 .plate.out .plate-logo::after { content: "OUT"; position: absolute; inset: 0; display: grid; place-items: center; font-family: var(--display); font-size: 12px; color: var(--ink-soft); }
+.plate .badge { display: none; }
 .plate-info { background: var(--paper); display: grid; grid-template-rows: auto 1fr auto; gap: 3px; padding: 5px 8px 6px; min-width: 0; }
 .plate-top { display: flex; justify-content: space-between; align-items: baseline; gap: 6px; min-width: 0; }
 .stock { font-family: var(--display); font-size: 20px; line-height: 1; }
@@ -51,14 +53,14 @@ button[aria-pressed="true"] { background: var(--ink); color: var(--paper); }
 .bar-lag { position: absolute; inset: 0; transform-origin: left; background: var(--hurt); opacity: 0.45; transition: transform 0.6s ease-out 0.15s; }
 .ctx { height: 5px; border: 1.5px solid var(--ink); background: var(--paper-2); position: relative; overflow: hidden; align-self: center; }
 .ctx i { position: absolute; inset: 0; transform-origin: left; background: var(--gpt); }
-.plate.out .stock { color: var(--ink-soft); }
+.plate.out .stock, .plate.out .badge { color: var(--ink-soft); }
 
-/* along the top: the move list, then the takeover status and training bar beneath it (one column, so a move
-   list that wraps onto two rows pushes the training bar down instead of covering it) */
-.topbar {
-  position: fixed; left: 16px; right: 124px; top: calc(env(safe-area-inset-top, 0px) + 12px);
-  display: flex; flex-direction: column; align-items: flex-start; gap: 10px; pointer-events: none;
+/* under the plates: the takeover status and the training bar; along the bottom: the move list, and Menu */
+.topstack {
+  position: fixed; left: 50%; transform: translateX(-50%); top: calc(env(safe-area-inset-top, 0px) + 90px);
+  display: flex; flex-direction: column; align-items: center; gap: 8px; pointer-events: none; width: max-content; max-width: calc(100% - 32px);
 }
+.bottombar { position: fixed; left: 16px; right: 124px; bottom: calc(env(safe-area-inset-bottom, 0px) + 14px); pointer-events: none; }
 .moves { display: flex; flex-wrap: wrap; gap: 8px; align-items: stretch; pointer-events: none; }
 .move {
   position: relative; overflow: hidden; display: flex; gap: 8px; align-items: center;
@@ -76,10 +78,10 @@ button[aria-pressed="true"] { background: var(--ink); color: var(--paper); }
   font-family: var(--display); font-size: 13px; padding: 4px 10px; background: var(--gpt); color: var(--paper);
   border: 2px solid var(--ink); pointer-events: none; white-space: nowrap;
 }
-.corner { position: fixed; right: 16px; top: calc(env(safe-area-inset-top, 0px) + 12px); }
+.corner { position: fixed; right: 16px; bottom: calc(env(safe-area-inset-bottom, 0px) + 14px); }
 .trainbar {
-  display: flex; flex-wrap: wrap; gap: 6px; align-items: center; pointer-events: auto;
-  font-size: 11px; color: var(--ink-soft); background: var(--paper); padding: 4px 0;
+  display: flex; flex-wrap: wrap; gap: 6px; align-items: center; justify-content: center; pointer-events: auto;
+  font-size: 11px; color: var(--ink-soft); background: var(--paper); padding: 4px 8px;
 }
 .trainbar button { padding: 6px 9px; font-size: 11px; box-shadow: 2px 2px 0 var(--ink); }
 .trainbar .label { font-family: var(--display); color: var(--ink); margin-right: 2px; }
@@ -154,8 +156,11 @@ button[aria-pressed="true"] { background: var(--ink); color: var(--paper); }
 .carousel .card .pedestal { position: relative; height: clamp(170px, 27vh, 250px); margin: 0 -14px 4px; border-bottom: 2px solid var(--ink); background: linear-gradient(var(--paper), color-mix(in srgb, var(--c) 10%, var(--paper))); }
 .carousel .slot.side .card { pointer-events: auto; }
 #previewCanvas { position: absolute; inset: 0; width: 100%; height: 100%; pointer-events: none; z-index: 3; }
-.carousel .nav { position: absolute; top: 100px; z-index: 4; width: 44px; height: 44px; padding: 0; font-size: 16px; }
-.carousel .nav.prev { left: 6px; } .carousel .nav.next { right: 6px; }
+.carwrap { position: relative; }
+.carwrap .nav { position: absolute; top: 100px; z-index: 4; width: 44px; height: 44px; padding: 0; font-size: 16px; }
+.carwrap .nav.prev { left: 6px; } .carwrap .nav.next { right: 6px; }
+/* with room either side of the carousel, the arrows sit outside it, clear of the cards */
+@media (min-width: 1150px) { .carwrap .nav.prev { left: -64px; } .carwrap .nav.next { right: -64px; } }
 .pickrow { display: flex; gap: 12px; align-items: center; flex-wrap: wrap; }
 .pickrow .hint { font-size: 11px; color: var(--ink-soft); }
 .lives { display: flex; gap: 5px; align-items: center; font-size: 11px; color: var(--ink-soft); }
@@ -210,24 +215,52 @@ button[aria-pressed="true"] { background: var(--ink); color: var(--paper); }
 /* touch pad */
 .touch { display: none; }
 @media (pointer: coarse) {
-  .moves { display: none; }
-  .hud { bottom: calc(env(safe-area-inset-bottom, 0px) + 216px); left: 12px; right: 12px; gap: 8px; }
-  .plate { --sq: 44px; }
-  .stock { font-size: 16px; }
-  .topbar { right: 100px; }
+  body { touch-action: manipulation; }
+  .moves, .keys { display: none; }
+  .hud { top: calc(env(safe-area-inset-top, 0px) + 10px); left: 12px; right: 12px; gap: 18px; grid-template-columns: repeat(var(--n, 3), 52px); }
+  .plate { --sq: 52px; display: block; border: none; box-shadow: none; }
+  .plate-logo { width: var(--sq); box-sizing: border-box; border: 2px solid var(--ink); box-shadow: 2px 2px 0 var(--ink); }
+  .plate .badge {
+    display: block; position: absolute; top: -8px; right: -12px; z-index: 1;
+    font: 400 12px/1 var(--display); padding: 2px 3px; background: var(--paper); border: 1.5px solid var(--ink);
+  }
+  .plate-info { display: flex; flex-direction: column; gap: 2px; background: none; padding: 5px 0 0; }
+  .plate-info .plate-top { display: none; }
+  .plate-info .bar { order: -1; align-self: stretch; height: 7px; border-width: 1.5px; }
+  .plate-info .ctx { align-self: stretch; height: 4px; border-width: 1px; }
+  .corner { right: calc(env(safe-area-inset-right, 0px) + 12px); bottom: auto; top: calc(env(safe-area-inset-top, 0px) + 10px); }
+  .corner button { padding: 7px 10px; font-size: 11px; }
+  .topstack { top: calc(env(safe-area-inset-top, 0px) + 92px); }
   .touch {
-    position: fixed; left: 12px; right: 12px; bottom: calc(env(safe-area-inset-bottom, 0px) + 12px);
+    position: fixed; left: calc(env(safe-area-inset-left, 0px) + 12px); right: calc(env(safe-area-inset-right, 0px) + 12px);
+    bottom: calc(env(safe-area-inset-bottom, 0px) + 12px);
     display: flex; justify-content: space-between; align-items: flex-end; gap: 12px; pointer-events: none;
   }
-  .pad { display: flex; gap: 10px; pointer-events: auto; }
-  .acts { display: grid; grid-template-columns: repeat(3, 58px); gap: 8px; pointer-events: auto; }
+  .pad { display: grid; grid-template-columns: repeat(2, 60px); gap: 8px; pointer-events: auto; }
+  .acts { display: grid; grid-template-columns: repeat(3, 56px); gap: 8px; pointer-events: auto; }
   .touch button {
-    touch-action: none; width: 58px; height: 58px; padding: 4px; font-size: 10px; line-height: 1.1;
+    touch-action: none; width: 56px; height: 56px; padding: 4px; font-size: 10px; line-height: 1.1;
     text-transform: none; letter-spacing: 0; position: relative; overflow: hidden;
   }
-  .touch .dir { width: 64px; height: 64px; font-size: 22px; }
+  .touch .dir { width: 60px; height: 60px; font-size: 20px; }
+  .touch .dir.down { grid-column: 1 / -1; width: 100%; height: 44px; font-size: 16px; }
   .touch button .cool { position: absolute; left: 0; bottom: 0; height: 4px; background: var(--ink); width: 0; }
   .touch button[hidden] { display: none; }
+  .carousel .card .pedestal { height: clamp(130px, 27vh, 230px); }
+}
+/* phones on their side: little height, so the buttons go into two short rows and everything tightens */
+@media (pointer: coarse) and (orientation: landscape) and (max-height: 540px) {
+  .hud { top: calc(env(safe-area-inset-top, 0px) + 6px); }
+  .plate { --sq: 42px; }
+  .topstack { top: calc(env(safe-area-inset-top, 0px) + 72px); }
+  .acts { grid-template-columns: repeat(4, 50px); gap: 6px; }
+  .touch button { width: 50px; height: 50px; }
+  .pad { grid-template-columns: repeat(3, 54px); gap: 6px; }
+  .touch .dir { width: 54px; height: 54px; }
+  .touch .dir.down { grid-column: auto; width: 54px; height: 54px; }
+  .overlay { padding: 10px 16px; }
+  .panel h1 { font-size: 24px; }
+  .mode { padding: 9px 14px; }
 }
 @media (max-width: 560px) {
   .plate-tag { display: none; }
@@ -237,8 +270,8 @@ button[aria-pressed="true"] { background: var(--ink); color: var(--paper); }
 <div id="stage"></div>
 
 <div class="hud" id="hud"></div>
-<div class="topbar">
-<div class="moves" id="moves"></div>
+<div class="bottombar"><div class="moves" id="moves"></div></div>
+<div class="topstack">
 <div class="status" id="status" hidden></div>
 <div class="trainbar" id="trainbar" hidden>
   <span class="label">Training</span>
@@ -258,6 +291,7 @@ button[aria-pressed="true"] { background: var(--ink); color: var(--paper); }
   <div class="pad">
     <button class="dir" type="button" data-key="ArrowLeft" aria-label="Move left">&#9664;</button>
     <button class="dir" type="button" data-key="ArrowRight" aria-label="Move right">&#9654;</button>
+    <button class="dir down" type="button" data-key="ArrowDown" aria-label="Crouch">&#9660;</button>
   </div>
   <div class="acts" id="acts">
     <button type="button" data-key="KeyJ" data-slot="a1"><span></span><i class="cool"></i></button>
@@ -294,9 +328,11 @@ button[aria-pressed="true"] { background: var(--ink); color: var(--paper); }
   <div class="panel">
     <div class="toprow"><button type="button" id="backBtn">&larr; Modes</button></div>
     <h1 id="selectTitle">Pick your fighter</h1>
-    <div class="carousel" id="carousel">
-      <div id="track"></div>
-      <canvas id="previewCanvas"></canvas>
+    <div class="carwrap">
+      <div class="carousel" id="carousel">
+        <div id="track"></div>
+        <canvas id="previewCanvas"></canvas>
+      </div>
       <button type="button" class="nav prev" id="prevBtn" aria-label="Previous fighter">&#9664;</button>
       <button type="button" class="nav next" id="nextBtn" aria-label="Next fighter">&#9654;</button>
     </div>
@@ -2835,7 +2871,7 @@ button[aria-pressed="true"] { background: var(--ink); color: var(--paper); }
       el.setAttribute('role', 'group');
       el.setAttribute('aria-label', f.kit.name);
       const tag = f.isPlayer ? 'YOU' : f.dummy ? 'DUMMY' : 'CPU';
-      el.innerHTML = `<div class="plate-logo" aria-hidden="true"></div>
+      el.innerHTML = `<div class="plate-logo"><span class="badge"></span></div>
         <div class="plate-info">
           <div class="plate-top"><span class="stock"></span><span class="plate-tag${f.isPlayer ? ' you' : ''}">${tag} <span class="plate-hp"></span></span></div>
           ${f.kind === 'gpt' ? '<div class="ctx" title="Context"><i></i></div>' : '<span></span>'}
@@ -2853,7 +2889,9 @@ button[aria-pressed="true"] { background: var(--ink); color: var(--paper); }
       el.querySelector('.plate-hp').textContent = String(Math.ceil(f.hp));
       el.classList.toggle('out', !!f.out);
       // lives as x3, x2, x1 (training has no limit)
-      el.querySelector('.stock').textContent = Number.isFinite(f.stocks) ? `x${f.stocks}` : 'x\u221e';
+      const lives = Number.isFinite(f.stocks) ? `x${f.stocks}` : 'x\u221e';
+      el.querySelector('.stock').textContent = lives;
+      el.querySelector('.badge').textContent = lives;
       el.querySelector('.stock').setAttribute('aria-label', Number.isFinite(f.stocks) ? `${f.stocks} lives left` : 'Unlimited lives');
     }
   }
@@ -3127,7 +3165,8 @@ button[aria-pressed="true"] { background: var(--ink); color: var(--paper); }
     // the side cards sit as far out as fits: their border and shadow stay inside the carousel (which clips),
     // except on narrow screens, where they peek in from the edges
     const W = carouselEl.clientWidth, SIDE = 0.84;
-    const spread = Math.max(cw * 0.9, Math.min(cw * 1.04, W / 2 - cw * SIDE / 2 - 10));
+    // never closer than clears the middle card, or the side fighters would be drawn over it
+    const spread = Math.max(cw * (1 + SIDE) / 2 + 14, Math.min(cw * 1.04, W / 2 - cw * SIDE / 2 - 10));
     slots.forEach((sl, i) => {
       let off = i - carIndex;
       if (off > 1) off -= 3; if (off < -1) off += 3;
@@ -3282,8 +3321,12 @@ button[aria-pressed="true"] { background: var(--ink); color: var(--paper); }
     ped.appendChild(el);
     setTimeout(() => el.remove(), 2000);
   }
+  let previewSize = '';
   function updatePreview(dt) {
     if (selectEl.hidden) return;
+    // the carousel takes its height from its cards, after the canvas was first sized: keep them matched
+    const sizeKey = carouselEl.clientWidth + 'x' + carouselEl.clientHeight;
+    if (sizeKey !== previewSize) { previewSize = sizeKey; resizePreview(); }
     const cr = carouselEl.getBoundingClientRect();
     const cw = parseFloat(carouselEl.style.getPropertyValue('--cw')) || 300;
     demoT += dt;
@@ -3365,6 +3408,8 @@ button[aria-pressed="true"] { background: var(--ink); color: var(--paper); }
     const w = stage.clientWidth, h = stage.clientHeight;
     renderer.setSize(w, h, false);
     camera.aspect = w / h;
+    // a tall, narrow screen (a phone held upright) gets a wider lens, so the fight still fits across it
+    camera.fov = camera.aspect < 1 ? 48 : 34;
     camera.updateProjectionMatrix();
   }
   addEventListener('resize', resize);
@@ -3382,9 +3427,10 @@ button[aria-pressed="true"] { background: var(--ink); color: var(--paper); }
     const tanH = Math.tan(THREE.MathUtils.degToRad(camera.fov / 2));
     const want = Math.max(11, halfW / (tanH * camera.aspect), (3.4 + maxY * 0.5) / tanH);
     const MAX_DIST = 26;
-    const dist = Math.min(MAX_DIST, want);
-    if (want > MAX_DIST && player && alive(player)) {
-      const visHalf = MAX_DIST * tanH * camera.aspect - 1.2;
+    const maxDist = camera.aspect < 1 ? MAX_DIST * 1.6 : MAX_DIST;    // and it can pull back further
+    const dist = Math.min(maxDist, want);
+    if (want > maxDist && player && alive(player)) {
+      const visHalf = maxDist * tanH * camera.aspect - 1.2;
       cx = THREE.MathUtils.clamp(cx, player.x - visHalf, player.x + visHalf);
     }
     const k = camSnap ? 1 : 1 - Math.exp(-dt * 3);
@@ -3617,10 +3663,11 @@ button[aria-pressed="true"] { background: var(--ink); color: var(--paper); }
     const H = stage.clientHeight, t = performance.now() / 1000;
     renderer.setScissorTest(true);
     for (const [f, el] of plates) {
-      const r = el.querySelector('.plate-logo').getBoundingClientRect();
+      // drawn inside the square's border, whichever sides it has
+      const sq = el.querySelector('.plate-logo'), r = sq.getBoundingClientRect();
       if (r.width < 4) continue;
-      const w = r.width - 2, x = r.left, y = H - r.bottom;
-      renderer.setViewport(x, y, w, r.height); renderer.setScissor(x, y, w, r.height);
+      const w = sq.clientWidth, h = sq.clientHeight, x = r.left + sq.clientLeft, y = H - (r.top + sq.clientTop + h);
+      renderer.setViewport(x, y, w, h); renderer.setScissor(x, y, w, h);
       if (f.out) { renderer.render(emptyHud, hudCam); continue; }
       const { sc, logo } = HUD_LOGOS[f.kind];
       f.hudKick = Math.max(0, (f.hudKick || 0) - dt * 2.5);

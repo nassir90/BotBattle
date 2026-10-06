@@ -48,6 +48,9 @@ export default {
     { before: "  startMatch({ kind: 'watch' });   // CPUs brawl behind the main menu", code: HOOK },
     // recording only: the camera may come in closer than the game's own limit, so a narrow frame isn't all paper
     { replace: 'const MAX_DIST = 26;', code: 'const MAX_DIST = window.__maxDist || 26;' },
+    // the takes were framed with the landscape camera; keep it, rather than the wider portrait lens phones get
+    { replace: 'camera.fov = camera.aspect < 1 ? 48 : 34;', code: 'camera.fov = 34;' },
+    { replace: 'const maxDist = camera.aspect < 1 ? MAX_DIST * 1.6 : MAX_DIST;', code: 'const maxDist = MAX_DIST;' },
   ],
   ready: () => !!window.__app,
   // the move list, touch pad, menu button, training bar and health plates would sit where the text goes

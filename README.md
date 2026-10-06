@@ -51,9 +51,11 @@ Every match starts with **3 lives** each by default; the picker next to Play set
 | On a ledge: toward the stage, `W`, or away / `S` | Climb up, leap off, or let go |
 | `Esc` | Back to the menu |
 
-On phones, the same controls appear as on-screen buttons, with separate Parry and ↑ Parry buttons.
+On phones and tablets, the same controls appear as on-screen buttons (with ▼ to crouch and separate Parry and ↑ Parry buttons), held upright or on its side. Each fighter shows as its logo square with a thin health bar under it and an `x3` lives badge on its corner; held upright, the camera uses a wider lens so the whole fight fits across the screen.
 
-![Phone layout with the touch pad](docs/screenshots/phone.jpg)
+| Upright | On its side |
+|---|---|
+| ![A phone held upright: logo squares with health bars and lives badges along the top, the touch pad below](docs/screenshots/phone.jpg) | ![A phone on its side: the buttons in two short rows](docs/screenshots/phone-landscape.jpg) |
 
 Fighters are solid to each other, and they push:
 
@@ -80,9 +82,9 @@ Fall off the stage altogether and you lose a life.
 
 CPUs recover too: they jump back, grab ledges, and Stack Overflow whips for the ledge once it's out of jumps.
 
-The plates along the bottom of the screen show each fighter's 3D logo (turning slowly, and shaking when that fighter is hit), lives as `x3`, `x2`, `x1`, and the health bar along the bottom (with ChatGPT's context meter above it). The move list is along the top, with the training controls beneath it (so a move list that wraps onto two rows pushes them down rather than covering them). A fighter with lives left drops back in from above a moment later, blinking, and can't be hurt for 2 seconds.
+The plates along the top of the screen show each fighter's 3D logo (turning slowly, and shaking when that fighter is hit), lives as `x3`, `x2`, `x1`, and the health bar along the bottom of the plate (with ChatGPT's context meter above it). The training controls sit just under them, and the move list runs along the bottom. A fighter with lives left drops back in from above a moment later, blinking, and can't be hurt for 2 seconds.
 
-![Mid-match: the move list along the top, the plates along the bottom, Stack Overflow down to x2](docs/screenshots/lives.jpg)
+![Training: the plates along the top with the training controls under them, the move list along the bottom](docs/screenshots/lives.jpg)
 
 ## The fighters
 
