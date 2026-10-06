@@ -39,7 +39,7 @@ async def main():
         await host.click('#picks button[data-kind="gpt"]')
         await host.wait_for_timeout(1500)
         await host.screenshot(path=f"{OUT}/lobby-logos.png")
-        painted = await host.evaluate("""() => { const c = document.querySelector('.lobby-logos'); const g = c.getContext('webgl2') || c.getContext('webgl');
+        painted = await host.evaluate("""() => { const c = document.querySelector('.lobby-main .logo-layer'); const g = c.getContext('webgl2') || c.getContext('webgl');
             const px = new Uint8Array(4 * 64); const r = document.querySelector('#picks button[data-kind=gpt] .pick-logo').getBoundingClientRect(), cr = c.getBoundingClientRect();
             return c.width > 0 }""")
         check("the lobby draws its logo canvas", painted)

@@ -98,7 +98,11 @@ async def main():
         a, b = await alice.evaluate("window.__bb()"), await bob.evaluate("window.__bb()")
         print("   after attacks, alice's view:", [(round(f["x"], 2), f["hp"]) for f in a], " bob's view:", [(round(f["x"], 2), f["hp"]) for f in b])
         check("someone took damage", any(f["hp"] < 100 for f in a))
-        check("both screens agree on health", all(abs(p["hp"] - q["hp"]) < 0.5 for p, q in zip(a, b)))
+        # a hit can land between the two reads; the host's word reaches the guest within a few snapshots
+        for _ in range(15):
+            if all(abs(p["hp"] - q["hp"]) < 0.5 for p, q in zip(a, b)): break
+            await asyncio.sleep(0.2); a, b = await alice.evaluate("window.__bb()"), await bob.evaluate("window.__bb()")
+        check("both screens agree on health", all(abs(p["hp"] - q["hp"]) < 0.5 for p, q in zip(a, b)), [(f["hp"]) for f in a] + [(f["hp"]) for f in b])
         await alice.screenshot(path=f"{OUT}/2-match-alice.png"); await bob.screenshot(path=f"{OUT}/2-match-bob.png")
         check("bob gets the host's state (snapshots)", bob.snaps > 40, f"{bob.snaps} snapshots")
         check("alice gets bob's controls", alice.ins > 2, f"{alice.ins} input messages")

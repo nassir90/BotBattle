@@ -205,10 +205,11 @@ export default {
     // the showcase: the game being played on a phone held upright, on a desktop, and on a phone on its side
     show_phone: { seconds: 30, size: [390, 844], dpr: 2, inject: INJECT_PHONE, css: '',     // a 19.5:9 phone (iPhone-sized)
       script: [
-        [1.5, page => page.click({ text: 'Free-for-all' })],
-        [3.2, page => page.click('#nextBtn')],
-        [4.4, page => page.click('#prevBtn')],
-        [6.7, page => page.click('#pickBtn')],
+        [1.5, page => page.click('.mode[data-mode="play"]')],               // Play: three seats, you and two CPUs
+        [2.6, page => page.click({ selector: '.seat-fighter', nth: 0 })],   // your seat's fighter, on the cards
+        [3.6, page => page.click('#nextBtn')],
+        [4.6, page => page.click('#pickBtn')],
+        [6.7, page => page.click('#fightBtn')],
         [11.5, page => page.down('ArrowRight')],
         [13.1, page => page.up('ArrowRight')],
         [13.5, page => page.click('[data-key="KeyJ"]')], [13.75, page => page.click('[data-key="KeyJ"]')], [14.0, page => page.click('[data-key="KeyJ"]')],
@@ -222,12 +223,13 @@ export default {
       ] },
     show_desktop: { seconds: 30, size: [1280, 720], dpr: 1, inject: INJECT_BASE, css: '',
       script: [
-        [1.2, page => page.glide([260, 160], { text: 'Duel' }, 0.8)],
-        [2.2, page => page.click({ text: 'Duel' })],
-        [3.6, page => page.press('ArrowRight')],
+        [1.2, page => page.glide([260, 160], '.mode[data-mode="play"]', 0.8)],
+        [2.2, page => page.click('.mode[data-mode="play"]')],
+        [3.0, page => page.click({ selector: '.seat-remove', nth: 2 })],    // two seats: a duel against a random CPU
+        [3.8, page => page.click({ selector: '.seat-fighter', nth: 0 })],
         [4.6, page => page.press('ArrowRight')],
-        [5.8, page => page.press('Enter')],
-        [7.2, page => page.press('KeyR')],                                  // random opponent
+        [5.6, page => page.press('Enter')],
+        [7.2, page => page.click('#fightBtn')],
         [13.1, page => page.down('KeyD')],
         [14.2, page => page.up('KeyD')],
         [14.6, page => page.down('KeyJ')],

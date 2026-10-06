@@ -32,25 +32,27 @@ All six are made in [`promo/`](promo/) with TapaTab (recording) and ShadowKit (c
 
 ## Modes
 
-![Main menu: four modes in rows, with links to the three real sites at the bottom](docs/screenshots/menu.jpg)
+![Main menu: Play, Training and Online, with the three real sites' logos turning in a triangle beside them](docs/screenshots/menu.jpg)
 
-The links at the foot of the menu go to the three real sites. Their logos are 3D models that drift about; hovering one swells it, and clicking one makes it hop.
+The three logos beside the modes link to the real sites. They're 3D models turning in a slow triangle; hovering one swells it, and clicking one makes it hop.
 
 | Mode | What it is |
 |---|---|
-| Free-for-all | You against both CPUs at once. Last one with lives left wins. |
-| Duel | One on one. Pick yourself, then pick your opponent, or press Random opponent (`R`) and let chance choose. |
+| Play | Two to four seats. Each seat is a fighter (or `?`, picked at random when the match starts) and who plays it: User A (you), User B (a friend on the same keyboard) or the CPU. Two seats make a duel, three or four a free-for-all, and all CPUs a match to watch. Last one with lives left wins. |
 | Training | Play-test one fighter against two dummies. Dummies refill their health, knockouts respawn, and you can make the dummies stand still, move around or fight back. |
-| Watch | Three CPUs fight while you watch. |
 | Online | Fight friends in a room: two or three players, each on their own device. See [Online](#online). |
 
-Fighters are picked from a carousel: click a card, or rotate with the arrow buttons, the arrow keys, a drag or the mouse wheel, then press `Enter` (or Play). Clicking a card only selects it, and the card and its fighter give a little hop. The title says which mode you're picking for ("Pick your fighter · Free-for-all"). Each card has its fighter standing in its own little window, and the one in the middle works through its moves in turn, using the real game code, with the move it's showing highlighted in the card's list.
+![Play: three seats (white ChatGPT for User A, black Claude and Stack Overflow for the CPU), with remove buttons on their corners and + to add a fourth](docs/screenshots/play.jpg)
 
-Every match starts with **3 lives** each by default; the picker next to Play sets 1, 2, 3 or 5.
+On the Play screen, click a seat's fighter to pick it on the cards, click who plays it to cycle between User A, User B and CPU (each user has one seat at most; touch screens have no User B), `−` on a seat's corner removes it and `+` adds one. The seats are remembered on the device. Two of the same fighter get different colours.
 
-Duels and free-for-alls open on a versus screen: a panel for each fighter in its colour, with VS between them. Each fighter drops into its panel and shows off in turn. Stack Overflow wags a finger ("Closed as duplicate."), ChatGPT hops and gives a thumbs-up ("Great question!"), and Claude waves ("You're absolutely right!"). Then "Fight!" and the match starts. `Enter`, `Space` or a tap skips it.
+Fighters are picked from a carousel: click a card, or rotate with the arrow buttons, the arrow keys, a drag or the mouse wheel, then press `Enter`. Clicking a card only selects it, and the card and its fighter give a little hop. The swatches next to the button pick the fighter's colour: Stack Overflow in orange or blue, ChatGPT in green or white, Claude in orange or black. The colour carries through the fighter's logo, its blocks, rods and dots, the beam, the health plate and the versus panel. For a seat, Random (`R`) leaves it to chance. Each card has its fighter standing in its own little window, and the one in the middle works through its moves in turn, using the real game code, with the move it's showing highlighted in the card's list.
 
-![Versus screen before a duel: Claude and ChatGPT in their panels](docs/screenshots/versus.jpg)
+Every match starts with **3 lives** each by default; the picker on the Play screen sets 1, 2, 3 or 5.
+
+Play matches open on a versus screen: a panel for each fighter in its colour, with VS between them and who plays it on the corner. The fighters face each other (a middle one looks out at you), drop into their panels and show off in turn. Stack Overflow wags a finger ("Closed as duplicate."), ChatGPT hops and gives a thumbs-up ("Great question!"), and Claude waves ("You're absolutely right!"). Then "Fight!" and the match starts. `Enter`, `Space` or a tap skips it (except online, where everyone starts together).
+
+![Versus screen for a free-for-all: white ChatGPT and Stack Overflow facing the black Claude in the middle, who looks out](docs/screenshots/versus.jpg)
 
 ![Fighter select: Stack Overflow's card firing blocks out of its bent stack, with Block shot highlighted](docs/screenshots/fighter-select.jpg)
 
@@ -68,7 +70,9 @@ On mpts.ie the menu has an **Online** mode and a **Leaderboard**. (The copy publ
 - **The lobby:** up to three players. Each picks a different fighter (shown by its turning 3D logo, the same one as on the health plates; your pick bounces, and fighters someone else has taken are faded) and presses Ready; the host (whoever made the room) sets the lives and starts.
 - **Emotes:** six of them, sent as a number from 0 to 5, so there's no free text to moderate. They pop next to your name in the lobby, and over your fighter in a match (the smiley button on the right).
 - **Matches:** they open on the versus screen with everyone's names. The host's browser runs the match and decides knockouts, comebacks and the result. Every browser plays the match out with everyone's controls, and the host's positions, health and lives correct the others about 20 times a second. Keep the host's tab in front: a background tab pauses the match for everyone.
-- **Leaderboard:** wins, matches, knockouts and parries per player, across every room, recorded by the room when a match ends.
+- **Leaderboard:** wins, matches, knockouts and parries per player, across every room, recorded by the room when a match ends. It's laid out like the results table (and a model announcement's benchmarks): the top six players are the columns, the leader's outlined, and the best score in each row is tinted.
+
+  ![The leaderboard as a benchmark table, with four test players from the local dev server](docs/screenshots/leaderboard.jpg)
 
 The server is the same Worker that serves the page: each room is a Durable Object, and the leaderboard is a D1 database (both on Cloudflare's free plan).
 
@@ -90,6 +94,17 @@ The server is the same Worker that serves the page: each room is a Durable Objec
 | On a ledge: toward the stage, `W`, or away / `S` | Climb up, leap off, or let go |
 | `Esc` | Back to the menu |
 
+With User B in a Play match, the keyboard is split between the two:
+
+| | User A | User B |
+|---|---|---|
+| Move, jump, crouch | `A` `D`, `W` (or `Space`), `S` | `←` `→`, `↑`, `↓` |
+| Dash | double-tap `A` or `D` | double-tap `←` or `→` |
+| Shot, melee, power, special | `F` `G` `H` `T` | `,` `.` `/` `'` (or numpad `1`–`4`) |
+| Parry (with up: overhead) | `Q` | right `Shift` (or numpad `0`) |
+
+Each user's moves are listed along the bottom with their own keys.
+
 On phones and tablets, the same controls appear as on-screen buttons (with ▼ to crouch and separate Parry and ↑ Parry buttons), held upright or on its side. Each fighter shows as its logo square with a thin health bar under it and an `x3` lives badge on its corner; held upright, the camera uses a wider lens so the whole fight fits across the screen.
 
 | Upright | On its side |
@@ -105,7 +120,7 @@ Fighters are solid to each other, and they push:
 - **Walking or jumping into someone** without the speed for a shove: a bump. You put a hand out, they're jolted back a little and strain; keep going and it becomes a push.
 
 Every contact gets one of these. Measured with a play-test harness that drives random scenarios and CPU brawls and checks each contact for a reaction within 0.2 s: all of them react (31/31 knocked into someone, all with the bystander stumbling; 225/225 run-ins; 178/178 walk-ins; 113/113 jump-ins; 94/94 contacts in five CPU brawls). Before this, only 4 of 34 knocked-into contacts and none of 40 jump-ins did.
-- A double-tap dash slips past instead.
+- **Dashing through someone** (a double-tap) slips past them, brushing them aside in depth: they're pushed away from the camera and the dasher swerves toward it, both springing back into line.
 
 Faces show it: when a fighter is hit, stumbling, stunned or being pushed, Stack Overflow screws its eyes shut and grits its teeth, and the chatbots' smiles go flat, with the face shaking while it lasts.
 
@@ -245,6 +260,7 @@ BOTBATTLE_URL=http://localhost:5173/games/botbattle/ ~/projects/ShadowKit/.venv/
 BOTBATTLE_URL=http://localhost:5173/games/botbattle/ ~/projects/ShadowKit/.venv/bin/python tests/ko_test.py
 BOTBATTLE_URL=http://localhost:5173/games/botbattle/ ~/projects/ShadowKit/.venv/bin/python tests/invite_test.py
 BOTBATTLE_URL=http://localhost:5173/games/botbattle/ ~/projects/ShadowKit/.venv/bin/python tests/visual_test.py
+BOTBATTLE_URL=http://localhost:5173/games/botbattle/ ~/projects/ShadowKit/.venv/bin/python tests/play_test.py
 ```
 
-`online_test.py` makes a room, refuses a wrong password, joins by password and by invite link, picks, readies, plays (both screens agree on positions and health), emotes, has a player leave, and checks the leaderboard. `visual_test.py` measures three things on the real page: ink blobs inside the OpenAI and Claude logos, arms going into heads during the versus gestures, and controls cut off by a phone's rounded corners (55px, with no safe area reported). `invite_test.py` checks that an invite opened while signed out survives signing up and lands you in the room. `ko_test.py` checks that only the host knocks anyone out, that comebacks and the result reach every screen, and that the win is recorded.
+`online_test.py` makes a room, refuses a wrong password, joins by password and by invite link, picks, readies, plays (both screens agree on positions and health), emotes, has a player leave, and checks the leaderboard. `play_test.py` goes through Play: the seats, a colour, User B, removing and adding seats, both users' keys moving only their own fighter, the result, and the leaderboard's benchmark table. `visual_test.py` measures three things on the real page: ink blobs inside the OpenAI and Claude logos, arms going into heads during the versus gestures, and controls cut off by a phone's rounded corners (55px, with no safe area reported). `invite_test.py` checks that an invite opened while signed out survives signing up and lands you in the room. `ko_test.py` checks that only the host knocks anyone out, that comebacks and the result reach every screen, and that the win is recorded.

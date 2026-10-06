@@ -324,6 +324,27 @@ button[aria-pressed="true"] { background: var(--ink); color: var(--paper); }
 @keyframes vsStamp { from { transform: translate(-50%, -50%) rotate(-8deg) scale(2.4); opacity: 0; } }
 #vsCanvas { position: absolute; inset: 0; width: 100%; height: 100%; z-index: 2; pointer-events: none; }
 .vs-skip { position: absolute; bottom: 12px; left: 0; right: 0; z-index: 3; margin: 0; text-align: center; font: 500 11px/1 var(--mono); color: var(--ink-soft); }
+/* play: a row of seats (a fighter and who plays it), as many as four */
+.play.panel { width: min(1000px, 100%); }
+.seats { position: relative; display: flex; gap: 18px; align-items: center; flex-wrap: wrap; padding-top: 14px; }
+.seat { position: relative; flex: 1 1 170px; max-width: 230px; min-height: 290px; display: grid; grid-template-rows: 1fr auto; border: 2px solid var(--ink); box-shadow: 3px 3px 0 var(--ink); background: color-mix(in srgb, var(--c, var(--paper)) 12%, var(--paper)); }
+.seat-fighter { border: 0; box-shadow: none; background: none; display: grid; justify-items: center; align-content: center; gap: 10px; padding: 16px 10px; text-transform: none; }
+.seat-fighter:hover { transform: none; box-shadow: none; background: color-mix(in srgb, var(--ink) 5%, transparent); }
+.seat-logo { width: 96px; height: 96px; }
+.seat-q { font: 400 84px/96px var(--display); width: 96px; height: 96px; text-align: center; color: var(--ink); }
+.seat-name { font: 400 15px/1.2 var(--display); text-align: center; }
+.seat-name small { display: block; font: 500 11px var(--mono); color: var(--ink-soft); margin-top: 3px; }
+.seat-ctrl { margin: 0 12px 12px; font: 400 18px/1 var(--display); padding: 12px 8px; }
+.seat-ctrl.cpu { background: var(--paper-2); }
+.seat-remove { position: absolute; top: -14px; right: -14px; width: 32px; height: 32px; padding: 0; font: 400 20px/1 var(--display); z-index: 3; }
+.seat-add { width: 64px; height: 84px; padding: 0; font: 400 32px/1 var(--display); align-self: center; }
+.play-keys { margin: 0; font-size: 12px; color: var(--ink-soft); line-height: 2; }
+.play-keys kbd, .moves-b kbd { font: 600 11px var(--mono); color: var(--ink); border: 1.5px solid var(--ink); padding: 1px 5px; margin-right: 2px; background: var(--paper); }
+.variants { display: flex; gap: 6px; align-items: center; }
+.variants button { width: 30px; height: 30px; padding: 0; background: var(--sw); box-shadow: 2px 2px 0 var(--ink); }
+.variants button[aria-pressed="true"] { outline: 3px solid var(--ink); outline-offset: 2px; }
+@media (max-width: 640px) { .seat { flex-basis: 40%; min-height: 230px; } .seat-logo, .seat-q { width: 72px; height: 72px; font-size: 64px; line-height: 72px; } }
+
 /* online: sign in, rooms, the lobby, the leaderboard */
 .mode-links { display: flex; gap: 10px; flex-wrap: wrap; }
 .online.panel, .board.panel { width: min(860px, 100%); }
@@ -362,7 +383,7 @@ button[aria-pressed="true"] { background: var(--ink); color: var(--paper); }
 .roster .pop { position: absolute; right: -10px; top: -18px; font-size: 26px; animation: pop 2s ease-out both; pointer-events: none; }
 @keyframes pop { 0% { transform: scale(.3); opacity: 0; } 12% { transform: scale(1.15); opacity: 1; } 20% { transform: scale(1); } 80% { opacity: 1; } 100% { opacity: 0; } }
 .lobby-main { position: relative; }
-.lobby-logos { position: absolute; inset: 0; width: 100%; height: 100%; pointer-events: none; z-index: 2; }
+.logo-layer { position: absolute; inset: 0; width: 100%; height: 100%; pointer-events: none; z-index: 2; }
 .picks { display: flex; gap: 10px; flex-wrap: wrap; }
 .picks button { display: grid; justify-items: center; gap: 6px; padding: 10px 14px 9px; min-width: 112px; }
 .picks .pick-logo { width: 54px; height: 54px; }
@@ -381,10 +402,6 @@ button[aria-pressed="true"] { background: var(--ink); color: var(--paper); }
 .emote-tray .tray { display: grid; gap: 6px; }
 .emote-pop { position: absolute; font: 400 34px/1 system-ui, "Apple Color Emoji", "Segoe UI Emoji", sans-serif; transform: translate(-50%, -100%); pointer-events: none; }
 .emote-pop span { display: block; animation: pop 2.2s ease-out both; }
-.board table { width: 100%; border-collapse: collapse; font-variant-numeric: tabular-nums; }
-.board th, .board td { text-align: left; padding: 7px 10px; border-bottom: 1.5px solid color-mix(in srgb, var(--ink) 18%, transparent); font-size: 13px; }
-.board th { font: 400 11px var(--display); color: var(--ink-soft); }
-.board .n { text-align: right; }
 .fight-call {
   position: fixed; inset: 0; z-index: 35; display: grid; place-items: center; pointer-events: none;
   font: 400 clamp(48px, 11vw, 140px)/1 var(--display); color: var(--ink); animation: fightCall 1s ease-out both;
@@ -398,7 +415,7 @@ button[aria-pressed="true"] { background: var(--ink); color: var(--paper); }
 <div id="stage"></div>
 
 <div class="hud" id="hud"></div>
-<div class="bottombar"><div class="moves" id="moves"></div></div>
+<div class="bottombar"><div class="moves" id="moves"></div><div class="moves moves-b" id="movesB" hidden></div></div>
 <div class="topstack">
 <div class="status" id="status" hidden></div>
 <div class="trainbar" id="trainbar" hidden>
@@ -437,10 +454,8 @@ button[aria-pressed="true"] { background: var(--ink); color: var(--paper); }
     <h1>Bot Battle</h1>
     <div class="menu-body">
     <div class="modes">
-      <button type="button" class="mode" data-mode="ffa"><h2>Free-for-all</h2><span>You against both CPUs at once. Last one standing wins.</span></button>
-      <button type="button" class="mode" data-mode="duel"><h2>Duel</h2><span>One on one against a CPU you pick.</span></button>
+      <button type="button" class="mode" data-mode="play"><h2>Play</h2><span>Two to four fighters. Each one is you, a friend on the same keyboard, or the computer.</span></button>
       <button type="button" class="mode" data-mode="training"><h2>Training</h2><span>Play-test one fighter against dummies. Health refills and knockouts respawn.</span></button>
-      <button type="button" class="mode" data-mode="watch"><h2>Watch</h2><span>Three CPUs fight it out while you watch.</span></button>
       <button type="button" class="mode" data-mode="online" hidden><h2>Online</h2><span>Fight your friends. Make a room, share its code, and play.</span></button>
     </div>
     <nav class="brands" id="brands" aria-label="The real ones">
@@ -451,6 +466,19 @@ button[aria-pressed="true"] { background: var(--ink); color: var(--paper); }
     </nav>
     </div>
     <div class="mode-links" id="modeLinks" hidden><button type="button" id="boardBtn">Leaderboard</button></div>
+  </div>
+</div>
+
+<div class="overlay" id="play" hidden>
+  <div class="panel play">
+    <div class="toprow"><button type="button" id="playBack">&larr; Modes</button></div>
+    <h1>Play</h1>
+    <div class="seats" id="seats"></div>
+    <div class="pickrow">
+      <button type="button" id="fightBtn">Fight</button>
+      <div class="lives" id="playLives" role="group" aria-label="Lives"><span>Lives</span><button type="button" data-lives="1">1</button><button type="button" data-lives="2">2</button><button type="button" data-lives="3">3</button><button type="button" data-lives="5">5</button></div>
+    </div>
+    <p class="play-keys" id="playKeys" hidden><b>User A</b> <kbd>W</kbd><kbd>A</kbd><kbd>S</kbd><kbd>D</kbd> <kbd>F</kbd><kbd>G</kbd><kbd>H</kbd><kbd>T</kbd> parry <kbd>Q</kbd> &middot; <b>User B</b> <kbd>&uarr;</kbd><kbd>&larr;</kbd><kbd>&darr;</kbd><kbd>&rarr;</kbd> <kbd>,</kbd><kbd>.</kbd><kbd>/</kbd><kbd>'</kbd> parry <kbd>right Shift</kbd></p>
   </div>
 </div>
 
@@ -468,7 +496,8 @@ button[aria-pressed="true"] { background: var(--ink); color: var(--paper); }
     </div>
     <div class="pickrow">
       <button type="button" id="pickBtn">Play</button>
-      <button type="button" id="randomBtn" hidden>Random opponent <kbd>R</kbd></button>
+      <div class="variants" id="variants" role="group" aria-label="Colour"></div>
+      <button type="button" id="randomBtn" hidden>Random <kbd>R</kbd></button>
       <div class="ringdots" id="ringdots"></div>
       <div class="lives" id="livesPick" role="group" aria-label="Lives"><span>Lives</span><button type="button" data-lives="1">1</button><button type="button" data-lives="2">2</button><button type="button" data-lives="3">3</button><button type="button" data-lives="5">5</button></div>
     </div>
@@ -1014,9 +1043,9 @@ button[aria-pressed="true"] { background: var(--ink); color: var(--paper); }
   const dotGeo = new THREE.SphereGeometry(0.13, 16, 12);
   const barGeo = new THREE.BoxGeometry(0.62, 0.1, 0.18);
   const starGeo = new THREE.OctahedronGeometry(0.07);
-  const makeBlock = () => inked(barGeo, barMat);
+  const makeBlock = (mat = barMat) => inked(barGeo, mat);
   const trayBaseGeo = new THREE.BoxGeometry(0.95, TRAY_T, 0.5), traySideGeo = new THREE.BoxGeometry(0.08, 0.34, 0.5);
-  const makeDot = () => inked(dotGeo, claudeMat);
+  const makeDot = (mat = claudeMat) => inked(dotGeo, mat);
 
   // ================= Jointed limbs (two-bone IK) =================
   const segGeo = new THREE.CylinderGeometry(1, 1, 1, 8).translate(0, 0.5, 0);
@@ -1098,6 +1127,20 @@ button[aria-pressed="true"] { background: var(--ink); color: var(--paper); }
     },
   };
   const SLOTS = ['a1', 'a2', 'a3', 'a4'];
+  // colour variants, picked on the fighter cards: the logo's colour, and the colour the interface marks it with
+  // (white ChatGPT is marked in grey, which shows on paper)
+  const VARIANTS = {
+    so: [{ id: 'orange', name: 'Orange', logo: '#f48024', ui: '#f48024' }, { id: 'blue', name: 'Blue', logo: '#2f7fd1', ui: '#2f7fd1' }],
+    gpt: [{ id: 'green', name: 'Green', logo: '#10a37f', ui: '#10a37f' }, { id: 'white', name: 'White', logo: '#f7f6f2', ui: '#a3a19b' }],
+    claude: [{ id: 'orange', name: 'Orange', logo: '#d97757', ui: '#d97757' }, { id: 'black', name: 'Black', logo: '#2a2927', ui: '#2a2927' }],
+  };
+  // a fighter's kit in one of its colours (the kit's own colour is the interface's)
+  const kitCache = new Map();
+  function kitFor(kind, variant) {
+    const v = VARIANTS[kind].find(x => x.id === variant) || VARIANTS[kind][0], key = kind + ':' + v.id;
+    if (!kitCache.has(key)) kitCache.set(key, { ...KITS[kind], kind, color: v.ui, logoColor: v.logo, variant: v.id });
+    return kitCache.get(key);
+  }
   const KEY_LABEL = { a1: 'J', a2: 'K', a3: 'L', a4: 'I' };
   const CORRECTIONS = [
     'Actually, this is a duplicate. Closed.',
@@ -1199,8 +1242,8 @@ button[aria-pressed="true"] { background: var(--ink); color: var(--paper); }
   const addT = m => { scene.add(m); transient.add(m); return m; };
   const dropT = m => { scene.remove(m); transient.delete(m); };
 
-  function buildFighter(kind, x, isPlayer, parent = scene, springList = springs) {
-    const kit = KITS[kind];
+  function buildFighter(kind, x, isPlayer, parent = scene, springList = springs, variant) {
+    const kit = kitFor(kind, variant);
     const mats = { ink: inkBase.clone(), cup: cupBase.clone(), outline: outlineBase.clone() };
     const root = new THREE.Group();
     const vis = new THREE.Group();
@@ -1252,7 +1295,9 @@ button[aria-pressed="true"] { background: var(--ink); color: var(--paper); }
       const crown = new THREE.Group();
       crown.position.set(0, CROWN_Y, 0);
       const tray = trayMat.clone(), bars = barMat.clone();
+      bars.color.set(kit.logoColor);
       f.propMats = [tray, bars];
+      f.logoMat = bars;            // its blocks are this colour too
       crown.add(inked(trayBaseGeo, tray));
       for (const sx of [-1, 1]) {
         const side = inked(traySideGeo, tray);
@@ -1289,7 +1334,9 @@ button[aria-pressed="true"] { background: var(--ink); color: var(--paper); }
       const logo = new THREE.Group();
       logo.rotation.x = -Math.PI / 2;
       const logoMat = (kind === 'gpt' ? openaiMat : claudeMat).clone();
+      logoMat.color.set(kit.logoColor);
       f.propMats = [logoMat];
+      f.logoMat = logoMat;         // its rods and dots are this colour too
       if (kind === 'claude' && claudeRays) {
         f.rods = claudeRays.map(ray => {
           const m = shadowed(new THREE.Mesh(ray.geo, logoMat));
@@ -1517,19 +1564,24 @@ button[aria-pressed="true"] { background: var(--ink); color: var(--paper); }
     ctx.fillStyle = g; ctx.fillRect(0, 0, w, h);
   }, 128, 128);
   const unitX = (w, h) => new THREE.PlaneGeometry(1, 1).translate(0.5, 0, 0).scale(w, h, 1);
-  function makeBeamMesh() {
+  const BEAM_TINTS = {
+    orange: { outer: '#ffb347', mid: '#ff8a1f', body: '#f48024', core: '#fff7e6', flare: '#ffc36b' },
+    blue: { outer: '#8cc1f2', mid: '#3e8ee0', body: '#2f7fd1', core: '#eef6ff', flare: '#a9d0f7' },
+  };
+  function makeBeamMesh(variant = 'orange') {
+    const tint = BEAM_TINTS[variant] || BEAM_TINTS.orange;
     const g = new THREE.Group();
     const glowMat = (color, opacity) => new THREE.MeshBasicMaterial({ map: bandTex, color, transparent: true, opacity, depthWrite: false, side: THREE.DoubleSide });
-    const outer = new THREE.Mesh(unitX(1, 2.6), glowMat('#ffb347', 0.45));
+    const outer = new THREE.Mesh(unitX(1, 2.6), glowMat(tint.outer, 0.45));
     const outer2 = outer.clone(); outer2.rotation.x = Math.PI / 2;
-    const mid = new THREE.Mesh(unitX(1, 1.1), glowMat('#ff8a1f', 0.9));
+    const mid = new THREE.Mesh(unitX(1, 1.1), glowMat(tint.mid, 0.9));
     const mid2 = mid.clone(); mid2.rotation.x = Math.PI / 2;
     const body = new THREE.Mesh(new THREE.CylinderGeometry(0.17, 0.17, 1, 16).rotateZ(-Math.PI / 2).translate(0.5, 0, 0),
-      new THREE.MeshBasicMaterial({ color: '#f48024' }));
+      new THREE.MeshBasicMaterial({ color: tint.body }));
     const core = new THREE.Mesh(new THREE.CylinderGeometry(0.075, 0.075, 1, 12).rotateZ(-Math.PI / 2).translate(0.5, 0, 0),
-      new THREE.MeshBasicMaterial({ color: '#fff7e6' }));
+      new THREE.MeshBasicMaterial({ color: tint.core }));
     core.renderOrder = 3;
-    const flareMat = new THREE.SpriteMaterial({ map: flareTex, color: '#ffc36b', transparent: true, depthWrite: false });
+    const flareMat = new THREE.SpriteMaterial({ map: flareTex, color: tint.flare, transparent: true, depthWrite: false });
     const muzzle = new THREE.Sprite(flareMat); muzzle.scale.setScalar(1.6);
     const impact = new THREE.Sprite(flareMat.clone()); impact.scale.setScalar(1.2);
     [outer, outer2, mid, mid2].forEach(m => { m.renderOrder = 2; });
@@ -1580,7 +1632,7 @@ button[aria-pressed="true"] { background: var(--ink); color: var(--paper); }
     if (p.kind === 'block') {
       // shredded into confetti that spirals the rest of the way in
       for (let i = 0; i < 9; i++) {
-        const c = new THREE.Mesh(new THREE.BoxGeometry(0.08, 0.08, 0.08), barMat);
+        const c = new THREE.Mesh(new THREE.BoxGeometry(0.08, 0.08, 0.08), (p.owner && p.owner.logoMat) || barMat);
         const a0 = Math.random() * Math.PI * 2, r0 = 0.3 + Math.random() * 0.4;
         scene.add(c);
         effects.push({ life: 0.4, max: 0.4, mesh: c, update(e) {
@@ -1794,8 +1846,8 @@ button[aria-pressed="true"] { background: var(--ink); color: var(--paper); }
       a2(f) {       // Fling: one rod leaves the logo and pokes forward; it is gone until it grows back
         const rod = takeRod(f);
         if (!rod) return false;
-        const mesh = inked(rodGeoBase, claudeMat);
-        const tip = inked(rodTipGeo, claudeMat);
+        const mesh = inked(rodGeoBase, f.logoMat || claudeMat);
+        const tip = inked(rodTipGeo, f.logoMat || claudeMat);
         tip.position.y = 1;
         mesh.add(tip);
         addT(mesh);
@@ -1805,11 +1857,11 @@ button[aria-pressed="true"] { background: var(--ink); color: var(--paper); }
       a1(f) {       // Shoot: launch one of the logo's rods
         const rod = takeRod(f);
         if (!rod) return false;
-        const mesh = inked(rodGeoCentered, claudeMat);
+        const mesh = inked(rodGeoCentered, f.logoMat || claudeMat);
         mesh.scale.set(1, 0.9, 1);
         spawnProjectile({
           mesh, pos: rod.from, vel: aimFrom(f, rod.from, 30), team: f.team, owner: f, kind: 'rod',
-          dmg: 1.4, kb: 4, kbUp: 2.5, radius: 0.25, life: 1.1, orient: 'vel', color: '#d97757',
+          dmg: 1.4, kb: 4, kbUp: 2.5, radius: 0.25, life: 1.1, orient: 'vel', color: f.kit.color,
         });
       },
     },
@@ -2018,7 +2070,7 @@ button[aria-pressed="true"] { background: var(--ink); color: var(--paper); }
               // ChatGPT yanks a block off the end of the whip and swallows it
               f.bars -= 1; f.magSlots.pop();
               const from = f.spring.base.localToWorld(V().copy(f.spring.nodes[f.spring.n]));
-              const pr = spawnProjectile({ mesh: makeBlock(), pos: from, vel: V(-f.facing * 4, 2, 0), team: f.team, owner: f, kind: 'block', dmg: 0, kb: 0 });
+              const pr = spawnProjectile({ mesh: makeBlock(f.logoMat), pos: from, vel: V(-f.facing * 4, 2, 0), team: f.team, owner: f, kind: 'block', dmg: 0, kb: 0 });
               pr.suckedBy = h;
               floatText(h.x, h.y + BOX_H + 0.6, 'Yoink', 'info');
               w.t = Math.max(w.t, w.dur * 0.8);
@@ -2088,10 +2140,10 @@ button[aria-pressed="true"] { background: var(--ink); color: var(--paper); }
           d.fired = true;
           dropT(d.mesh);
           const from = d.mesh.position.clone();
-          const dm = makeDot(); dm.scale.setScalar(d.size);
+          const dm = makeDot(f.logoMat); dm.scale.setScalar(d.size);
           const pr = spawnProjectile({
             mesh: dm, pos: from, vel: aimFrom(f, from, 22), kind: 'dot',
-            team: f.team, owner: f, dmg: 5 * d.size, kb: 2, radius: 0.18 * d.size, life: 1.4, color: '#d97757',
+            team: f.team, owner: f, dmg: 5 * d.size, kb: 2, radius: 0.18 * d.size, life: 1.4, color: f.kit.color,
           });
           if (eater) { pr.suckedBy = eater; pr.vel.set(0, 0, 0); }   // pulled out of formation
           else burst(from, '#d97757');
@@ -2121,7 +2173,7 @@ button[aria-pressed="true"] { background: var(--ink); color: var(--paper); }
       const eater = fighters.find(g => g.team !== f.team && isInhaling(g) && mouthOf(g).distanceTo(tipW) < 1.1);
       if (eater) {
         // the rod gets ripped off the end of the fling and slurped
-        const pr = spawnProjectile({ mesh: inked(rodGeoCentered, claudeMat), pos: tipW, vel: V(), team: f.team, owner: f, kind: 'rod', dmg: 0, kb: 0 });
+        const pr = spawnProjectile({ mesh: inked(rodGeoCentered, f.logoMat || claudeMat), pos: tipW, vel: V(), team: f.team, owner: f, kind: 'rod', dmg: 0, kb: 0 });
         pr.suckedBy = eater;
         floatText(eater.x, eater.y + BOX_H + 0.6, 'Slurp', 'info');
         dropT(fl.mesh); f.fling = null;
@@ -2165,7 +2217,7 @@ button[aria-pressed="true"] { background: var(--ink); color: var(--paper); }
       const along = rel.dot(b.dir), off = rel.addScaledVector(b.dir, -along).length();
       if (along > 0 && along < b.len && off < 1.4) { b.len = along; b.eater = g; }
     }
-    if (firing && !b.mesh) { b.mesh = makeBeamMesh(); addT(b.mesh); }
+    if (firing && !b.mesh) { b.mesh = makeBeamMesh(f.kit.variant); addT(b.mesh); }
     if (b.mesh) {
       const fed = Math.min(5, Math.floor(b.shift));
       while (b.fed < fed) {
@@ -2215,11 +2267,11 @@ button[aria-pressed="true"] { background: var(--ink); color: var(--paper); }
   // A block leaves the tip straight along the barrel, still lying across it the way it sat on the stack
   function fireBlock(f, local, tang) {
     const from = f.spring.base.localToWorld(local.clone());
-    const mesh = makeBlock();
+    const mesh = makeBlock(f.logoMat);
     mesh.rotation.z = -f.facing * tang;
     spawnProjectile({
       mesh, pos: from, vel: V(f.facing * Math.sin(tang), Math.cos(tang), 0).multiplyScalar(18), team: f.team, owner: f,
-      kind: 'block', dmg: 3, kb: 2.4, kbUp: 2, radius: 0.28, life: 1.8, color: '#f48024',
+      kind: 'block', dmg: 3, kb: 2.4, kbUp: 2, radius: 0.28, life: 1.8, color: f.kit.color,
     });
   }
   // The block magazine, drawn after the spring is placed each frame. Blocks rest at the bottom of the
@@ -2913,11 +2965,13 @@ button[aria-pressed="true"] { background: var(--ink); color: var(--paper); }
   // ================= Input =================
   const keys = new Set(), pressed = new Set();
   const GAME_KEYS = new Set(['KeyA', 'KeyD', 'KeyW', 'KeyS', 'ArrowLeft', 'ArrowRight', 'ArrowUp', 'ArrowDown', 'Space', 'Backspace',
+    'KeyF', 'KeyG', 'KeyH', 'KeyT', 'KeyQ', 'Comma', 'Period', 'Slash', 'Quote', 'ShiftRight', 'Numpad0', 'Numpad1', 'Numpad2', 'Numpad3', 'Numpad4',
     'KeyJ', 'KeyK', 'KeyL', 'KeyI', 'Digit1', 'Digit2', 'Digit3', 'Digit4']);
   // a second press of the same direction within a moment is a double tap: the dash
   const lastTap = {};
   function noteTap(code) {
-    const dir = code === 'KeyA' || code === 'ArrowLeft' ? 'DashL' : code === 'KeyD' || code === 'ArrowRight' ? 'DashR' : null;
+    // A/D are User A's, the arrows User B's (alone, either dashes)
+    const dir = { KeyA: 'DashLA', KeyD: 'DashRA', ArrowLeft: 'DashLB', ArrowRight: 'DashRB' }[code] || null;
     if (!dir) return;
     const now = performance.now();
     if (now - (lastTap[dir] || -1e9) < 280) { pressed.add(dir); lastTap[dir] = -1e9; } else lastTap[dir] = now;
@@ -2926,7 +2980,7 @@ button[aria-pressed="true"] { background: var(--ink); color: var(--paper); }
     if (versus && (e.code === 'Enter' || e.code === 'Space')) { e.preventDefault(); skipVersus(); return; }
     if (e.code === 'Escape' && inMatch()) { if (mode.kind !== 'online' || matchOver) openMenu(); return; }
     if (e.code === 'Escape' && !selectEl.hidden) { document.getElementById('backBtn').click(); return; }
-    if (!GAME_KEYS.has(e.code) || !player) return;
+    if (!GAME_KEYS.has(e.code) || (!player && !player2)) return;
     if (document.activeElement && document.activeElement.tagName === 'BUTTON' && e.code === 'Space') document.activeElement.blur();
     e.preventDefault();
     if (!e.repeat) { pressed.add(e.code); noteTap(e.code); }
@@ -2945,20 +2999,25 @@ button[aria-pressed="true"] { background: var(--ink); color: var(--paper); }
     btn.addEventListener('contextmenu', e => e.preventDefault());
   });
 
-  function playerInput() {
-    const k = c => keys.has(c), p = c => pressed.has(c);
+  // the keys of each player: alone, every key (and the touch buttons); with User B in the match, User A has the
+  // left of the keyboard and User B the right (KEYS_FOR shows them)
+  const SCHEMES = {
+    all: { left: ['KeyA', 'ArrowLeft'], right: ['KeyD', 'ArrowRight'], jump: ['KeyW', 'ArrowUp', 'Space'], down: ['KeyS', 'ArrowDown'],
+      parry: ['Backspace', 'ParryUp'], up: ['ParryUp'], a1: ['KeyJ', 'Digit1'], a2: ['KeyK', 'Digit2'], a3: ['KeyL', 'Digit3'], a4: ['KeyI', 'Digit4'],
+      dashL: ['DashLA', 'DashLB'], dashR: ['DashRA', 'DashRB'] },
+    A: { left: ['KeyA'], right: ['KeyD'], jump: ['KeyW', 'Space'], down: ['KeyS'], parry: ['KeyQ'], up: [],
+      a1: ['KeyF'], a2: ['KeyG'], a3: ['KeyH'], a4: ['KeyT'], dashL: ['DashLA'], dashR: ['DashRA'] },
+    B: { left: ['ArrowLeft'], right: ['ArrowRight'], jump: ['ArrowUp'], down: ['ArrowDown'], parry: ['ShiftRight', 'Numpad0'], up: [],
+      a1: ['Comma', 'Numpad1'], a2: ['Period', 'Numpad2'], a3: ['Slash', 'Numpad3'], a4: ['Quote', 'Numpad4'], dashL: ['DashLB'], dashR: ['DashRB'] },
+  };
+  function playerInput(scheme = 'all', body = controlledBody()) {
+    const S = SCHEMES[scheme], k = c => S[c].some(x => keys.has(x)), p = c => S[c].some(x => pressed.has(x));
     return {
-      left: k('KeyA') || k('ArrowLeft'),
-      right: k('KeyD') || k('ArrowRight'),
-      jump: p('KeyW') || p('ArrowUp') || p('Space'),
-      parry: p('Backspace') || p('ParryUp'),
-      down: k('KeyS') || k('ArrowDown'),
-      dash: p('DashL') ? -1 : p('DashR') ? 1 : 0,
-      up: k('KeyW') || k('ArrowUp') || k('Space') || p('ParryUp'),
-      a1: p('KeyJ') || p('Digit1') || (k('KeyJ') && controlledBody()?.kind !== 'gpt'),     // hold J to keep firing blocks or rods
-      a2: p('KeyK') || p('Digit2'),
-      a3: p('KeyL') || p('Digit3'),
-      a4: p('KeyI') || p('Digit4'),
+      left: k('left'), right: k('right'), jump: p('jump'), parry: p('parry'), down: k('down'),
+      dash: p('dashL') ? -1 : p('dashR') ? 1 : 0,
+      up: k('jump') || p('up'),
+      a1: p('a1') || (keys.has(S.a1[0]) && body?.kind !== 'gpt'),     // hold it to keep firing blocks or rods
+      a2: p('a2'), a3: p('a3'), a4: p('a4'),
     };
   }
 
@@ -3086,7 +3145,7 @@ button[aria-pressed="true"] { background: var(--ink); color: var(--paper); }
       el.style.setProperty('--c', f.kit.color);
       el.setAttribute('role', 'group');
       el.setAttribute('aria-label', f.kit.name);
-      const tag = f.isPlayer ? 'YOU' : f.netName ? esc(f.netName).toUpperCase() : f.dummy ? 'DUMMY' : 'CPU';
+      const tag = esc(tagOf(f)).toUpperCase();
       el.innerHTML = `<div class="plate-logo"><span class="badge"></span></div>
         <div class="plate-info">
           <div class="plate-top"><span class="stock"></span><span class="plate-tag${f.isPlayer ? ' you' : ''}">${tag} <span class="plate-hp"></span></span></div>
@@ -3126,53 +3185,68 @@ button[aria-pressed="true"] { background: var(--ink); color: var(--paper); }
     if (!player) return null;
     return player.possessing || player;
   }
-  function refreshMoves() {
-    const body = controlledBody();
-    movesEl.innerHTML = '';
-    movesFor = body;
-    statusEl.hidden = !(player && player.possessing);
-    if (player && player.possessing) statusEl.textContent = `Controlling ${player.possessing.kit.name}`;
+  // the keys each player uses: alone, all of them; with User B in the match, User A has the left of the keyboard
+  // and User B the right
+  const KEYS_FOR = {
+    all: { a1: 'J', a2: 'K', a3: 'L', a4: 'I', jump: 'W', dash: 'AA DD', crouch: 'S', parry: '\u232B', over: 'W+\u232B' },
+    A: { a1: 'F', a2: 'G', a3: 'H', a4: 'T', jump: 'W', dash: 'AA DD', crouch: 'S', parry: 'Q', over: 'W+Q' },
+    B: { a1: ',', a2: '.', a3: '/', a4: "'", jump: '\u2191', dash: '\u2190\u2190 \u2192\u2192', crouch: '\u2193', parry: 'R\u21E7', over: '\u2191+R\u21E7' },
+  };
+  const movesBEl = document.getElementById('movesB');
+  let movesForB = null;
+  const bodyB = () => player2 ? player2.possessing || player2 : null;
+  function fillMoves(el, body, keyFor, label) {
+    el.innerHTML = '';
+    el.hidden = !body;
     if (!body) return;
+    el.style.setProperty('--so', body.kit.color);     // the block pips in the fighter's own colour
+    if (label) { const t = document.createElement('div'); t.className = 'move static who-moves'; t.innerHTML = `<span>${label}</span>`; el.appendChild(t); }
     for (const s of SLOTS) {
       const ab = body.kit.abilities[s];
       if (!ab) continue;
-      const el = document.createElement('div');
-      el.className = 'move'; el.dataset.slot = s;
-      el.innerHTML = `<kbd>${KEY_LABEL[s]}</kbd><span></span><i class="cool"></i>`;
-      el.querySelector('span').textContent = ab.name;
+      const m = document.createElement('div');
+      m.className = 'move'; m.dataset.slot = s;
+      m.innerHTML = `<kbd>${keyFor[s]}</kbd><span></span><i class="cool"></i>`;
+      m.querySelector('span').textContent = ab.name;
       if ((body.rods && (s === 'a1' || s === 'a2')) || (body.kind === 'gpt' && s === 'a4')) {
         const cnt = document.createElement('span');
         cnt.className = 'count';
-        el.querySelector('span').appendChild(cnt);
+        m.querySelector('span').appendChild(cnt);
       }
       if (body.kind === 'so' && s === 'a1') {
         const pips = document.createElement('span');
         pips.className = 'pips';
         pips.innerHTML = '<i></i><i></i><i></i><i></i><i></i>';
-        el.querySelector('span').appendChild(pips);
+        m.querySelector('span').appendChild(pips);
       }
-      movesEl.appendChild(el);
+      el.appendChild(m);
     }
-    const extra = [['W', body.kit.jumps > 1 ? 'Double jump' : 'Jump'], ['AA DD', 'Dash'], ['S', 'Crouch'], ['\u232B', 'Parry'], ['W+\u232B', 'Overhead parry']];
-    for (const [k, label] of extra) {
-      const el = document.createElement('div');
-      el.className = 'move static';
-      el.innerHTML = `<kbd>${k}</kbd><span>${label}</span>`;
-      movesEl.appendChild(el);
+    const extra = [[keyFor.jump, body.kit.jumps > 1 ? 'Double jump' : 'Jump'], [keyFor.dash, 'Dash'], [keyFor.crouch, 'Crouch'], [keyFor.parry, 'Parry'], [keyFor.over, 'Overhead parry']];
+    for (const [k, text] of extra) {
+      const m = document.createElement('div');
+      m.className = 'move static';
+      m.innerHTML = `<kbd>${k}</kbd><span>${text}</span>`;
+      el.appendChild(m);
     }
+  }
+  function refreshMoves() {
+    const body = controlledBody();
+    movesFor = body; movesForB = bodyB();
+    statusEl.hidden = !(player && player.possessing);
+    if (player && player.possessing) statusEl.textContent = `Controlling ${player.possessing.kit.name}`;
+    fillMoves(movesEl, body, KEYS_FOR[player2 ? 'A' : 'all'], player2 ? 'User A' : '');
+    fillMoves(movesBEl, movesForB, KEYS_FOR.B, 'User B');
+    if (!body) return;
     document.querySelectorAll('#acts button[data-slot]').forEach(b => {
       const ab = body.kit.abilities[b.dataset.slot];
       b.hidden = !ab;
       if (ab) b.querySelector('span').textContent = ab.short;
     });
   }
-  function updateMoves() {
-    updatePlatesLive();
-    const body = controlledBody();
+  function tickMoves(el, body) {
     if (!body) return;
-    if (body !== movesFor) refreshMoves();
-    movesEl.querySelectorAll('.move[data-slot]').forEach(el => {
-      const s = el.dataset.slot, ab = body.kit.abilities[s];
+    el.querySelectorAll('.move[data-slot]').forEach(m => {
+      const s = m.dataset.slot, ab = body.kit.abilities[s];
       const frac = ab.cd ? body.cd[s] / ab.cd : 0;
       let wait = frac > 0;
       if (body.kind === 'so' && s === 'a3' && body.bars < 5) wait = true;
@@ -3180,16 +3254,24 @@ button[aria-pressed="true"] { background: var(--ink); color: var(--paper); }
       if (body.rods && (s === 'a1' || s === 'a2')) {
         const left = rodsLeft(body);
         if (left < 1) wait = true;
-        el.querySelector('.count').textContent = ` ${left}/${body.rods.length}`;
+        m.querySelector('.count').textContent = ` ${left}/${body.rods.length}`;
       }
       if (body.kind === 'gpt' && s === 'a4') {
         if (body.context < 50) wait = true;
-        el.querySelector('.count').textContent = ` ${Math.floor(body.context)}%`;
+        m.querySelector('.count').textContent = ` ${Math.floor(body.context)}%`;
       }
-      el.classList.toggle('wait', wait);
-      el.querySelector('.cool').style.width = (frac * 100) + '%';
-      el.querySelectorAll('.pips i').forEach((p, i) => p.classList.toggle('on', i < Math.floor(body.bars)));
+      m.classList.toggle('wait', wait);
+      m.querySelector('.cool').style.width = (frac * 100) + '%';
+      m.querySelectorAll('.pips i').forEach((pip, i) => pip.classList.toggle('on', i < Math.floor(body.bars)));
     });
+  }
+  function updateMoves() {
+    updatePlatesLive();
+    const body = controlledBody();
+    if (body !== movesFor || bodyB() !== movesForB) refreshMoves();
+    tickMoves(movesEl, body);
+    tickMoves(movesBEl, bodyB());
+    if (!body) return;
     document.querySelectorAll('#acts button[data-slot]').forEach(b => {
       const ab = body.kit.abilities[b.dataset.slot];
       if (!ab) return;
@@ -3197,8 +3279,9 @@ button[aria-pressed="true"] { background: var(--ink); color: var(--paper); }
     });
   }
 
+
   // ================= Modes and match flow =================
-  let player = null;
+  let player = null, player2 = null;      // User A (you), and User B when a friend plays on the same keyboard
   let mode = { kind: 'watch' };
   let matchOver = false, attractTimer = 0;
   let dummyMode = 'idle';
@@ -3210,8 +3293,15 @@ button[aria-pressed="true"] { background: var(--ink); color: var(--paper); }
   const onlineEl = document.getElementById('online');
   const boardEl = document.getElementById('board');
   const emoteTray = document.getElementById('emoteTray');
-  const inMatch = () => menuEl.hidden && selectEl.hidden && onlineEl.hidden && boardEl.hidden;
+  const inMatch = () => menuEl.hidden && selectEl.hidden && onlineEl.hidden && boardEl.hidden && document.getElementById('play').hidden;
 
+  // who plays a fighter, as the plates, versus panels and results say it
+  function tagOf(f) {
+    if (f.netName) return f.isPlayer ? 'You' : f.netName;
+    if (f.isPlayer) return player2 ? 'User A' : 'You';
+    if (f.isPlayer2) return 'User B';
+    return f.dummy ? 'Dummy' : 'CPU';
+  }
   function clearMatch() {
     for (const f of fighters) scene.remove(f.root);
     for (const p of projectiles) scene.remove(p.mesh);
@@ -3231,20 +3321,26 @@ button[aria-pressed="true"] { background: var(--ink); color: var(--paper); }
     if (m.kind === 'ffa') { const o = order.filter(k => k !== m.pick); placement = [[m.pick, -6, true], [o[0], 0.5], [o[1], 6]]; }
     else if (m.kind === 'duel') placement = [[m.pick, -4, true], [m.opponent, 4]];
     else if (m.kind === 'training') { const o = order.filter(k => k !== m.pick); placement = [[m.pick, -4, true], [o[0], 1], [o[1], 5]]; }
+    else if (m.kind === 'play') {        // the seats, left to right, "?" resolved
+      const list = resolveSeats(m.seats), xs = { 2: [-4, 4], 3: [-6, 0.5, 6], 4: [-7.5, -2.5, 2.5, 7.5] }[list.length];
+      placement = list.map((st, i) => [st.kind, xs[i], st.ctrl === 'A', null, st]);
+    }
     else if (m.kind === 'online') {      // the room's players, in the order the room lists them
       const xs = m.players.length === 2 ? [-4, 4] : [-6, 0.5, 6];
       placement = m.players.map((p, i) => [p.kind, xs[i], p.id === net.me, p]);
     }
     else placement = [['so', -6], ['gpt', 0], ['claude', 6]];
     if (m.kind !== 'training') m.lives = m.lives || 3;
-    fighters = placement.map(([k, x, me, who]) => {
-      const f = buildFighter(k, x, !!me);
+    fighters = placement.map(([k, x, me, who, seat]) => {
+      const f = buildFighter(k, x, !!me, scene, springs, seat ? seat.variant : me ? m.variant : undefined);
+      if (seat) f.isPlayer2 = seat.ctrl === 'B';
       if (who) { f.netId = who.id; f.netName = who.name; }
       if (m.kind === 'training' && !me) f.dummy = true;
       f.stocks = m.kind === 'training' ? Infinity : m.lives;
       return f;
     });
     player = fighters.find(f => f.isPlayer) || null;
+    player2 = fighters.find(f => f.isPlayer2) || null;
     matchOver = false; attractTimer = 0; camSnap = true; trainDamage = 0;
     buildHud();
     refreshMoves();
@@ -3253,7 +3349,7 @@ button[aria-pressed="true"] { background: var(--ink); color: var(--paper); }
     trainEl.hidden = m.kind !== 'training';
     keys.clear(); pressed.clear();
     stopVersus();
-    if (m.kind === 'duel' || m.kind === 'ffa' || m.kind === 'online') startVersus();
+    if (m.kind === 'play' || m.kind === 'online') startVersus();
     emoteTray.hidden = m.kind !== 'online';
   }
   // back for another life: the body vanishes in a puff, and a fresh fighter drops in from above,
@@ -3264,8 +3360,8 @@ button[aria-pressed="true"] { background: var(--ink); color: var(--paper); }
     if (drop && f.rag) { const h = f.rag.pts.hip; if (h.y > -3) { burst(V(h.x, h.y + 0.6, 0), f.kit.color); ring(V(h.x, h.y + 0.6, 0), '#141414', 0.9); } }
     scene.remove(f.root);
     springs = springs.filter(sp => sp !== f.spring);
-    const nf = buildFighter(f.kind, f.spawnX, f.isPlayer);
-    nf.dummy = f.dummy; nf.stocks = f.stocks; nf.stats = f.stats; nf.netId = f.netId; nf.netName = f.netName;
+    const nf = buildFighter(f.kind, f.spawnX, f.isPlayer, scene, springs, f.kit.variant);
+    nf.dummy = f.dummy; nf.stocks = f.stocks; nf.stats = f.stats; nf.netId = f.netId; nf.netName = f.netName; nf.isPlayer2 = f.isPlayer2;
     if (drop) {
       nf.y = 4; nf.onGround = false; nf.invuln = 2;
       nf.feet.forEach(ft => { ft.y = nf.y; ft.air = true; });
@@ -3274,6 +3370,7 @@ button[aria-pressed="true"] { background: var(--ink); color: var(--paper); }
     }
     fighters[i] = nf;
     if (f.isPlayer) player = nf;
+    if (f.isPlayer2) player2 = nf;
     buildHud();
     refreshMoves();
   }
@@ -3292,7 +3389,7 @@ button[aria-pressed="true"] { background: var(--ink); color: var(--paper); }
     // winner first, like the featured model column
     const cols = [...fighters].sort((a, b) => (b === winner) - (a === winner) || (b.stocks - a.stocks) || (b.hp - a.hp));
     const head = cols.map(f => {
-      const tag = f === winner ? (leading ? 'Leading' : 'Winner') : f.isPlayer ? 'You' : f.out ? 'Out' : 'CPU';
+      const tag = f === winner ? (leading ? 'Leading' : 'Winner') : f.out ? 'Out' : tagOf(f);
       return `<th scope="col" class="${f === winner ? 'win' : ''}" style="--c:${f.kit.color}"><span class="sw"></span><span class="long">${f.kit.name}</span><span class="short" aria-hidden="true">${f.kit.short}</span><small>${tag}${f.isPlayer && f !== winner ? '' : f.isPlayer ? ' \u00b7 you' : ''}</small></th>`;
     }).join('');
     const body = BENCH_ROWS.map(row => {
@@ -3347,6 +3444,14 @@ button[aria-pressed="true"] { background: var(--ink); color: var(--paper); }
     }
     // a knocked-out fighter with lives left comes back
     if (living.length > 1) for (const f of [...fighters]) if (f.dead && !f.out && f.deadT > 1.8) respawn(f, true);
+    if (mode.kind === 'play') {
+      if (living.length <= 1) {
+        const w = living[0];
+        endMatch(w ? `${w.kit.name} wins` : 'Nobody wins',
+          w ? `${tagOf(w)}, with ${w.stocks === 1 ? '1 life' : `${w.stocks} lives`} left.` : 'Everyone went down together.');
+      }
+      return;
+    }
     if (!player) {
       if (living.length <= 1) { attractTimer += dt; if (attractTimer > 2.5) startMatch({ kind: 'watch' }); }
       return;
@@ -3366,12 +3471,14 @@ button[aria-pressed="true"] { background: var(--ink); color: var(--paper); }
   function openMenu() {
     leaveRoom();
     resultEl.hidden = true; selectEl.hidden = true; onlineEl.hidden = true; boardEl.hidden = true; menuEl.hidden = false; cornerEl.hidden = true;
+    document.getElementById('play').hidden = true;
     if (mode.kind !== 'watch') startMatch({ kind: 'watch' });
   }
   document.querySelectorAll('.mode').forEach(b => b.addEventListener('click', () => {
     const kind = b.dataset.mode;
     if (kind === 'watch') { menuEl.hidden = true; cornerEl.hidden = false; startMatch({ kind: 'watch' }); return; }
     if (kind === 'online') { openOnline(); return; }
+    if (kind === 'play') { openPlay(); return; }
     pending = { kind, step: 'pick' };
     showSelect();
   }));
@@ -3382,6 +3489,31 @@ button[aria-pressed="true"] { background: var(--ink); color: var(--paper); }
   const pickBtn = document.getElementById('pickBtn');
   const randomBtn = document.getElementById('randomBtn');
   let carIndex = 0;
+  // the colour picked for each fighter on its card
+  const carVariant = Object.fromEntries(ORDER.map(k => [k, VARIANTS[k][0].id]));
+  const variantsEl = document.getElementById('variants');
+  variantsEl.addEventListener('click', e => {
+    const b = e.target.closest('button[data-v]');
+    if (!b) return;
+    const kind = ORDER[carIndex];
+    carVariant[kind] = b.dataset.v;
+    setPreviewVariant(kind);
+    layoutCarousel();
+  });
+  // a card's fighter, rebuilt in the colour picked for it
+  function setPreviewVariant(kind) {
+    const w = worlds[ORDER.indexOf(kind)], old = w.fighters[0];
+    if (old && old.kit.variant === carVariant[kind]) return;
+    for (const f of w.fighters) w.scene.remove(f.root);
+    for (const pr of w.projectiles) w.scene.remove(pr.mesh);
+    for (const e of w.effects) w.scene.remove(e.mesh);
+    for (const m of w.transient) w.scene.remove(m);
+    Object.assign(w, { fighters: [], projectiles: [], effects: [], transient: new Set(), springs: [] });
+    const f = buildFighter(kind, 0, false, w.scene, w.springs, carVariant[kind]);
+    f.facing = 1;
+    w.fighters.push(f);
+    demoT = 0; demoStep = -1;
+  }
   const slots = ORDER.map(kind => {
     const kit = KITS[kind];
     const slot = document.createElement('div');
@@ -3421,24 +3553,22 @@ button[aria-pressed="true"] { background: var(--ink); color: var(--paper); }
       sl.slot.style.transform = `translateX(${off * spread}px) scale(${off ? SIDE : 1})`;
       sl.slot.style.opacity = off ? 0.55 : 1;
       sl.slot.style.zIndex = off ? 0 : 1;
-      const card = sl.slot.querySelector('.card');
-      const taken = pending && pending.step === 'opponent' && sl.kind === pending.pick;
-      card.style.filter = taken ? 'grayscale(1)' : '';
+      sl.slot.querySelector('.card').style.setProperty('--c', kitFor(sl.kind, carVariant[sl.kind]).color);
     });
     dotsEl.querySelectorAll('i').forEach((d, i) => d.classList.toggle('on', i === carIndex));
-    const kind = ORDER[carIndex], taken = pending && pending.step === 'opponent' && kind === pending.pick;
-    pickBtn.disabled = !!taken;
-    randomBtn.hidden = !(pending && pending.step === 'opponent');
-    pickBtn.textContent = taken ? `${KITS[kind].name} is you` : pending && pending.step === 'opponent' ? `Fight ${KITS[kind].short}` : `Play as ${KITS[kind].short}`;
+    const kind = ORDER[carIndex], seat = pending && pending.kind === 'seat';
+    randomBtn.hidden = !seat;
+    pickBtn.textContent = seat ? `Pick ${KITS[kind].short}` : `Train as ${KITS[kind].short}`;
+    variantsEl.innerHTML = VARIANTS[kind].map(v => `<button type="button" data-v="${v.id}" style="--sw:${v.logo}" title="${v.name}"
+      aria-label="${v.name}" aria-pressed="${carVariant[kind] === v.id}"></button>`).join('');
   }
   function rotateTo(i) { carIndex = (i + 3) % 3; layoutCarousel(); demoT = 0; demoStep = -1; }
   function choose() {
-    const kind = ORDER[carIndex];
-    if (pending.step === 'opponent' && kind === pending.pick) return;
-    if (pending.kind === 'duel' && pending.step !== 'opponent') { pending.pick = kind; pending.step = 'opponent'; showSelect(); return; }
-    if (pending.step === 'opponent') pending.opponent = kind; else pending.pick = kind;
-    selectEl.hidden = true; cornerEl.hidden = false;
-    startMatch({ kind: pending.kind, pick: pending.pick, opponent: pending.opponent, lives: livesSetting });
+    const kind = ORDER[carIndex], variant = carVariant[kind];
+    selectEl.hidden = true;
+    if (pending.kind === 'seat') { seats[pending.seat] = { ...seats[pending.seat], kind, variant }; keepSeats(); openPlay(); return; }
+    cornerEl.hidden = false;
+    startMatch({ kind: pending.kind, pick: kind, variant, lives: livesSetting });
   }
   // how many lives a match starts with (remembered on this device)
   let livesSetting = 3;
@@ -3457,18 +3587,15 @@ button[aria-pressed="true"] { background: var(--ink); color: var(--paper); }
   pickBtn.addEventListener('click', choose);
   // Duel: let chance pick the opponent. The carousel swings to it and it jiggles, then the match starts.
   let randomT = 0;
-  function randomOpponent() {
-    if (!pending || pending.step !== 'opponent' || randomT) return;
-    const others = ORDER.filter(k => k !== pending.pick);
-    const i = ORDER.indexOf(others[Math.floor(Math.random() * others.length)]);
-    rotateTo(i);
-    const card = slots[i].slot.querySelector('.card');
-    card.classList.remove('jiggle'); void card.offsetWidth; card.classList.add('jiggle');
-    hopFighter(i);
-    randomBtn.disabled = true;
-    randomT = setTimeout(() => { randomT = 0; randomBtn.disabled = false; if (!selectEl.hidden) choose(); }, 750);
+  // a seat left to chance: "?" on the Play screen, a fighter picked when the match starts
+  function randomSeat() {
+    if (!pending || pending.kind !== 'seat') return;
+    seats[pending.seat] = { ...seats[pending.seat], kind: null, variant: undefined };
+    keepSeats();
+    selectEl.hidden = true;
+    openPlay();
   }
-  randomBtn.addEventListener('click', randomOpponent);
+  randomBtn.addEventListener('click', randomSeat);
   // drag or swipe to rotate
   let dragX = null;
   carouselEl.addEventListener('pointerdown', e => { dragX = e.clientX; });
@@ -3489,17 +3616,15 @@ button[aria-pressed="true"] { background: var(--ink); color: var(--paper); }
     if (selectEl.hidden) return;
     if (e.code === 'ArrowLeft') { e.preventDefault(); rotateTo(carIndex - 1); }
     else if (e.code === 'ArrowRight') { e.preventDefault(); rotateTo(carIndex + 1); }
-    else if (e.code === 'KeyR' && !randomBtn.hidden) { e.preventDefault(); randomOpponent(); }
+    else if (e.code === 'KeyR' && !randomBtn.hidden) { e.preventDefault(); randomSeat(); }
     else if (e.code === 'Enter' && document.activeElement?.closest?.('.pickrow, .carousel, body') && document.activeElement.id !== 'backBtn') { e.preventDefault(); choose(); }
   });
 
   function showSelect() {
     menuEl.hidden = true; resultEl.hidden = true; selectEl.hidden = false;
-    const title = { ffa: 'Free-for-all', duel: 'Duel', training: 'Training' }[pending.kind];
-    const opp = pending.step === 'opponent';
-    document.getElementById('selectTitle').textContent = `${opp ? 'Pick your opponent' : 'Pick your fighter'} \u00b7 ${title}`;
-    if (opp && ORDER[carIndex] === pending.pick) carIndex = (carIndex + 1) % 3;
-    livesEl.hidden = pending.kind === 'training';
+    document.getElementById('selectTitle').textContent = pending.kind === 'seat'
+      ? `Pick a fighter \u00b7 ${seatName(pending.seat)}` : 'Pick your fighter \u00b7 Training';
+    livesEl.hidden = true;            // lives are set on the Play screen
     demoT = 0; demoStep = -1;
     resizePreview();
     layoutCarousel();
@@ -3646,28 +3771,31 @@ button[aria-pressed="true"] { background: var(--ink); color: var(--paper); }
   let versus = null;
   // a cue for the sound of something happening; the game itself is silent, and recordings listen here
   function cue() {}
-  function vsWorld(kind) {
-    let w = vsWorlds[kind];
+  function vsWorld(slot, kind, variant) {
+    let w = vsWorlds[slot];
     if (!w) {
       const sc = new THREE.Scene();
       sc.add(new THREE.HemisphereLight('#ffffff', '#d8d2c4', 0.8));
       const l = new THREE.DirectionalLight('#ffffff', 0.75); l.position.set(3, 8, 6); sc.add(l);
-      w = vsWorlds[kind] = { scene: sc, fighters: [], projectiles: [], effects: [], transient: new Set(), springs: [] };
+      w = vsWorlds[slot] = { scene: sc, fighters: [], projectiles: [], effects: [], transient: new Set(), springs: [] };
     }
     for (const f of w.fighters) w.scene.remove(f.root);
     for (const p of w.projectiles) w.scene.remove(p.mesh);
     for (const e of w.effects) w.scene.remove(e.mesh);
     for (const m of w.transient) w.scene.remove(m);
     Object.assign(w, { fighters: [], projectiles: [], effects: [], transient: new Set(), springs: [] });
-    w.fighters.push(buildFighter(kind, 0, false, w.scene, w.springs));
+    w.fighters.push(buildFighter(kind, 0, false, w.scene, w.springs, variant));
     return w;
   }
   function startVersus() {
     versusEl.querySelectorAll('.vs-panel, .vs-mark').forEach(el => el.remove());
     const n = fighters.length;
     const panels = fighters.map((mf, i) => {
-      const w = vsWorld(mf.kind), f = w.fighters[0];
-      f.facing = f.prevFacing = i === 0 ? 1 : -1;
+      const w = vsWorld(i, mf.kind, mf.kit.variant), f = w.fighters[0];
+      // they face each other: the left half looks right, the right half left, and a middle one looks at you
+      const middle = n % 2 === 1 && i === (n - 1) / 2;
+      f.facing = f.prevFacing = i < n / 2 ? 1 : -1;
+      f.vsTurn = middle ? 0 : 0.5 * f.facing;
       // it drops in as its panel slides into place
       f.y = 3; f.onGround = false; f.feet.forEach(ft => { ft.y = f.y; ft.air = true; });
       f.gesture = { t: -(GESTURE_AT + i * GESTURE_GAP), dur: GESTURE_LEN };
@@ -3675,7 +3803,7 @@ button[aria-pressed="true"] { background: var(--ink); color: var(--paper); }
       el.className = 'vs-panel';
       el.style.setProperty('--c', mf.kit.color);
       el.style.setProperty('--i', i);
-      el.innerHTML = `<div class="vs-tag">${mf.isPlayer ? 'You' : mf.netName ? esc(mf.netName) : 'CPU'}</div><div class="vs-floor"></div>
+      el.innerHTML = `<div class="vs-tag">${esc(tagOf(mf))}</div><div class="vs-floor"></div>
         <div class="vs-caption"><h2 class="vs-name">${mf.kit.name}</h2><p class="vs-line">“${VS_LINES[mf.kind]}”</p></div>`;
       versusEl.insertBefore(el, versusEl.querySelector('.vs-skip'));
       return { w, f, el, line: el.querySelector('.vs-line'), started: false };
@@ -3749,7 +3877,7 @@ button[aria-pressed="true"] { background: var(--ink); color: var(--paper); }
       f.x = 0; f.vx = 0;
       updateFighter(f, NO_INPUT, dt);
       if (wasAir && f.onGround && v.t < 1) cue('land', f.kind);
-      f.root.rotation.y = -0.5 * f.facing;        // turned three-quarters toward you
+      f.root.rotation.y = f.vsTurn || 0;          // the face (on the front of the cup) turned toward the others
       scene.updateMatrixWorld();
       for (const sp of springs) { stepSpring(sp, Math.max(dt, 1 / 240)); placeSpring(sp); }
       if (f.kind === 'so') renderMagazine(f);
@@ -4084,56 +4212,63 @@ button[aria-pressed="true"] { background: var(--ink); color: var(--paper); }
       host ? 'Everyone’s ready. Keep this tab open while you host the match.' : 'Everyone’s ready. Waiting for the host to start.';
   }
 
-  // the fighters' logos in the lobby: the same 3D models as the health plates, drawn into one canvas laid over
-  // the lobby, each in its slot (a pick button, or a player's row). They turn as the plates' do; your pick
-  // bounces, and a fighter someone else has taken is faded.
-  const lobbyMain = document.querySelector('.lobby-main');
-  const lobbyCanvas = document.createElement('canvas');
-  lobbyCanvas.className = 'lobby-logos';
-  lobbyMain.appendChild(lobbyCanvas);
-  const lRenderer = new THREE.WebGLRenderer({ canvas: lobbyCanvas, antialias: true, alpha: true });
-  lRenderer.setPixelRatio(Math.min(devicePixelRatio, 2));
-  lRenderer.setClearColor(0x000000, 0);
-  lRenderer.autoClear = false;
+  // the fighters' logos in a panel (the lobby, the Play screen's seats): the health plates' 3D models, drawn into one
+  // canvas laid over the panel, each in its slot ([data-logo] names the fighter, [data-variant] its colour). They
+  // turn as the plates' do; one in a pressed button (your pick) bounces, and one in a disabled button is faded.
   const LOGO_ROOM = 1.6;               // each logo's drawing box is this much bigger than its slot, so a bounce has room
-  const lCam = new THREE.OrthographicCamera(-0.62, 0.62, 0.62, -0.62, 0.1, 10);
-  lCam.position.z = 5;
-  const lobbyLogos = Object.fromEntries(ORDER.map(kind => {
-    const L = logoScene(kind, null);
-    const side = 1.24 / LOGO_ROOM;     // the slot's size, in the drawing box's units
-    L.veil = new THREE.Mesh(new THREE.PlaneGeometry(side, side), new THREE.MeshBasicMaterial({ color: '#fbfaf7', transparent: true, opacity: 0.68, depthTest: false }));
-    L.veil.position.z = 2; L.veil.renderOrder = 9;
-    L.sc.add(L.veil);
-    return [kind, L];
-  }));
-  let lobbySize = '';
-  function updateLobbyLogos() {
-    if (onlineEl.hidden || net.view !== 'lobby') return;
-    const cr = lobbyCanvas.getBoundingClientRect();
-    if (!cr.width) return;
-    const key = `${Math.round(cr.width)}x${Math.round(cr.height)}`;
-    if (key !== lobbySize) { lobbySize = key; lRenderer.setSize(cr.width, cr.height, false); }
-    const t = performance.now() / 1000;
-    lRenderer.setViewport(0, 0, cr.width, cr.height);
-    lRenderer.clear();
-    lobbyMain.querySelectorAll('[data-logo]').forEach((slot, i) => {
-      const r = slot.getBoundingClientRect();
-      if (!r.width) return;
-      const kind = slot.dataset.logo, L = lobbyLogos[kind];
-      const picked = !!slot.closest('[aria-pressed="true"]'), taken = !!slot.closest('button:disabled');
-      const size = r.width * LOGO_ROOM;
-      lRenderer.setViewport(r.left + r.width / 2 - cr.left - size / 2, cr.bottom - (r.top + r.height / 2) - size / 2, size, size);
-      lRenderer.clearDepth();
-      const phase = i * 1.7 + 0.4;
-      // a bob, and for your pick a bounce
-      L.logo.position.y = picked ? Math.abs(Math.sin(t * 3.4 + phase)) * 0.13 - 0.03 : Math.sin(t * 1.2 + phase) * 0.03;
-      L.logo.scale.setScalar((picked ? 1.12 : 1) / LOGO_ROOM);
-      if (kind === 'so') L.logo.rotation.set(0, Math.sin(t * (picked ? 2.2 : 0.9) + phase) * 0.55, picked ? Math.sin(t * 6.8 + phase) * 0.06 : 0);
-      else L.logo.rotation.set(Math.sin(t * 0.7 + phase) * 0.25, Math.sin(t * 0.9 + phase) * 0.35, (kind === 'gpt' ? 1 : -1) * t * (picked ? 2.4 : 0.8));
-      L.veil.visible = taken;
-      lRenderer.render(L.sc, lCam);
-    });
+  const logoCam = new THREE.OrthographicCamera(-0.62, 0.62, 0.62, -0.62, 0.1, 10);
+  logoCam.position.z = 5;
+  function logoLayer(host) {
+    const canvas = document.createElement('canvas');
+    canvas.className = 'logo-layer';
+    host.appendChild(canvas);
+    const r3 = new THREE.WebGLRenderer({ canvas, antialias: true, alpha: true });
+    r3.setPixelRatio(Math.min(devicePixelRatio, 2));
+    r3.setClearColor(0x000000, 0);
+    r3.autoClear = false;
+    const scenes = new Map();
+    const sceneFor = (kind, variant) => {
+      const key = kind + ':' + (variant || '');
+      if (!scenes.has(key)) {
+        const L = logoScene(kind, null, kitFor(kind, variant).logoColor);
+        const side = 1.24 / LOGO_ROOM;     // the slot's size, in the drawing box's units
+        L.veil = new THREE.Mesh(new THREE.PlaneGeometry(side, side), new THREE.MeshBasicMaterial({ color: '#fbfaf7', transparent: true, opacity: 0.68, depthTest: false }));
+        L.veil.position.z = 2; L.veil.renderOrder = 9;
+        L.sc.add(L.veil);
+        scenes.set(key, L);
+      }
+      return scenes.get(key);
+    };
+    let size = '';
+    return () => {
+      const cr = canvas.getBoundingClientRect();
+      if (!cr.width) return;
+      const key = `${Math.round(cr.width)}x${Math.round(cr.height)}`;
+      if (key !== size) { size = key; r3.setSize(cr.width, cr.height, false); }
+      const t = performance.now() / 1000;
+      r3.setViewport(0, 0, cr.width, cr.height);
+      r3.clear();
+      host.querySelectorAll('[data-logo]').forEach((slot, i) => {
+        const r = slot.getBoundingClientRect();
+        if (!r.width) return;
+        const kind = slot.dataset.logo, L = sceneFor(kind, slot.dataset.variant);
+        const picked = !!slot.closest('[aria-pressed="true"]'), taken = !!slot.closest('button:disabled');
+        const box = r.width * LOGO_ROOM;
+        r3.setViewport(r.left + r.width / 2 - cr.left - box / 2, cr.bottom - (r.top + r.height / 2) - box / 2, box, box);
+        r3.clearDepth();
+        const phase = i * 1.7 + 0.4;
+        // a bob, and for your pick a bounce
+        L.logo.position.y = picked ? Math.abs(Math.sin(t * 3.4 + phase)) * 0.13 - 0.03 : Math.sin(t * 1.2 + phase) * 0.03;
+        L.logo.scale.setScalar((picked ? 1.12 : 1) / LOGO_ROOM);
+        if (kind === 'so') L.logo.rotation.set(0, Math.sin(t * (picked ? 2.2 : 0.9) + phase) * 0.55, picked ? Math.sin(t * 6.8 + phase) * 0.06 : 0);
+        else L.logo.rotation.set(Math.sin(t * 0.7 + phase) * 0.25, Math.sin(t * 0.9 + phase) * 0.35, (kind === 'gpt' ? 1 : -1) * t * (picked ? 2.4 : 0.8));
+        L.veil.visible = taken;
+        r3.render(L.sc, logoCam);
+      });
+    };
   }
+  const drawLobbyLogos = logoLayer(document.querySelector('.lobby-main'));
+  function updateLobbyLogos() { if (!onlineEl.hidden && net.view === 'lobby') drawLobbyLogos(); }
 
   // ---------- emotes ----------
   const pops = [];
@@ -4202,6 +4337,7 @@ button[aria-pressed="true"] { background: var(--ink); color: var(--paper); }
     net.frame++;
     updatePops(dt);
     updateLobbyLogos();
+    updateSeatLogos();
     const m = net.match;
     if (!m || mode.kind !== 'online' || !net.ws) return;
     if (player && !versus && !matchOver) { const b = encodeInput(pin); m.held = b & HELD; m.pend |= b & ~HELD; }
@@ -4271,10 +4407,24 @@ button[aria-pressed="true"] { background: var(--ink); color: var(--paper); }
     try {
       const { players } = await fetch(`${API_BASE}/leaderboard`).then(r => r.json());
       if (!players.length) { msg.textContent = 'Nobody has finished an online match yet. Win one and you’re first.'; return; }
-      msg.textContent = 'Online wins, across every room.';
-      table.innerHTML = `<table><thead><tr><th>#</th><th>Player</th><th class="n">Wins</th><th class="n">Matches</th><th class="n">Knockouts</th><th class="n">Parries</th></tr></thead><tbody>${
-        players.map((p, i) => `<tr><td>${i + 1}</td><td>${esc(p.name)}</td><td class="n">${p.wins}</td><td class="n">${p.matches}</td><td class="n">${p.kos}</td><td class="n">${p.parries}</td></tr>`).join('')
-      }</tbody></table>`;
+      // laid out like the results table (and a model announcement's benchmarks): the top players are the columns,
+      // the leader's outlined, and the best score in each row is tinted
+      const top = players.slice(0, 6);
+      msg.textContent = top.length < players.length ? `The top ${top.length} of ${players.length} players, by online wins.` : 'Online wins, across every room.';
+      const rows = [
+        { label: 'Wins', sub: 'Arena-Wins, every room', get: p => p.wins },
+        { label: 'Matches', sub: 'Online matches finished', get: p => p.matches },
+        { label: 'Win rate', sub: 'Wins / matches', get: p => p.matches ? Math.round(100 * p.wins / p.matches) : 0, fmt: v => v + '%' },
+        { label: 'Knockouts', sub: 'KO-Eval, online', get: p => p.kos },
+        { label: 'Parries', sub: 'Parry-Bench, online', get: p => p.parries },
+      ];
+      const head = top.map((p, i) => `<th scope="col" class="${i === 0 ? 'win' : ''}"><span class="long">${esc(p.name)}</span><span class="short" aria-hidden="true">${esc(p.name.slice(0, 6))}</span><small>#${i + 1}${i === 0 ? ' \u00b7 leader' : ''}</small></th>`).join('');
+      const body = rows.map(row => {
+        const vals = top.map(row.get), best = Math.max(...vals);
+        return `<tr><th scope="row">${row.label}<small>${row.sub}</small></th>${vals.map((v, i) =>
+          `<td class="${[i === 0 ? 'win' : '', vals.length > 1 && v === best && best > 0 ? 'best' : ''].join(' ')}">${row.fmt ? row.fmt(v) : v}</td>`).join('')}</tr>`;
+      }).join('');
+      table.innerHTML = `<table class="bench"><thead><tr><th></th>${head}</tr></thead><tbody>${body}</tbody></table>`;
     } catch { msg.textContent = 'The leaderboard didn’t load. Try again in a moment.'; }
   }
 
@@ -4298,7 +4448,7 @@ button[aria-pressed="true"] { background: var(--ink); color: var(--paper); }
     // hands and heads in the versus gestures: steps one fighter's gesture through and reports how deep any part of
     // an arm (upper arm, forearm, fist, Stack Overflow's finger) goes into its own cup, in body units
     window.__bbGestureProbe = kind => {
-      const w = vsWorld(kind), f = w.fighters[0];
+      const w = vsWorld('probe', kind), f = w.fighters[0];
       f.facing = f.prevFacing = 1;
       f.gesture = { t: 0, dur: GESTURE_LEN };
       const into = (p, r) => {        // how far a sphere of radius r at p (body frame) is inside the cup
@@ -4335,7 +4485,7 @@ button[aria-pressed="true"] { background: var(--ink); color: var(--paper); }
     };
     // one moment of a gesture (t < 0: no gesture): each arm's elbow and hand, and how far each is inside the cup
     window.__bbArms = (kind, t) => {
-      const w = vsWorld(kind), f = w.fighters[0];
+      const w = vsWorld('probe', kind), f = w.fighters[0];
       f.facing = f.prevFacing = 1;
       f.gesture = t < 0 ? null : { t, dur: GESTURE_LEN };
       for (let k = 0; k < 3; k++) { enterWorld(w); f.x = 0; f.vx = 0; updateFighter(f, NO_INPUT, 1 / 60); leaveWorld(w); }
@@ -4372,14 +4522,113 @@ button[aria-pressed="true"] { background: var(--ink); color: var(--paper); }
     };
   }
 
+  // ================= Play: up to four seats, each a fighter (or "?") and who plays it =================
+  // USER A is you (the keyboard, or the touch buttons), USER B a friend on the same keyboard, CPU the computer.
+  // Two seats make a duel, three a free-for-all; all CPU is a match to watch. A seat's fighter is picked on the
+  // fighter cards (with its colour); "?" picks one at random when the match starts.
+  const playEl = document.getElementById('play');
+  const seatsEl = document.getElementById('seats');
+  const TOUCH = matchMedia('(pointer: coarse)').matches;      // one person per touch screen: no USER B there
+  const CTRL_LABEL = { A: 'User A', B: 'User B', cpu: 'CPU' };
+  let seats = [{ kind: null, ctrl: 'A' }, { kind: null, ctrl: 'cpu' }, { kind: null, ctrl: 'cpu' }];
+  try {
+    const kept = JSON.parse(localStorage.getItem('botbattle.seats'));
+    if (Array.isArray(kept) && kept.length >= 2 && kept.length <= 4) seats = kept.map(st => ({
+      kind: KITS[st.kind] ? st.kind : null, variant: st.variant, ctrl: ['A', 'B', 'cpu'].includes(st.ctrl) && !(TOUCH && st.ctrl === 'B') ? st.ctrl : 'cpu' }));
+  } catch (e) { /* storage blocked, or nothing kept */ }
+  const keepSeats = () => { try { localStorage.setItem('botbattle.seats', JSON.stringify(seats)); } catch (e) { /* storage blocked */ } };
+  const seatName = i => seats[i].ctrl === 'cpu' ? `CPU (seat ${i + 1})` : CTRL_LABEL[seats[i].ctrl];
+  function renderSeats() {
+    seatsEl.querySelectorAll('.seat, .seat-add').forEach(el => el.remove());
+    seats.forEach((st, i) => {
+      const kit = st.kind ? kitFor(st.kind, st.variant) : null;
+      const el = document.createElement('div');
+      el.className = 'seat';
+      if (kit) el.style.setProperty('--c', kit.color);
+      el.innerHTML = `<button type="button" class="seat-fighter" aria-label="Seat ${i + 1}: ${kit ? kit.name : 'random fighter'}. Change the fighter">
+          ${kit ? `<span class="seat-logo" data-logo="${st.kind}" data-variant="${kit.variant}"></span>` : '<span class="seat-q" aria-hidden="true">?</span>'}
+          <span class="seat-name">${kit ? kit.name : 'Random'}${kit && VARIANTS[st.kind][0].id !== kit.variant ? `<small>${VARIANTS[st.kind].find(v => v.id === kit.variant).name}</small>` : ''}</span></button>
+        <button type="button" class="seat-ctrl${st.ctrl === 'cpu' ? ' cpu' : ''}" aria-label="Seat ${i + 1} is played by ${CTRL_LABEL[st.ctrl]}. Change who">${CTRL_LABEL[st.ctrl]}</button>
+        ${seats.length > 2 ? `<button type="button" class="seat-remove" aria-label="Remove seat ${i + 1}">&minus;</button>` : ''}`;
+      el.querySelector('.seat-fighter').addEventListener('click', () => pickForSeat(i));
+      el.querySelector('.seat-ctrl').addEventListener('click', () => {
+        // the next of User A, User B, CPU that no other seat has (only CPU can be in several seats)
+        const order = TOUCH ? ['A', 'cpu'] : ['A', 'B', 'cpu'], others = seats.filter((o, j) => j !== i).map(o => o.ctrl);
+        let k = order.indexOf(st.ctrl);
+        do { k = (k + 1) % order.length; } while (order[k] !== 'cpu' && others.includes(order[k]));
+        st.ctrl = order[k];
+        keepSeats(); renderSeats();
+        seatsEl.querySelectorAll('.seat-ctrl')[i].focus();
+      });
+      el.querySelector('.seat-remove')?.addEventListener('click', () => { seats.splice(i, 1); keepSeats(); renderSeats(); });
+      seatsEl.appendChild(el);
+    });
+    if (seats.length < 4) {
+      const add = document.createElement('button');
+      add.type = 'button'; add.className = 'seat-add'; add.setAttribute('aria-label', 'Add a seat'); add.textContent = '+';
+      add.addEventListener('click', () => { seats.push({ kind: null, ctrl: 'cpu' }); keepSeats(); renderSeats(); });
+      seatsEl.appendChild(add);
+    }
+    document.getElementById('playKeys').hidden = !seats.some(st => st.ctrl === 'B');
+    playLivesEl.querySelectorAll('button').forEach(b => b.setAttribute('aria-pressed', String(Number(b.dataset.lives) === livesSetting)));
+  }
+  const playLivesEl = document.getElementById('playLives');
+  playLivesEl.querySelectorAll('button').forEach(b => b.addEventListener('click', () => {
+    livesSetting = Number(b.dataset.lives);
+    try { localStorage.setItem('botbattle.lives', String(livesSetting)); } catch (err) { /* storage blocked */ }
+    renderSeats(); showLives();
+  }));
+  function openPlay() {
+    menuEl.hidden = true; selectEl.hidden = true; resultEl.hidden = true; cornerEl.hidden = true;
+    playEl.hidden = false;
+    renderSeats();
+    document.getElementById('fightBtn').focus({ preventScroll: true });
+  }
+  function pickForSeat(i) {
+    pending = { kind: 'seat', seat: i, step: 'pick' };
+    const st = seats[i];
+    if (st.kind) { carIndex = ORDER.indexOf(st.kind); carVariant[st.kind] = st.variant || VARIANTS[st.kind][0].id; setPreviewVariant(st.kind); }
+    playEl.hidden = true;
+    showSelect();
+  }
+  // the seats as fighters: "?" becomes a fighter nobody has yet if there is one, and two of the same fighter
+  // get different colours while there are colours left
+  function resolveSeats(list) {
+    const out = [];
+    for (const st of list) {
+      let kind = st.kind;
+      if (!kind) {
+        const unused = ORDER.filter(k => !out.some(o => o.kind === k) && !list.some(o => o.kind === k));
+        const pool = unused.length ? unused : ORDER;
+        kind = pool[Math.floor(Math.random() * pool.length)];
+      }
+      let variant = st.kind ? st.variant : undefined;
+      const taken = out.filter(o => o.kind === kind).map(o => o.variant);
+      const ids = VARIANTS[kind].map(v => v.id);
+      if (!variant || taken.includes(variant)) variant = ids.find(v => !taken.includes(v)) || variant || ids[0];
+      out.push({ kind, variant, ctrl: st.ctrl });
+    }
+    return out;
+  }
+  document.getElementById('fightBtn').addEventListener('click', () => {
+    playEl.hidden = true; cornerEl.hidden = false;
+    startMatch({ kind: 'play', seats: seats.map(st => ({ ...st })), lives: livesSetting });
+  });
+  document.getElementById('playBack').addEventListener('click', openMenu);
+  const drawSeatLogos = logoLayer(seatsEl);
+  function updateSeatLogos() { if (!playEl.hidden) drawSeatLogos(); }
+
   document.getElementById('backBtn').addEventListener('click', () => {
-    if (pending && pending.step === 'opponent') { pending.step = 'pick'; showSelect(); return; }
+    if (pending && pending.kind === 'seat') { selectEl.hidden = true; openPlay(); return; }
     openMenu();
   });
   document.getElementById('rematchBtn').addEventListener('click', () => { resultEl.hidden = true; startMatch(mode); });
   document.getElementById('changeBtn').addEventListener('click', () => {
-    pending = { kind: mode.kind, step: 'pick' };
-    startMatch({ kind: 'watch' }); showSelect(); cornerEl.hidden = true;
+    const was = mode.kind;
+    startMatch({ kind: 'watch' }); cornerEl.hidden = true;
+    if (was === 'play') { openPlay(); return; }
+    pending = { kind: was, step: 'pick' };
+    showSelect();
   });
   document.getElementById('homeBtn').addEventListener('click', openMenu);
   // online, the menu button leaves the room: it asks once first, since the match goes on without you
@@ -4604,11 +4853,12 @@ button[aria-pressed="true"] { background: var(--ink); color: var(--paper); }
   const hudCam = new THREE.OrthographicCamera(-0.58, 0.58, 0.58, -0.58, 0.1, 10);
   hudCam.position.z = 5;
   // a fighter's logo as a little 3D model, about one unit across, centred
-  function makeLogoModel(kind) {
+  function makeLogoModel(kind, color) {
     const logo = new THREE.Group();
     if (kind === 'so') {
       // the Stack Overflow mark: the grey tray with the orange bars fanning up out of it
       const g = new THREE.Group();
+      const soBars = color ? Object.assign(barMat.clone(), { color: new THREE.Color(color) }) : barMat;
       g.add(inked(trayBaseGeo, trayMat));
       for (const sx of [-1, 1]) { const side = inked(traySideGeo, trayMat); side.position.set(0.44 * sx, 0.17, 0); g.add(side); }
       // as in the real mark: each bar pivots up from its left end, a little more than the one below
@@ -4616,26 +4866,34 @@ button[aria-pressed="true"] { background: var(--ink); color: var(--paper); }
         const pivot = new THREE.Group();
         pivot.position.set(-0.26, 0.13 + k * 0.126, 0);
         pivot.rotation.z = THREE.MathUtils.degToRad(deg);
-        const bar = inked(barGeo, barMat);
+        const bar = inked(barGeo, soBars);
         bar.position.x = 0.31;
         pivot.add(bar);
         g.add(pivot);
       });
       g.position.y = -0.46; g.scale.setScalar(0.78);
       logo.add(g);
-    } else logo.add(inked(kind === 'gpt' ? openaiGeo : claudeGeo, kind === 'gpt' ? openaiMat : claudeMat));
+    } else {
+      const base = kind === 'gpt' ? openaiMat : claudeMat;
+      logo.add(inked(kind === 'gpt' ? openaiGeo : claudeGeo, color ? Object.assign(base.clone(), { color: new THREE.Color(color) }) : base));
+    }
     return logo;
   }
-  function logoScene(kind, background) {
+  function logoScene(kind, background, color) {
     const sc = new THREE.Scene();
     if (background) sc.background = background;
     sc.add(new THREE.HemisphereLight('#ffffff', '#d8d2c4', 0.85));
     const l = new THREE.DirectionalLight('#ffffff', 0.7); l.position.set(2, 3, 5); sc.add(l);
-    const logo = makeLogoModel(kind);
+    const logo = makeLogoModel(kind, color);
     sc.add(logo);
     return { sc, logo };
   }
-  const HUD_LOGOS = Object.fromEntries(['so', 'gpt', 'claude'].map(kind => [kind, logoScene(kind, HUD_PAPER)]));
+  const HUD_LOGOS = new Map();
+  const hudLogo = kit => {
+    const key = kit.kind + ':' + kit.variant;
+    if (!HUD_LOGOS.has(key)) HUD_LOGOS.set(key, logoScene(kit.kind, HUD_PAPER, kit.logoColor));
+    return HUD_LOGOS.get(key);
+  };
 
   // ---------- the three real sites' logos at the foot of the main menu ----------
   // Each link drifts about on its own slow path; its logo is drawn in 3D into one small canvas laid over the
@@ -4704,7 +4962,7 @@ button[aria-pressed="true"] { background: var(--ink); color: var(--paper); }
       const w = sq.clientWidth, h = sq.clientHeight, x = r.left + sq.clientLeft, y = H - (r.top + sq.clientTop + h);
       renderer.setViewport(x, y, w, h); renderer.setScissor(x, y, w, h);
       if (f.out) { renderer.render(emptyHud, hudCam); continue; }
-      const { sc, logo } = HUD_LOGOS[f.kind];
+      const { sc, logo } = hudLogo(f.kit);
       f.hudKick = Math.max(0, (f.hudKick || 0) - dt * 2.5);
       const shake = Math.sin(t * 45) * 0.3 * f.hudKick;
       // the chatbots' logos turn like their rotors; Stack Overflow's sways
@@ -4732,7 +4990,8 @@ button[aria-pressed="true"] { background: var(--ink); color: var(--paper); }
       return;
     }
     lastDt = dt;
-    const pin = player ? playerInput() : NO_INPUT;
+    const pin = player ? playerInput(player2 ? 'A' : 'all') : NO_INPUT;
+    const pinB = player2 ? playerInput('B', bodyB()) : NO_INPUT;
     pressed.clear();
     netTick(pin, dt);
 
@@ -4742,6 +5001,7 @@ button[aria-pressed="true"] { background: var(--ink); color: var(--paper); }
       if (f.dead || versus) inp = NO_INPUT;
       else if (ctrl.isPlayer && !matchOver) inp = pin;
       else if (ctrl.isPlayer) inp = NO_INPUT;
+      else if (ctrl.isPlayer2) inp = matchOver ? NO_INPUT : pinB;
       else if (ctrl.netId) inp = matchOver ? NO_INPUT : remoteInput(ctrl.netId);
       else inp = aiInput(f, dt);
       updateFighter(f, inp, dt);
