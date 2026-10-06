@@ -57,7 +57,7 @@ Duels and free-for-alls open on a versus screen: a panel for each fighter in its
 
 On mpts.ie the menu has an **Online** mode and a **Leaderboard**. (The copy published as a Claude artifact stays offline.)
 
-- **Signing in:** online play needs an account, through [Clerk](https://clerk.com) (email, username or Google), so your name and wins follow you between devices. It all happens in a window over the game: Google opens in a popup, and a new account picks its username in the same window. The offline modes don't need one.
+- **Signing in:** online play needs an account, through [Clerk](https://clerk.com) (email, username or Google), so your name and wins follow you between devices. Clerk's sign-in form sits right on the Online screen. Signing in with Google goes to Google's page in the same tab and comes back to the game, where the form carries on: a new account picks its username there. Signing out stays on the game too. The offline modes don't need one.
 - **Rooms:** make one with a name and an optional password, or join one by name.
   - Names are 3 to 16 Latin letters, digits or spaces, checked on the server with the [obscenity](https://github.com/jo3-l/obscenity) profanity filter (it catches look-alike spellings such as "sh1t").
   - Passwords are stored only as a salted PBKDF2 hash. An empty room deletes itself after ten minutes.

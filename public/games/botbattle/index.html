@@ -323,6 +323,10 @@ button[aria-pressed="true"] { background: var(--ink); color: var(--paper); }
 .online .toprow, .board .toprow { display: flex; align-items: center; gap: 12px; flex-wrap: wrap; }
 .who { margin-left: auto; font-size: 12px; color: var(--ink-soft); display: flex; gap: 8px; align-items: center; }
 .who button { padding: 6px 10px; box-shadow: 2px 2px 0 var(--ink); }
+#clerkSignIn { min-height: 200px; }        /* Clerk's sign-in form (it sets its own class on this element) */
+#clerkSignIn h1 { font: 400 20px/1.2 var(--display); }
+#clerkSignIn button { text-transform: none; letter-spacing: 0; box-shadow: none; }
+#clerkSignIn button:hover { transform: none; box-shadow: none; }
 .online .sub.err { color: var(--hurt); }
 .rooms { display: grid; grid-template-columns: repeat(auto-fit, minmax(260px, 1fr)); gap: 16px; }
 .roomform { display: grid; gap: 10px; align-content: start; border: 2px solid var(--ink); padding: 16px; background: var(--paper); box-shadow: 4px 4px 0 var(--ink); }
@@ -459,7 +463,7 @@ button[aria-pressed="true"] { background: var(--ink); color: var(--paper); }
     <div class="toprow"><button type="button" id="onlineBack">&larr; Modes</button><span class="who" id="who"></span></div>
     <h1 id="onlineTitle">Online</h1>
     <p class="sub" id="onlineMsg" role="status"></p>
-    <div id="signedOut" hidden><button type="button" id="signInBtn">Sign in to play online</button></div>
+    <div id="signedOut" hidden><div id="clerkSignIn"></div></div>
     <div class="rooms" id="rooms" hidden>
       <form class="roomform" id="createForm" autocomplete="off">
         <h2>Make a room</h2>
@@ -3772,7 +3776,10 @@ button[aria-pressed="true"] { background: var(--ink); color: var(--paper); }
         .then(() => window.Clerk.load({
           ui: { ClerkUI: window.__internal_ClerkUICtor },
           signInForceRedirectUrl: GAME_URL, signUpForceRedirectUrl: GAME_URL,
-          signInFallbackRedirectUrl: GAME_URL, signUpFallbackRedirectUrl: GAME_URL,
+          signInFallbackRedirectUrl: GAME_URL, signUpFallbackRedirectUrl: GAME_URL, afterSignOutUrl: GAME_URL,
+          routerPush: clerkNavigate(false), routerReplace: clerkNavigate(true),
+          appearance: { variables: { colorPrimary: '#141414', colorText: '#141414', colorBackground: '#fbfaf7', colorInputBackground: '#fbfaf7',
+            fontFamily: '"IBM Plex Mono", ui-monospace, Menlo, monospace', borderRadius: '0px' } },
         }))
         .then(() => {
           window.Clerk.addListener(() => { if (!onlineEl.hidden && !net.ws) showOnline(); });
@@ -3782,13 +3789,29 @@ button[aria-pressed="true"] { background: var(--ink); color: var(--paper); }
     }
     return clerkLoading;
   }
+  // Clerk asks to go to a page when a step finishes (signed in, signed up, signed out). A step that ends on the
+  // game, which is all of them, is handled here without leaving or reloading it: the sign-in form's own steps
+  // live in the URL fragment (#/...), and anything else just refreshes the Online screen. Other pages (Google,
+  // and Clerk's own steps that need them) are real navigations, which come back to the game afterwards.
+  function clerkNavigate(replace) {
+    return to => {
+      const url = new URL(to, location.href);
+      if (url.origin !== location.origin || url.pathname !== location.pathname) {
+        if (replace) location.replace(url.href); else location.assign(url.href);
+        return;
+      }
+      if (url.hash.startsWith('#/')) { if (url.hash !== location.hash) location.hash = url.hash; return; }
+      history.replaceState(null, '', location.pathname);     // done: drop the sign-in step from the address
+      if (!onlineEl.hidden) showOnline(); else openOnline();
+    };
+  }
   // who's playing: a name, and a fresh token that proves it to the server; null when signed out
   async function account() {
     if (DEV_USER) return { name: DEV_USER, token: async () => 'dev:' + DEV_USER };
     const clerk = await loadClerk();
     const u = clerk.user;
     if (!u) return null;
-    return { name: u.username || u.firstName || 'Player', token: () => clerk.session.getToken(), signOut: () => clerk.signOut() };
+    return { name: u.username || u.firstName || 'Player', token: () => clerk.session.getToken(), signOut: () => clerk.signOut({ redirectUrl: GAME_URL }) };
   }
 
   // ---------- the online screen: signed out, rooms, or a room's lobby ----------
@@ -3816,29 +3839,40 @@ button[aria-pressed="true"] { background: var(--ink); color: var(--paper); }
     if (!acc) {
       who.textContent = '';
       showView('signin');
+      mountSignIn();
       say(message || (net.pendingJoin ? 'Sign in to join the room you were invited to.' : 'Sign in to make or join a room. Your wins go on the leaderboard.'));
       return;
     }
+    unmountSignIn();
     who.innerHTML = `Signed in as <b>${esc(acc.name)}</b>`;
     if (acc.signOut) {
       const out = document.createElement('button'); out.type = 'button'; out.textContent = 'Sign out';
       out.addEventListener('click', async () => { await acc.signOut(); showOnline(); });
       who.appendChild(out);
     }
-    if (net.pendingJoin) { const j = net.pendingJoin; net.pendingJoin = null; connect(j.key, { invite: j.invite }); return; }
+    if (net.pendingJoin) { const j = net.pendingJoin; net.pendingJoin = null; keepJoin(null); connect(j.key, { invite: j.invite }); return; }
     showView('rooms');
     say(message || 'Make a room and share it, or join one by its name.', err);
   }
-  // signing in (or up) stays in Clerk's window over the game: Google opens in a popup, and a new account's
-  // extra step (a username) happens in the same window, so the page never navigates away
-  document.getElementById('signInBtn').addEventListener('click', async () => {
-    try {
-      (await loadClerk()).openSignIn({
-        withSignUp: true, oauthFlow: 'popup',
-        forceRedirectUrl: GAME_URL, signUpForceRedirectUrl: GAME_URL, fallbackRedirectUrl: GAME_URL, signUpFallbackRedirectUrl: GAME_URL,
-      });
-    } catch (err) { say(err.message, true); }
-  });
+  // signing in (or up) happens in Clerk's form, right on the Online screen. Google is a normal trip to Google's page
+  // and back to the game, where the form picks up where it left off (a new account then chooses its username).
+  const clerkBox = document.getElementById('clerkSignIn');
+  let signInMounted = false;
+  function mountSignIn() {
+    if (signInMounted || DEV_USER) return;
+    signInMounted = true;
+    window.Clerk.mountSignIn(clerkBox, {
+      routing: 'hash', withSignUp: true, oauthFlow: 'redirect',
+      forceRedirectUrl: GAME_URL, signUpForceRedirectUrl: GAME_URL, fallbackRedirectUrl: GAME_URL, signUpFallbackRedirectUrl: GAME_URL,
+    });
+  }
+  function unmountSignIn() {
+    if (!signInMounted) return;
+    signInMounted = false;
+    window.Clerk.unmountSignIn(clerkBox);
+  }
+  // an invite link waits through a trip to Google and back
+  function keepJoin(j) { try { if (j) sessionStorage.setItem('botbattle.join', JSON.stringify(j)); else sessionStorage.removeItem('botbattle.join'); } catch { /* storage blocked */ } }
   document.getElementById('onlineBack').addEventListener('click', openMenu);
 
   document.getElementById('createForm').addEventListener('submit', async e => {
@@ -4154,9 +4188,12 @@ button[aria-pressed="true"] { background: var(--ink); color: var(--paper); }
     document.querySelector('.mode[data-mode="online"]').hidden = false;
     document.getElementById('modeLinks').hidden = false;
     const join = location.hash.match(/^#join\/([^/]+)\/([A-Za-z0-9_-]+)$/);
-    if (join) { net.pendingJoin = { key: decodeURIComponent(join[1]), invite: join[2] }; openOnline(); }
-    // back from a sign-in step that left the page: Clerk finishes it as it loads, so load it now
-    else if (/[?&]__clerk/.test(location.search)) openOnline();
+    if (join) { net.pendingJoin = { key: decodeURIComponent(join[1]), invite: join[2] }; keepJoin(net.pendingJoin); openOnline(); }
+    // back from Google, or partway through signing in: the Online screen opens and Clerk's form carries on
+    else if (location.hash.startsWith('#/') || /[?&]__clerk/.test(location.search)) {
+      try { net.pendingJoin = JSON.parse(sessionStorage.getItem('botbattle.join')); } catch { /* storage blocked */ }
+      openOnline();
+    }
   }
   // local testing only (?dev=<name> on localhost): where everyone is, as this browser sees it
   if (DEV_USER) {
