@@ -125,14 +125,14 @@ button[aria-pressed="true"] { background: var(--ink); color: var(--paper); }
 /* the logo row sits at the foot of the menu when there's room, and below its content (scrolling) when there isn't */
 #menu:not([hidden]) { display: flex; flex-direction: column; align-items: center; }
 #menu .panel { margin-top: auto; margin-bottom: auto; }
-.brands { position: relative; flex: none; margin-top: 70px; padding-bottom: calc(env(safe-area-inset-bottom, 0px) + 8px); display: flex; justify-content: center; gap: 36px; }
+.brands { position: relative; flex: none; margin-top: 90px; padding-bottom: calc(env(safe-area-inset-bottom, 0px) + 8px); display: flex; justify-content: center; gap: 36px; }
 .brands a { display: grid; justify-items: center; gap: 4px; color: var(--ink-soft); text-decoration: none; font-size: 10px; letter-spacing: 0.06em; text-transform: uppercase; }
 .brands a:hover { color: var(--ink); }
 .brands a:focus-visible { outline: 3px solid var(--so); outline-offset: 4px; }
 .brands { pointer-events: none; }
 .brands a { pointer-events: auto; will-change: transform; }
-.brands .logo3d { display: block; width: 52px; height: 52px; }
-#brandCanvas { position: absolute; left: 50%; top: -70px; width: min(520px, 100vw); height: 190px; transform: translateX(-50%); pointer-events: none; }
+.brands .logo3d { display: block; width: 84px; height: 84px; }
+#brandCanvas { position: absolute; left: 50%; top: -90px; width: min(680px, 100vw); height: 280px; transform: translateX(-50%); pointer-events: none; }
 
 
 /* fighter carousel: cards on a ring, the 3D fighter stands on top of each card */
@@ -144,10 +144,10 @@ button[aria-pressed="true"] { background: var(--ink); color: var(--paper); }
 }
 .carousel .card { width: 100%; padding-top: 0; border: 2px solid var(--ink); box-shadow: 3px 3px 0 var(--ink); }
 .carousel .card .pedestal { overflow: hidden; }
-/* a click on a card gives it a little jiggle */
+/* a click on a card makes it hop */
 @keyframes jiggle {
-  0% { transform: rotate(0) scale(1); } 18% { transform: rotate(-2.4deg) scale(1.025); } 38% { transform: rotate(1.8deg) scale(0.99); }
-  58% { transform: rotate(-1deg) scale(1.01); } 78% { transform: rotate(0.5deg); } 100% { transform: rotate(0) scale(1); }
+  0% { transform: translateY(0); } 30% { transform: translateY(-12px); } 55% { transform: translateY(0); }
+  72% { transform: translateY(-4px); } 100% { transform: translateY(0); }
 }
 .carousel .card.jiggle { animation: jiggle 0.45s ease-out; }
 .carousel .card .pedestal { position: relative; height: 270px; margin: 0 -14px 4px; border-bottom: 2px solid var(--ink); background: linear-gradient(var(--paper), color-mix(in srgb, var(--c) 10%, var(--paper))); }
@@ -279,13 +279,13 @@ button[aria-pressed="true"] { background: var(--ink); color: var(--paper); }
       <button type="button" class="mode" data-mode="training"><h2>Training</h2><span>Play-test one fighter against dummies. Health refills and knockouts respawn.</span></button>
       <button type="button" class="mode" data-mode="watch"><h2>Watch</h2><span>Three CPUs fight it out while you watch.</span></button>
     </div>
-    <p class="keys">Move <kbd>A</kbd> <kbd>D</kbd> or <kbd>&larr;</kbd> <kbd>&rarr;</kbd>, double-tap to dash past someone &middot; Jump <kbd>W</kbd> <kbd>&uarr;</kbd> <kbd>Space</kbd> &middot; Shot <kbd>J</kbd> &middot; Melee <kbd>K</kbd> &middot; Power <kbd>L</kbd> &middot; Special <kbd>I</kbd> &middot; Parry <kbd>Backspace</kbd> toward the way you face or press, <kbd>W</kbd> + <kbd>Backspace</kbd> overhead &middot; Fall past an edge and you grab it: toward the stage climbs, <kbd>W</kbd> leaps, away lets go</p>
+    <p class="keys">Move <kbd>A</kbd> <kbd>D</kbd> or <kbd>&larr;</kbd> <kbd>&rarr;</kbd>, double-tap to dash &middot; Jump <kbd>W</kbd> <kbd>&uarr;</kbd> <kbd>Space</kbd> &middot; Shot <kbd>J</kbd> &middot; Melee <kbd>K</kbd> &middot; Power <kbd>L</kbd> &middot; Special <kbd>I</kbd> &middot; Parry <kbd>Backspace</kbd> toward the way you face or press, <kbd>W</kbd> + <kbd>Backspace</kbd> overhead &middot; Fall past an edge and you grab it: toward the stage climbs, <kbd>W</kbd> to jump</p>
   </div>
   <nav class="brands" id="brands" aria-label="The real ones">
     <canvas id="brandCanvas"></canvas>
-    <a href="https://stackoverflow.com" target="_blank" rel="noopener" title="stackoverflow.com"><span class="logo3d" data-kind="so" aria-hidden="true"></span>Stack Overflow</a>
-    <a href="https://openai.com" target="_blank" rel="noopener" title="openai.com"><span class="logo3d" data-kind="gpt" aria-hidden="true"></span>OpenAI</a>
-    <a href="https://claude.ai" target="_blank" rel="noopener" title="claude.ai"><span class="logo3d" data-kind="claude" aria-hidden="true"></span>Claude</a>
+    <a href="https://stackoverflow.com" target="_blank" rel="noopener" title="stackoverflow.com" aria-label="Stack Overflow"><span class="logo3d" data-kind="so" aria-hidden="true"></span></a>
+    <a href="https://openai.com" target="_blank" rel="noopener" title="openai.com" aria-label="OpenAI"><span class="logo3d" data-kind="gpt" aria-hidden="true"></span></a>
+    <a href="https://claude.ai" target="_blank" rel="noopener" title="claude.ai" aria-label="Claude"><span class="logo3d" data-kind="claude" aria-hidden="true"></span></a>
   </nav>
 </div>
 
@@ -293,7 +293,6 @@ button[aria-pressed="true"] { background: var(--ink); color: var(--paper); }
   <div class="panel">
     <div class="toprow"><button type="button" id="backBtn">&larr; Modes</button></div>
     <h1 id="selectTitle">Pick your fighter</h1>
-    <p class="sub" id="selectSub"></p>
     <div class="carousel" id="carousel">
       <div id="track"></div>
       <canvas id="previewCanvas"></canvas>
@@ -425,6 +424,36 @@ button[aria-pressed="true"] { background: var(--ink); color: var(--paper); }
     return g;
   }
   const LOGO_LINE = LINE_W;           // logo pieces use the same line as the bodies
+  // An ink shell whose thickness can change: when its piece is scaled up (ChatGPT's logo grows to inhale), the
+  // shell is pushed out by line / scale instead, so the drawn line stays the same width
+  function adjustableShell(geo) {
+    const g = geo.index ? geo.toNonIndexed() : geo.clone();
+    g.computeVertexNormals();
+    const pos = g.attributes.position, nor = g.attributes.normal, sum = new Map();
+    const k = i => `${pos.getX(i).toFixed(4)},${pos.getY(i).toFixed(4)},${pos.getZ(i).toFixed(4)}`;
+    for (let i = 0; i < pos.count; i++) {
+      const a = sum.get(k(i)) || [0, 0, 0];
+      a[0] += nor.getX(i); a[1] += nor.getY(i); a[2] += nor.getZ(i);
+      sum.set(k(i), a);
+    }
+    const base = Float32Array.from(pos.array), dirs = new Float32Array(pos.count * 3);
+    for (let i = 0; i < pos.count; i++) {
+      const [x, y, z] = sum.get(k(i)), l = Math.hypot(x, y, z) || 1;
+      dirs[i * 3] = x / l; dirs[i * 3 + 1] = y / l; dirs[i * 3 + 2] = z / l;
+    }
+    const mesh = new THREE.Mesh(g, outlineBase);
+    mesh.frustumCulled = false;
+    let last = -1;
+    mesh.userData.setLine = t => {
+      if (Math.abs(t - last) < 2e-4) return;
+      last = t;
+      const a = pos.array;
+      for (let i = 0; i < a.length; i++) a[i] = base[i] + dirs[i] * t;
+      pos.needsUpdate = true;
+    };
+    mesh.userData.setLine(LOGO_LINE);
+    return mesh;
+  }
   function inked(geo, mat, t = LOGO_LINE) {
     const m = shadowed(new THREE.Mesh(geo, mat));
     m.add(new THREE.Mesh(inkShellGeo(geo, t), outlineBase));
@@ -488,6 +517,28 @@ button[aria-pressed="true"] { background: var(--ink); color: var(--paper); }
     ctx.strokeStyle = '#141414'; ctx.lineWidth = 6;
     ctx.beginPath(); ctx.arc(64, 70, 22, 0.15 * Math.PI, 0.85 * Math.PI); ctx.stroke();
   });
+  // in discomfort (hit, stumbling, being pushed): Stack Overflow screws its eyes shut and grits its teeth;
+  // the chatbots' smile goes wobbly and a bead of sweat appears
+  const angryOuch = faceTexture(ctx => {
+    ctx.strokeStyle = '#141414'; ctx.fillStyle = '#141414';
+    ctx.lineWidth = 6;
+    ctx.beginPath(); ctx.moveTo(30, 34); ctx.lineTo(56, 42); ctx.stroke();
+    ctx.beginPath(); ctx.moveTo(98, 34); ctx.lineTo(72, 42); ctx.stroke();
+    ctx.lineWidth = 5;
+    ctx.beginPath(); ctx.moveTo(38, 50); ctx.lineTo(52, 56); ctx.lineTo(38, 62); ctx.stroke();
+    ctx.beginPath(); ctx.moveTo(90, 50); ctx.lineTo(76, 56); ctx.lineTo(90, 62); ctx.stroke();
+    ctx.lineWidth = 4;
+    ctx.beginPath(); ctx.rect(46, 80, 36, 18); ctx.stroke();
+    ctx.beginPath(); ctx.moveTo(46, 89); ctx.lineTo(82, 89); ctx.moveTo(58, 80); ctx.lineTo(58, 98); ctx.moveTo(70, 80); ctx.lineTo(70, 98); ctx.stroke();
+  });
+  const happyOuch = faceTexture(ctx => {
+    ctx.strokeStyle = '#141414'; ctx.lineWidth = 5;
+    ctx.beginPath(); ctx.moveTo(44, 76);
+    for (let i = 1; i <= 8; i++) ctx.lineTo(44 + i * 5, 76 + (i % 2 ? -5 : 5));
+    ctx.stroke();
+    ctx.lineWidth = 3.5;
+    ctx.beginPath(); ctx.moveTo(96, 34); ctx.quadraticCurveTo(89, 46, 92, 51); ctx.arc(96, 49, 4.5, Math.PI * 0.85, Math.PI * 2.1, true); ctx.closePath(); ctx.stroke();
+  });
 
   // ================= Cup head geometry =================
   const outerProfile = [], innerProfile = [new THREE.Vector2(R - WALL, CUP_H)], outlineProfile = [];
@@ -520,6 +571,7 @@ button[aria-pressed="true"] { background: var(--ink); color: var(--paper); }
     const patch = new THREE.Mesh(faceGeo, new THREE.MeshStandardMaterial({ map: texture, transparent: true, roughness: 0.8 }));
     patch.position.y = CUP_H / 2;
     g.add(patch);
+    g.userData.face = patch;
     return g;
   }
 
@@ -962,6 +1014,8 @@ button[aria-pressed="true"] { background: var(--ink); color: var(--paper); }
     head.position.y = HEAD_Y;
     vis.add(head);
     f.head = head;
+    f.face = head.userData.face;
+    f.faces = kind === 'so' ? [angryFace, angryOuch] : [happyFace, happyOuch];
 
     if (kind === 'so') {
       const crown = new THREE.Group();
@@ -1014,7 +1068,12 @@ button[aria-pressed="true"] { background: var(--ink); color: var(--paper); }
         });
         f.rodTimer = 0;
       } else {
-        logo.add(inked(kind === 'gpt' ? openaiGeo : claudeGeo, logoMat));
+        if (kind === 'gpt') {
+          const m = shadowed(new THREE.Mesh(openaiGeo, logoMat));
+          f.logoShell = adjustableShell(openaiGeo);
+          m.add(f.logoShell);
+          logo.add(m);
+        } else logo.add(inked(claudeGeo, logoMat));
       }
       f.logo = logo;
       f.logoScale = 1;
@@ -1181,6 +1240,7 @@ button[aria-pressed="true"] { background: var(--ink); color: var(--paper); }
     h.stars.visible = false;
     if (!ringOut) floatText(h.x, h.y + BOX_H + 0.6, 'KO', 'info');
     startRagdoll(h);
+    setFace(h, true);
     updateHud();
   }
   const flashEl = document.getElementById('flash');
@@ -1378,7 +1438,7 @@ button[aria-pressed="true"] { background: var(--ink); color: var(--paper); }
   // ================= Abilities =================
   function tryAbility(f, slot) {
     const ab = f.kit.abilities[slot];
-    if (!ab || f.cd[slot] > 0 || f.busy > 0 || f.guard || f.ledge || f.tether) return false;
+    if (!ab || f.cd[slot] > 0 || f.busy > 0 || f.guard || f.ledge || f.tether || f.stumble > 0) return false;
     const ok = ABILITY[f.kind][slot](f);
     if (ok !== false) { f.cd[slot] = ab.cd; f.stats.moves++; }
     return ok !== false;
@@ -2166,6 +2226,11 @@ button[aria-pressed="true"] { background: var(--ink); color: var(--paper); }
       return;
     }
 
+    f.prevX = f.x;
+    f.stumble = Math.max(0, (f.stumble || 0) - dt);
+    f.pushT = Math.max(0, (f.pushT || 0) - dt);
+    f.strain = Math.max(0, (f.strain || 0) - dt);
+    if (f.pushT <= 0) { f.lean = 0; f.pushing = 0; }
     if (f.stun > 0) { f.stun -= dt; inp = NO_INPUT; }
     if (f.possessing) inp = NO_INPUT;
     f.invuln = Math.max(0, f.invuln - dt);
@@ -2188,18 +2253,19 @@ button[aria-pressed="true"] { background: var(--ink); color: var(--paper); }
     else if (f.tether) reelIn(f, dt);
     else {
       let move = (inp.right ? 1 : 0) - (inp.left ? 1 : 0);
-      if (rooted) move = 0;
+      if (rooted || f.stumble > 0) move = 0;
+      f.intent = move;
       // double-tap a direction: a quick dash that slips past anyone in the way
       f.passT = Math.max(0, f.passT - dt);
       if (inp.dash && !rooted && f.passT <= 0) {
         f.passT = PASS_TIME; f.passDir = inp.dash; f.facing = inp.dash;
         if (f.onGround) ring(V(f.x, 0.03, 0), '#141414', 0.35, true);
       }
-      const rate = f.onGround ? 30 : 12;
+      const rate = f.stumble > 0 ? 7 : f.onGround ? 30 : 12;     // a stumble slides to a stop
       const speed = 5.5 * (0.7 + 0.3 * f.compact);
       if (f.passT > 0) f.vx = f.passDir * PASS_SPEED;
       else f.vx += THREE.MathUtils.clamp(move * speed - f.vx, -rate * dt, rate * dt);
-      if (move && f.passT <= 0) f.facing = move;
+      if (move && f.passT <= 0 && !f.pushing) f.facing = move;
 
       if (inp.jump && !rooted && f.jumpsLeft > 0) {
         const air = !f.onGround;
@@ -2249,7 +2315,11 @@ button[aria-pressed="true"] { background: var(--ink); color: var(--paper); }
 
     // pose
     f.vis.scale.x = f.facing;
-    f.vis.rotation.z += ((f.passT > 0 ? -f.facing * 0.28 : 0) - f.vis.rotation.z) * Math.min(1, dt * 18);   // leaning into a dash
+    // discomfort shows on the face, which also shakes while it lasts
+    setFace(f, f.flash > 0 || f.stumble > 0 || f.strain > 0 || f.stun > 0);
+    // leaning: into a dash, along a stumble (the top runs ahead of the feet), or into a push
+    const lean = f.passT > 0 ? -f.facing * 0.28 : f.stumble > 0 ? -f.stumbleDir * 0.32 * Math.min(1, f.stumble / 0.2) : (f.lean || 0);
+    f.vis.rotation.z += (lean - f.vis.rotation.z) * Math.min(1, dt * 14);
     const c = f.compact;
     f.root.scale.set(1 + (1 - c) * 0.35, c, 1 + (1 - c) * 0.35);
     f.root.position.set(f.x, f.y, 0);
@@ -2364,6 +2434,12 @@ button[aria-pressed="true"] { background: var(--ink); color: var(--paper); }
     }
   }
 
+  function setFace(f, ouch) {
+    const map = f.faces[ouch ? 1 : 0];
+    if (f.face.material.map !== map) { f.face.material.map = map; f.face.material.needsUpdate = true; }
+    f.face.rotation.y = ouch && !f.dead ? Math.sin(performance.now() / 22 + f.id) * (f.flash > 0 ? 0.09 : 0.035) : 0;
+  }
+
   function startGuard(f, inp) {
     const dir = inp.up ? 'up' : 'side';
     const side = inp.right ? 1 : inp.left ? -1 : f.facing;
@@ -2426,6 +2502,8 @@ button[aria-pressed="true"] { background: var(--ink); color: var(--paper); }
       f.glint.material.opacity = Math.min(1, shine * 1.4);
     }
     for (const m of f.propMats) { m.emissive.set('#ffffff'); m.emissiveIntensity = 0.55 * shine; }
+    // however big the logo has grown, its outline stays one line wide
+    if (f.logoShell) f.logoShell.userData.setLine(LOGO_LINE / f.logo.scale.x);
   }
 
   // ================= Legs: planted feet =================
@@ -2527,6 +2605,13 @@ button[aria-pressed="true"] { background: var(--ink); color: var(--paper); }
           const at = d.pos ? f.vis.worldToLocal(d.pos.clone()) : d.local.clone();
           _hand.lerp(V(at.x - 0.16, at.y, at.z), reach);
         });
+      }
+      // pushing: both hands on the other fighter; stumbling: arms flung up
+      if (f.pushing) { _hand.lerp(V(f.reach || 0.8, i ? 1.78 : 1.98, i ? -0.12 : 0.14), 0.9); bend = -1; }
+      else if (f.stumble > 0) {
+        const k = Math.min(1, f.stumble / 0.2);
+        _hand.lerp(V(i ? -0.32 : 0.28, 2.3 + Math.sin(now * 24 + i * 2.2) * 0.12, i ? -0.1 : 0.15), 0.8 * k);
+        bend = 1;
       }
       // hanging: both hands on the lip of the stage
       if (f.ledge && f.ledge.climb < 0) {
@@ -2787,7 +2872,7 @@ button[aria-pressed="true"] { background: var(--ink); color: var(--paper); }
       }
       movesEl.appendChild(el);
     }
-    const extra = [['W', body.kit.jumps > 1 ? 'Double jump' : 'Jump'], ['AA DD', 'Dash past'], ['\u232B', 'Parry'], ['W+\u232B', 'Overhead parry']];
+    const extra = [['W', body.kit.jumps > 1 ? 'Double jump' : 'Jump'], ['AA DD', 'Dash'], ['\u232B', 'Parry'], ['W+\u232B', 'Overhead parry']];
     for (const [k, label] of extra) {
       const el = document.createElement('div');
       el.className = 'move static';
@@ -3000,8 +3085,7 @@ button[aria-pressed="true"] { background: var(--ink); color: var(--paper); }
       if (i !== carIndex) rotateTo(i);
       const card = slot.querySelector('.card');
       card.classList.remove('jiggle'); void card.offsetWidth; card.classList.add('jiggle');
-      const w = worlds[i];
-      if (w) w.fighters[0].jig = 1;
+      hopFighter(i);
     });
     track.appendChild(slot);
     return { kind, slot };
@@ -3062,7 +3146,7 @@ button[aria-pressed="true"] { background: var(--ink); color: var(--paper); }
     rotateTo(i);
     const card = slots[i].slot.querySelector('.card');
     card.classList.remove('jiggle'); void card.offsetWidth; card.classList.add('jiggle');
-    worlds[i].fighters[0].jig = 1;
+    hopFighter(i);
     randomBtn.disabled = true;
     randomT = setTimeout(() => { randomT = 0; randomBtn.disabled = false; if (!selectEl.hidden) choose(); }, 750);
   }
@@ -3095,12 +3179,7 @@ button[aria-pressed="true"] { background: var(--ink); color: var(--paper); }
     menuEl.hidden = true; resultEl.hidden = true; selectEl.hidden = false;
     const title = { ffa: 'Free-for-all', duel: 'Duel', training: 'Training' }[pending.kind];
     const opp = pending.step === 'opponent';
-    document.getElementById('selectTitle').textContent = opp ? 'Pick your opponent' : 'Pick your fighter';
-    document.getElementById('selectSub').textContent = opp
-      ? `${KITS[pending.pick].name} against one CPU.`
-      : pending.kind === 'training'
-        ? 'Training: try every move on two dummies. They refill their health, knockouts respawn, and you can make them move or fight back.'
-        : pending.kind === 'duel' ? 'Duel: first pick yourself, then your opponent.' : `${title}: you against the other two.`;
+    document.getElementById('selectTitle').textContent = `${opp ? 'Pick your opponent' : 'Pick your fighter'} \u00b7 ${title}`;
     if (opp && ORDER[carIndex] === pending.pick) carIndex = (carIndex + 1) % 3;
     livesEl.hidden = pending.kind === 'training';
     demoT = 0; demoStep = -1;
@@ -3154,6 +3233,11 @@ button[aria-pressed="true"] { background: var(--ink); color: var(--paper); }
     pRenderer.setSize(w, h, false);
   }
   addEventListener('resize', () => { if (!selectEl.hidden) { resizePreview(); layoutCarousel(); } });
+  // a click on a card makes its fighter do a little jump
+  function hopFighter(i) {
+    const f = worlds[i] && worlds[i].fighters[0];
+    if (f && f.onGround) { f.vy = 5.5; f.onGround = false; }
+  }
   // a Correction said on a card shows up as a small bubble inside that card's window
   function sayOnCard(w, text) {
     const ped = w.slot.slot.querySelector('.pedestal');
@@ -3201,12 +3285,6 @@ button[aria-pressed="true"] { background: var(--ink); color: var(--paper); }
       enterWorld(w);
       f.x = 0; f.vx = 0; f.facing = 1;
       updateFighter(f, inp, dt);
-      // a click on the card makes the fighter wobble: squash and stretch that settles quickly
-      if (f.jig > 0) {
-        f.jig = Math.max(0, f.jig - dt * 2.4);
-        const q = Math.sin((1 - f.jig) * 26) * 0.16 * f.jig;
-        f.root.scale.set(f.root.scale.x * (1 - q * 0.6), f.root.scale.y * (1 + q), f.root.scale.z * (1 - q * 0.6));
-      }
       updateProjectiles(dt);
       updateEffects(dt);
       scene.updateMatrixWorld();
@@ -3296,22 +3374,91 @@ button[aria-pressed="true"] { background: var(--ink); color: var(--paper); }
       scene.remove(e.mesh); return false;
     });
   }
-  // Bodies are solid to each other: two fighters at the same height can't stand inside one another
-  const BODY_GAP = BOX_W * 1.5;
-  function separateFighters() {
+  // Bodies are solid to each other, and they push. Running into someone from open space bowls them over into a
+  // stumble; leaning on someone you're already touching walks them back slowly; when both push, it's a power
+  // struggle that sways back and forth. (A double-tap dash slips past instead.)
+  // bodies keep a head-width apart (the cups just touch); a pushing pair leans in, so its spacing widens by
+  // however far the lean brings the heads together
+  const BODY_GAP = 2 * (R + LINE_W) + 0.04, PUSH_SPEED = 1.6, RAM_SPEED = 3.5;
+  const LEAN_IN = 0.12, HEAD_LEVER = RIM_Y + 0.3;
+  // half the width of each fighter's widest top part (Stack Overflow's tray, the chatbots' logos), past the cup
+  const TOP_HALF = { so: 0.5, gpt: 0.47, claude: 0.48 };
+  const restGap = (a, b) => TOP_HALF[a.kind] + TOP_HALF[b.kind] + 0.04;
+  let contacts = new Set(), pushClock = 0, pairGaps = new Map();
+  function stumble(f, dir, speed) {
+    if (f.stumble > 0.15) return;
+    f.stumble = 0.55; f.stumbleDir = dir;
+    f.vx = dir * THREE.MathUtils.clamp(speed * 1.05, 4, 8);
+    ring(V(f.x, 0.03, 0), '#141414', 0.4, true);
+  }
+  function separateFighters(dt) {
     const live = fighters.filter(f => !f.dead);
+    pushClock += dt;
+    const now = new Set(), t = pushClock;
     for (let i = 0; i < live.length; i++) for (let j = i + 1; j < live.length; j++) {
       const a = live[i], b = live[j];
-      if (a.passT > 0 || b.passT > 0 || a.ledge || b.ledge) continue;     // a dash slips past
+      if (a.passT > 0 || b.passT > 0 || a.ledge || b.ledge || a.tether || b.tether) continue;
       if (Math.abs(a.y - b.y) > BOX_H * 0.7) continue;
       const dx = b.x - a.x, d = Math.abs(dx);
-      if (d >= BODY_GAP) continue;
-      const sgn = Math.sign(dx) || (a.id < b.id ? 1 : -1), push = (BODY_GAP - d) / 2;
-      a.x -= sgn * push; b.x += sgn * push;
-      // they stop walking into each other; momentum toward the other is shared out
-      const closing = (a.vx - b.vx) * sgn;
-      if (closing > 0) { const mid = (a.vx + b.vx) / 2; a.vx = mid; b.vx = mid; }
+      const key = Math.min(a.id, b.id) + ':' + Math.max(a.id, b.id);
+      const gap = pairGaps.get(key) || restGap(a, b);
+      if (d >= gap + 0.03) { pairGaps.delete(key); continue; }   // touching counts within a hair
+      const dir = Math.sign(dx) || (a.id < b.id ? 1 : -1);   // from a toward b
+      now.add(key);
+      const grounded = a.onGround && b.onGround;
+      if (!contacts.has(key) && grounded) {
+        // first contact: whoever came running in knocks the other into a stumble (both, if both did)
+        const va = a.vx * dir, vb = -b.vx * dir;
+        if (va > RAM_SPEED) { stumble(b, dir, va); a.vx *= 0.2; }
+        if (vb > RAM_SPEED) { stumble(a, -dir, vb); b.vx *= 0.2; }
+      }
+      if (grounded && !(a.stumble > 0) && !(b.stumble > 0)) {
+        const pa = a.intent * dir > 0, pb = b.intent * -dir > 0;
+        let v = null;
+        if (pa && !pb) v = dir * PUSH_SPEED;                  // a walks b back
+        else if (pb && !pa) v = -dir * PUSH_SPEED;
+        else if (pa && pb) {                                  // both shoving: it sways one way, then the other
+          v = dir * PUSH_SPEED * (Math.sin(t * 1.6 + a.id * 1.3) * 0.8 + Math.sin(t * 3.7 + b.id) * 0.35);
+        }
+        if (v !== null) {
+          // leaning (a vis rotation of -d leans the top toward d): a pusher leans in; whoever is walked back
+          // rocks back a little and strains
+          a.pushT = b.pushT = 0.15;
+          const lean = HEAD_LEVER * Math.sin(LEAN_IN);
+          let want;
+          if (pa && pb) {
+            a.lean = -dir * LEAN_IN; b.lean = dir * LEAN_IN; a.strain = b.strain = 0.2;
+            want = restGap(a, b) + 2 * lean;
+            a.reach = b.reach = want / 2 + 0.1;                  // hands meet in the middle
+          } else if (pa) {
+            a.lean = -dir * LEAN_IN; b.lean = -dir * 0.06; b.strain = 0.2;
+            want = restGap(a, b) + lean; a.reach = want - 0.3;      // hands on the other's body
+          } else {
+            b.lean = dir * LEAN_IN; a.lean = dir * 0.06; a.strain = 0.2;
+            want = restGap(a, b) + lean; b.reach = want - 0.3;
+          }
+          // ease toward it, but never closer than the leans they have right now allow
+          const leanNow = HEAD_LEVER * (Math.max(0, Math.sin(-a.vis.rotation.z * dir)) + Math.max(0, Math.sin(b.vis.rotation.z * dir)));
+          const g = Math.max(gap + (want - gap) * Math.min(1, dt * 10), restGap(a, b) + leanNow + 0.02);
+          pairGaps.set(key, g);
+          // the pair moves as one, from where they both were at the start of the frame
+          const mid = (a.prevX + b.prevX) / 2 + v * dt;
+          a.x = mid - dir * g / 2; b.x = mid + dir * g / 2;
+          a.vx = b.vx = v;
+          a.pushing = pa ? dir : 0; b.pushing = pb ? -dir : 0;
+          continue;
+        }
+      }
+      // otherwise they just can't overlap; momentum toward each other is shared out
+      if (d < gap) {
+        const push = (gap - d) / 2;
+        a.x -= dir * push; b.x += dir * push;
+        const closing = (a.vx - b.vx) * dir;
+        if (closing > 0 && !(a.stumble > 0) && !(b.stumble > 0)) { const m = (a.vx + b.vx) / 2; a.vx = m; b.vx = m; }
+      }
     }
+    contacts = now;
+    for (const f of live) if (!f.rag) f.root.position.x = f.x;   // draw them where they ended up this frame
   }
 
   // ================= HUD logos =================
@@ -3389,20 +3536,21 @@ button[aria-pressed="true"] { background: var(--ink); color: var(--paper); }
     bRenderer.clear();
     for (const b of brands) {
       // drifting: a slow loop of its own, a few pixels each way
-      const dx = Math.sin(t * 0.55 + b.phase) * 14 + Math.sin(t * 1.3 + b.phase * 2) * 4;
-      const dy = Math.sin(t * 0.8 + b.phase * 1.7) * 7;
+      const dx = Math.sin(t * 0.55 + b.phase) * 16 + Math.sin(t * 1.3 + b.phase * 2) * 5;
+      // a click makes it hop
+      const hop = b.jig > 0 ? Math.sin(Math.PI * (1 - b.jig)) * 22 : 0;
+      const dy = Math.sin(t * 0.8 + b.phase * 1.7) * 8 - hop;
       b.a.style.transform = `translate(${dx.toFixed(1)}px, ${dy.toFixed(1)}px)`;
       b.grow += ((b.hover ? 1.45 : 1) - b.grow) * Math.min(1, dt * 12);
-      b.jig = Math.max(0, b.jig - dt * 1.8);
-      const wob = Math.sin((1 - b.jig) * 30) * b.jig;
+      b.jig = Math.max(0, b.jig - dt * 2.6);
       const r = b.a.querySelector('.logo3d').getBoundingClientRect();
       // the drawing box is bigger than the slot so a swollen logo has room
       const size = r.width * 2.4, x = r.left + r.width / 2 - cr.left - size / 2, y = cr.bottom - (r.top + r.height / 2) - size / 2;
       bRenderer.setViewport(x, y, size, size);
       bRenderer.clearDepth();
-      b.logo.scale.setScalar(b.grow / 2.4 * (1 + 0.18 * wob));
+      b.logo.scale.setScalar(b.grow / 2.4);
       const spin = b.kind === 'so' ? 0 : (b.kind === 'gpt' ? 1 : -1) * t * 0.6;
-      b.logo.rotation.set(Math.sin(t * 0.7 + b.phase) * 0.3, Math.sin(t * 0.9 + b.phase) * 0.45 + (b.hover ? Math.sin(t * 3) * 0.2 : 0), spin + wob * 0.5);
+      b.logo.rotation.set(Math.sin(t * 0.7 + b.phase) * 0.3, Math.sin(t * 0.9 + b.phase) * 0.45 + (b.hover ? Math.sin(t * 3) * 0.2 : 0), spin);
       bRenderer.render(b.sc, bCam);
     }
   }
@@ -3457,7 +3605,7 @@ button[aria-pressed="true"] { background: var(--ink); color: var(--paper); }
       else inp = aiInput(f, dt);
       updateFighter(f, inp, dt);
     }
-    separateFighters();
+    separateFighters(dt);
     updateProjectiles(dt);
     updateEffects(dt);
 

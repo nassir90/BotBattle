@@ -18,7 +18,7 @@ Both are made in [`promo/`](promo/) with TapaTab (recording) and ShadowKit (comp
 
 ![Main menu: four modes in rows, with links to the three real sites at the bottom](docs/screenshots/menu.jpg)
 
-The links at the foot of the menu go to the three real sites. Their logos are little 3D models that drift about; hovering one swells it, and clicking one sets it jiggling.
+The links at the foot of the menu go to the three real sites. Their logos are 3D models that drift about; hovering one swells it, and clicking one makes it hop.
 
 | Mode | What it is |
 |---|---|
@@ -27,7 +27,7 @@ The links at the foot of the menu go to the three real sites. Their logos are li
 | Training | Play-test one fighter against two dummies. Dummies refill their health, knockouts respawn, and you can make the dummies stand still, move around or fight back. |
 | Watch | Three CPUs fight while you watch. |
 
-Fighters are picked from a carousel: click a card, or rotate with the arrow buttons, the arrow keys, a drag or the mouse wheel, then press `Enter` (or Play). Clicking a card only selects it, and the card and its fighter give a little jiggle. Each card has its fighter standing in its own little window, and the one in the middle works through its moves in turn, using the real game code, with the move it's showing highlighted in the card's list.
+Fighters are picked from a carousel: click a card, or rotate with the arrow buttons, the arrow keys, a drag or the mouse wheel, then press `Enter` (or Play). Clicking a card only selects it, and the card and its fighter give a little hop. The title says which mode you're picking for ("Pick your fighter · Free-for-all"). Each card has its fighter standing in its own little window, and the one in the middle works through its moves in turn, using the real game code, with the move it's showing highlighted in the card's list.
 
 Every match starts with **3 lives** each by default; the picker next to Play sets 1, 2, 3 or 5.
 
@@ -39,6 +39,7 @@ Every match starts with **3 lives** each by default; the picker next to Play set
 |---|---|
 | `A` `D` or `←` `→` | Move |
 | Double-tap `A` or `D` | Dash, slipping past anyone in the way |
+| Walk into someone | Push them (see below) |
 | `W`, `↑` or `Space` | Jump (ChatGPT and Claude can double jump) |
 | `J` (or `1`) | Shot: Block shot, Computer use, Shoot |
 | `K` (or `2`) | Melee: Block whip, Inhale, Fling |
@@ -53,7 +54,16 @@ On phones, the same controls appear as on-screen buttons, with separate Parry an
 
 ![Phone layout with the touch pad](docs/screenshots/phone.jpg)
 
-Fighters are solid to each other, so you can't walk through someone; double-tap a direction to dash past them.
+Fighters are solid to each other, and they push:
+
+- **Running into someone** from open space knocks them into a stumble: they're shoved back about 2.8 units, arms flung up, and can't act until they catch themselves.
+- **Leaning on someone you're already touching** walks them back slowly (1.6 units a second) while you shove with both hands; they rock back and strain.
+- **Both pushing** is a power struggle: you lean in head to head and the pair sways one way, then the other.
+- A double-tap dash slips past instead.
+
+Faces show it: when a fighter is hit, stumbling, stunned or being pushed, Stack Overflow screws its eyes shut and grits its teeth, and the chatbots' smiles go wobbly with a bead of sweat, with the face shaking while it lasts.
+
+![Stack Overflow shoving ChatGPT back, and the two in a power struggle](docs/screenshots/push.jpg)
 
 The stage has edges. Fall past one and you catch its lip, hanging by the hands with your head over the edge (jumps come back when you grab). From there, press toward the stage to climb up, jump to leap off it, or press away or down to let go; after 4 seconds you let go anyway, and a hit knocks you off. One fighter per ledge.
 
@@ -94,7 +104,7 @@ Its logo spins on top of its head like rotor blades. On a double jump the blades
 | Key | Move | |
 |---|---|---|
 | `J` | **Computer use** | A homing mouse cursor: off-white, with a green outline and glow. |
-| `K` | **Inhale** | ChatGPT tilts its head forward, the logo grows and spins up a tornado that sucks in enemies and their attacks. The funnel wriggles: a wave runs down it, still at the mouth and swinging wider toward the open end. Builds **context**. |
+| `K` | **Inhale** | ChatGPT tilts its head forward, the logo grows (its outline staying one line wide) and spins up a tornado that sucks in enemies and their attacks. The funnel wriggles: a wave runs down it, still at the mouth and swinging wider toward the open end. Builds **context**. |
 | `L` | **Computer use (advanced)** | A bigger cursor. Whoever it hits glows green and is yours to control for 2 seconds. |
 | `I` | **Compaction** | Spends 50% context to slam a slab down on everyone in front of it, flattening them and dealing some damage. Flattened fighters grow back slowly, and faster as they land hits. |
 
