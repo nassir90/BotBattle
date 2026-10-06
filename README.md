@@ -18,6 +18,8 @@ Both are made in [`promo/`](promo/) with TapaTab (recording) and ShadowKit (comp
 
 ![Main menu: four modes in rows, with links to the three real sites at the bottom](docs/screenshots/menu.jpg)
 
+The links at the foot of the menu go to the three real sites. Their logos are little 3D models that drift about; hovering one swells it, and clicking one sets it jiggling.
+
 | Mode | What it is |
 |---|---|
 | Free-for-all | You against both CPUs at once. Last one with lives left wins. |
@@ -76,13 +78,13 @@ Carries five orange blocks on a spring above its head. The spring is invisible a
 | Key | Move | |
 |---|---|---|
 | `J` | **Block shot** | Rapid fire. The stack bends at the enemy exactly like the beam's barrel; the blocks rest at the bottom, thread up the bent stack, and leave from the tip along its direction, still lying across it the way they sat on the stack. New ones drop in on top. 3 damage each. Hold `J` to keep firing. |
-| `K` | **Block whip** | The spring stretches out and lashes forward: it starts as a curl and unfurls into a nearly straight line angled down from the tray, so it strikes low (down to waist height) and long (about 3.1 units out; it used to reach 2 units with its tip above everyone's heads). The stack's own points are the hitbox. Hold `W` (or jump) for an **upward lash**, straight up about 3.9 units, that knocks whoever is overhead up and away. Off the stage, if the tip catches a ledge's corner it **latches on** and reels Stack Overflow in to hang there, since it has no hover to recover with. |
+| `K` | **Block whip** | The spring stretches out in one continuous arc: the first block stays just above the tray, and the rest curls over and down, bending more toward the tip, so the end comes down to waist height about 3.4 units out (it used to reach 2 units with its tip above everyone's heads). The stack's own points are the hitbox. Hold `W` (or jump) for an **upward lash**, straight up about 3.9 units, that knocks whoever is overhead up and away. Off the stage, if the tip catches a ledge's corner it **latches on** and reels Stack Overflow in to hang there, since it has no hover to recover with. |
 | `L` | **Unified beam** | The stack bends toward the enemy like a barrel, and all five blocks feed up it into one glowing beam. |
 | `I` | **Correction** | A condescending remark ("Please provide a minimal reproducible example.") that stuns everyone nearby. |
 
 ![Block shot: the stack bent at ChatGPT, blocks leaving the tip](docs/screenshots/blocks.jpg)
 ![The unified beam firing from the bent stack](docs/screenshots/beam.jpg)
-![The block whip striking out low into ChatGPT](docs/screenshots/whip.jpg)
+![The block whip arcing over and down into ChatGPT](docs/screenshots/whip.jpg)
 ![The upward whip latched onto the ledge, reeling Stack Overflow in](docs/screenshots/whip-latch.jpg)
 
 ### ChatGPT

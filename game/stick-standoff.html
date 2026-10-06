@@ -119,16 +119,21 @@ button[aria-pressed="true"] { background: var(--ink); color: var(--paper); }
 .panel h1 { margin: 0; font-family: var(--display); font-weight: 400; font-size: clamp(24px, 5vw, 44px); line-height: 1; text-wrap: balance; }
 .panel .sub { margin: 0; color: var(--ink-soft); font-size: 13px; max-width: 60ch; }
 .modes { display: grid; grid-template-columns: 1fr; gap: 10px; max-width: 760px; }
-.mode { grid-template-columns: 170px minmax(0, 1fr) auto; align-items: center; gap: 16px; padding: 14px 18px; }
-.mode span:not(.go) { color: var(--ink-soft); }
-@media (max-width: 560px) { .mode { grid-template-columns: 1fr auto; } .mode span:not(.go) { grid-column: 1 / -1; grid-row: 2; } }
-.brands { position: fixed; left: 0; right: 0; bottom: calc(env(safe-area-inset-bottom, 0px) + 18px); display: flex; justify-content: center; gap: 28px; }
+.mode { grid-template-columns: 170px minmax(0, 1fr); align-items: center; gap: 16px; padding: 14px 18px; }
+.mode span { color: var(--ink-soft); }
+@media (max-width: 560px) { .mode { grid-template-columns: 1fr; gap: 6px; } }
+/* the logo row sits at the foot of the menu when there's room, and below its content (scrolling) when there isn't */
+#menu:not([hidden]) { display: flex; flex-direction: column; align-items: center; }
+#menu .panel { margin-top: auto; margin-bottom: auto; }
+.brands { position: relative; flex: none; margin-top: 70px; padding-bottom: calc(env(safe-area-inset-bottom, 0px) + 8px); display: flex; justify-content: center; gap: 36px; }
 .brands a { display: grid; justify-items: center; gap: 4px; color: var(--ink-soft); text-decoration: none; font-size: 10px; letter-spacing: 0.06em; text-transform: uppercase; }
 .brands a:hover { color: var(--ink); }
 .brands a:focus-visible { outline: 3px solid var(--so); outline-offset: 4px; }
-.brands svg { width: 34px; height: 34px; transition: transform 0.15s; }
-.brands a:hover svg { transform: translateY(-2px) rotate(-6deg); }
-#menu .panel { padding-bottom: 72px; }
+.brands { pointer-events: none; }
+.brands a { pointer-events: auto; will-change: transform; }
+.brands .logo3d { display: block; width: 52px; height: 52px; }
+#brandCanvas { position: absolute; left: 50%; top: -70px; width: min(520px, 100vw); height: 190px; transform: translateX(-50%); pointer-events: none; }
+
 
 /* fighter carousel: cards on a ring, the 3D fighter stands on top of each card */
 .carousel { position: relative; height: 640px; overflow: hidden; touch-action: pan-y; cursor: grab; }
@@ -167,7 +172,6 @@ button[aria-pressed="true"] { background: var(--ink); color: var(--paper); }
   font: 400 12px/1.45 var(--mono); padding: 14px; background: var(--paper);
 }
 .mode h2 { margin: 0; font-family: var(--display); font-weight: 400; font-size: 20px; }
-.mode .go { font-family: var(--display); font-size: 12px; }
 .cards { display: grid; grid-template-columns: repeat(auto-fit, minmax(230px, 1fr)); gap: 14px; }
 .card h2 { margin: 0; font-family: var(--display); font-weight: 400; font-size: 20px; display: flex; align-items: center; gap: 8px; }
 .card ul { margin: 0; padding: 0; list-style: none; display: grid; gap: 5px; }
@@ -268,19 +272,20 @@ button[aria-pressed="true"] { background: var(--ink); color: var(--paper); }
 <div class="overlay" id="menu">
   <div class="panel">
     <h1>Bot Battle</h1>
-    <p class="sub">Stack Overflow, ChatGPT and Claude settle it on a sheet of paper. Choose how you want to play.</p>
+    <p class="sub">Stack Overflow, ChatGPT and Claude settle it on a sheet of paper.</p>
     <div class="modes">
-      <button type="button" class="mode" data-mode="ffa"><h2>Free-for-all</h2><span>You against both CPUs at once. Last one standing wins.</span><span class="go">Play &rarr;</span></button>
-      <button type="button" class="mode" data-mode="duel"><h2>Duel</h2><span>One on one against a CPU you pick.</span><span class="go">Play &rarr;</span></button>
-      <button type="button" class="mode" data-mode="training"><h2>Training</h2><span>Play-test one fighter against dummies. Health refills and knockouts respawn.</span><span class="go">Practise &rarr;</span></button>
-      <button type="button" class="mode" data-mode="watch"><h2>Watch</h2><span>Three CPUs fight it out while you watch.</span><span class="go">Watch &rarr;</span></button>
+      <button type="button" class="mode" data-mode="ffa"><h2>Free-for-all</h2><span>You against both CPUs at once. Last one standing wins.</span></button>
+      <button type="button" class="mode" data-mode="duel"><h2>Duel</h2><span>One on one against a CPU you pick.</span></button>
+      <button type="button" class="mode" data-mode="training"><h2>Training</h2><span>Play-test one fighter against dummies. Health refills and knockouts respawn.</span></button>
+      <button type="button" class="mode" data-mode="watch"><h2>Watch</h2><span>Three CPUs fight it out while you watch.</span></button>
     </div>
     <p class="keys">Move <kbd>A</kbd> <kbd>D</kbd> or <kbd>&larr;</kbd> <kbd>&rarr;</kbd>, double-tap to dash past someone &middot; Jump <kbd>W</kbd> <kbd>&uarr;</kbd> <kbd>Space</kbd> &middot; Shot <kbd>J</kbd> &middot; Melee <kbd>K</kbd> &middot; Power <kbd>L</kbd> &middot; Special <kbd>I</kbd> &middot; Parry <kbd>Backspace</kbd> toward the way you face or press, <kbd>W</kbd> + <kbd>Backspace</kbd> overhead &middot; Fall past an edge and you grab it: toward the stage climbs, <kbd>W</kbd> leaps, away lets go &middot; Three lives each; fall off the stage and you lose one.</p>
   </div>
-  <nav class="brands" aria-label="The real ones">
-    <a href="https://stackoverflow.com" target="_blank" rel="noopener" title="stackoverflow.com"><svg viewBox="0 0 24 24" aria-hidden="true"><path fill="#bcbbbb" d="M3 13h2.2v6.6h12.6V13H20v9H3z"/><g fill="#f48024"><rect x="6.8" y="17.0" width="9.4" height="1.9" transform="rotate(0 7.4 18.2) translate(0 0.00)"/><rect x="6.8" y="16.8" width="9.4" height="1.9" transform="rotate(-10 7.4 18.0) translate(0 -2.25)"/><rect x="6.8" y="16.6" width="9.4" height="1.9" transform="rotate(-22 7.4 17.8) translate(0 -4.50)"/><rect x="6.8" y="16.4" width="9.4" height="1.9" transform="rotate(-38 7.4 17.6) translate(0 -6.75)"/><rect x="6.8" y="16.2" width="9.4" height="1.9" transform="rotate(-58 7.4 17.4) translate(0 -9.00)"/></g></svg>Stack Overflow</a>
-    <a href="https://openai.com" target="_blank" rel="noopener" title="openai.com"><svg viewBox="0 0 24 24" aria-hidden="true"><path fill="#10a37f" d="M22.2819 9.8211a5.9847 5.9847 0 0 0-.5157-4.9108 6.0462 6.0462 0 0 0-6.5098-2.9A6.0651 6.0651 0 0 0 4.9807 4.1818a5.9847 5.9847 0 0 0-3.9977 2.9 6.0462 6.0462 0 0 0 .7427 7.0966 5.98 5.98 0 0 0 .511 4.9107 6.051 6.051 0 0 0 6.5146 2.9001A5.9847 5.9847 0 0 0 13.2599 24a6.0557 6.0557 0 0 0 5.7718-4.2058 5.9894 5.9894 0 0 0 3.9977-2.9001 6.0557 6.0557 0 0 0-.7475-7.0729zm-9.022 12.6081a4.4755 4.4755 0 0 1-2.8764-1.0408l.1419-.0804 4.7783-2.7582a.7948.7948 0 0 0 .3927-.6813v-6.7369l2.02 1.1686a.071.071 0 0 1 .038.052v5.5826a4.504 4.504 0 0 1-4.4945 4.4944zm-9.6607-4.1254a4.4708 4.4708 0 0 1-.5346-3.0137l.142.0852 4.783 2.7582a.7712.7712 0 0 0 .7806 0l5.8428-3.3685v2.3324a.0804.0804 0 0 1-.0332.0615L9.74 19.9502a4.4992 4.4992 0 0 1-6.1408-1.6464zM2.3408 7.8956a4.485 4.485 0 0 1 2.3655-1.9728V11.6a.7664.7664 0 0 0 .3879.6765l5.8144 3.3543-2.0201 1.1685a.0757.0757 0 0 1-.071 0l-4.8303-2.7865A4.504 4.504 0 0 1 2.3408 7.872zm16.5963 3.8558L13.1038 8.364 15.1192 7.2a.0757.0757 0 0 1 .071 0l4.8303 2.7913a4.4944 4.4944 0 0 1-.6765 8.1042v-5.6772a.79.79 0 0 0-.407-.667zm2.0107-3.0231l-.142-.0852-4.7735-2.7818a.7759.7759 0 0 0-.7854 0L9.409 9.2297V6.8974a.0662.0662 0 0 1 .0284-.0615l4.8303-2.7866a4.4992 4.4992 0 0 1 6.6802 4.66zM8.3065 12.863l-2.02-1.1638a.0804.0804 0 0 1-.038-.0567V6.0742a4.4992 4.4992 0 0 1 7.3757-3.4537l-.142.0805L8.704 5.459a.7948.7948 0 0 0-.3927.6813zm1.0976-2.3654l2.602-1.4998 2.6069 1.4998v2.9994l-2.5974 1.4997-2.6067-1.4997Z"/></svg>OpenAI</a>
-    <a href="https://claude.ai" target="_blank" rel="noopener" title="claude.ai"><svg viewBox="0 0 24 24" aria-hidden="true"><path fill="#d97757" d="M4.7144 15.9555l4.7174-2.6471.079-.2307-.079-.1275h-.2307l-.7893-.0486-2.6956-.0729-2.3375-.0971-2.2646-.1214-.5707-.1215-.5343-.7042.0546-.3522.4797-.3218.686.0608 1.5179.1032 2.2767.1578 1.6514.0972 2.4468.255h.3886l.0546-.1579-.1336-.0971-.1032-.0972L6.973 9.8356l-2.55-1.6879-1.3356-.9714-.7225-.4918-.3643-.4614-.1578-1.0078.6557-.7225.8803.0607.2246.0607.8925.686 1.9064 1.4754 2.4893 1.8336.3643.3035.1457-.1032.0182-.0728-.164-.2733-1.3539-2.4467-1.445-2.4893-.6435-1.032-.17-.6194c-.0607-.255-.1032-.4674-.1032-.7285L6.287.1335 6.6997 0l.9957.1336.419.3642.6192 1.4147 1.0018 2.2282 1.5543 3.0296.4553.8985.2429.8318.091.255h.1579v-.1457l.1275-1.706.2368-2.0947.2307-2.6957.0789-.7589.3764-.9107.7468-.4918.5828.2793.4797.686-.0668.4433-.2853 1.8517-.5586 2.9021-.3643 1.9429h.2125l.2429-.2429.9835-1.3053 1.6514-2.0643.7286-.8196.85-.9046.5464-.4311h1.0321l.7589 1.1293-.34 1.1657-1.0625 1.3478-.8804 1.1414-1.2628 1.7-.7893 1.36.0729.1093.1882-.0183 2.8535-.607 1.5421-.2794 1.8396-.3157.8318.3886.091.3946-.3278.8075-1.967.4857-2.3072.4614-3.4364.8136-.0425.0304.0486.0607 1.5482.1457.6618.0364h1.621l3.0175.2247.7892.522.4736.6376-.079.4857-1.2142.6193-1.6393-.3886-3.825-.9107-1.3113-.3279h-.1822v.1093l1.0929 1.0686 2.0035 1.8092 2.5075 2.3314.1275.5768-.3218.4554-.34-.0486-2.2039-1.6575-.85-.7468-1.9246-1.621h-.1275v.17l.4432.6496 2.3436 3.5214.1214 1.0807-.17.3521-.6071.2125-.6679-.1214-1.3721-1.9246L14.38 17.959l-1.1414-1.9428-.1397.079-.674 7.2552-.3156.3703-.7286.2793-.6071-.4614-.3218-.7468.3218-1.4753.3886-1.9246.3157-1.53.2853-1.9004.17-.6314-.0121-.0425-.1397.0182-1.4328 1.9672-2.1796 2.9446-1.7243 1.8456-.4128.164-.7164-.3704.0667-.6618.4008-.5889 2.386-3.0357 1.4389-1.882.929-1.0868-.0062-.1579h-.0546l-6.3385 4.1164-1.1293.1457-.4857-.4554.0608-.7467.2307-.2429 1.9064-1.3114Z"/></svg>Claude</a>
+  <nav class="brands" id="brands" aria-label="The real ones">
+    <canvas id="brandCanvas"></canvas>
+    <a href="https://stackoverflow.com" target="_blank" rel="noopener" title="stackoverflow.com"><span class="logo3d" data-kind="so" aria-hidden="true"></span>Stack Overflow</a>
+    <a href="https://openai.com" target="_blank" rel="noopener" title="openai.com"><span class="logo3d" data-kind="gpt" aria-hidden="true"></span>OpenAI</a>
+    <a href="https://claude.ai" target="_blank" rel="noopener" title="claude.ai"><span class="logo3d" data-kind="claude" aria-hidden="true"></span>Claude</a>
   </nav>
 </div>
 
@@ -561,7 +566,9 @@ button[aria-pressed="true"] { background: var(--ink); color: var(--paper); }
     let px = 0, py = 0.02;
     sp.nodes = [V(px, py, 0)]; sp.tangents = [0];
     for (let i = 0; i < sp.n; i++) {
-      const len = (i === 0 ? sp.first - 0.02 : sp.gap) * sq;
+      // firstStretch (when set) stretches the tray-to-first-block segment separately, so a whip can lengthen
+      // the stack while its first block stays just above the tray
+      const len = i === 0 ? (sp.first - 0.02) * (1 + sp.squash) * (sp.firstStretch ?? sp.stretch) : sp.gap * sq;
       // profile(u) is how much of the total bend has happened by fraction u of the way up (default: evenly)
       const W = sp.profile || (u => u);
       const mid = sp.theta * W((i + 0.5) / sp.n);
@@ -1170,7 +1177,7 @@ button[aria-pressed="true"] { background: var(--ink); color: var(--paper); }
     h.whip = null; h.shot = null; h.launch = []; h.tether = null;
     if (h.beam) { if (h.beam.mesh) dropT(h.beam.mesh); h.beam = null; }
     if (h.compaction) { dropT(h.compaction.slab); h.compaction = null; }
-    if (h.spring) { h.spring.stretch = 1; h.spring.profile = null; h.spring.override = sp => { sp.theta *= 0.8; sp.omega = 0; }; }
+    if (h.spring) { h.spring.stretch = 1; h.spring.profile = null; h.spring.firstStretch = null; h.spring.override = sp => { sp.theta *= 0.8; sp.omega = 0; }; }
     h.stars.visible = false;
     if (!ringOut) floatText(h.x, h.y + BOX_H + 0.6, 'KO', 'info');
     startRagdoll(h);
@@ -1417,13 +1424,13 @@ button[aria-pressed="true"] { background: var(--ink); color: var(--paper); }
             sp.profile = null;
             return;
           }
+          // one continuous arc out of the tray: the first block stays just above it, and the stretched spring
+          // curls over and down, bending more toward the tip, so the end comes down low and far out
           sp.theta = s * WHIP_BEND;
           sp.omega = Math.cos(p * Math.PI) * WHIP_BEND * Math.PI / 0.46;
-          sp.stretch = 1 + s * (WHIP_REACH / WHIP_REST - 1);
-          // it starts as a curl and unfurls into a nearly straight line angled down from the tray, so the
-          // stretched stack strikes out low and long rather than arching over
-          const k = 2 + 10 * s;
-          sp.profile = u => 1 - Math.pow(1 - u, k);
+          sp.firstStretch = 1;
+          sp.stretch = 1 + s * (WHIP_GAPS - 1);
+          sp.profile = u => Math.pow(u, 0.8);
         };
       },
       a4(f) {       // Correction
@@ -1514,7 +1521,7 @@ button[aria-pressed="true"] { background: var(--ink); color: var(--paper); }
     },
   };
   // the whip reaches out and comes down to about chest height in front; the upward lash goes higher still
-  const WHIP_REACH = 3.6, WHIP_UP_REACH = 3.9, WHIP_REST = 1.2, WHIP_BEND = 2.25;
+  const WHIP_REACH = 3.6, WHIP_UP_REACH = 3.9, WHIP_REST = 1.2, WHIP_BEND = 3.3, WHIP_GAPS = 6;
 
   function takeRod(f) {
     if (!f.rods) { f.rotor.getWorldPosition(wp); return { from: wp.clone() }; }
@@ -1738,7 +1745,7 @@ button[aria-pressed="true"] { background: var(--ink); color: var(--paper); }
             break;
           }
         }
-        if (f.whip && p >= 1) { f.whip = null; f.spring.override = null; f.spring.stretch = 1; f.spring.profile = null; }
+        if (f.whip && p >= 1) { f.whip = null; f.spring.override = null; f.spring.stretch = 1; f.spring.profile = null; f.spring.firstStretch = null; }
       }
     }
 
@@ -2297,7 +2304,7 @@ button[aria-pressed="true"] { background: var(--ink); color: var(--paper); }
     return sp.nodes.slice(1).map(nd => sp.base.localToWorld(_wp.copy(nd)).clone());
   }
   function latchLedge(f, side) {
-    f.whip = null;
+    f.whip = null; f.spring.firstStretch = null;
     f.tether = { side, t: 0, fromX: f.x, fromY: f.y };
     f.vx = 0; f.vy = 0; f.busy = Math.max(f.busy, REEL_TIME);
     ring(V(side * STAGE_HALF, 0.02, 0), '#f48024', 0.4);
@@ -2307,7 +2314,7 @@ button[aria-pressed="true"] { background: var(--ink); color: var(--paper); }
       const base = sp.base.getWorldPosition(_wp);
       const dx = (side * STAGE_HALF - base.x) * f.facing, dy = -0.02 - base.y;
       sp.theta = THREE.MathUtils.clamp(Math.atan2(dx, dy), -sp.maxBend, sp.maxBend); sp.omega = 0;
-      sp.profile = u => Math.min(1, u * 6);
+      sp.profile = u => Math.min(1, u * 3);
       sp.stretch = Math.max(0.3, Math.hypot(dx, dy) / WHIP_REST);
     };
   }
@@ -3313,11 +3320,8 @@ button[aria-pressed="true"] { background: var(--ink); color: var(--paper); }
   const HUD_PAPER = new THREE.Color('#fbfaf7');
   const hudCam = new THREE.OrthographicCamera(-0.58, 0.58, 0.58, -0.58, 0.1, 10);
   hudCam.position.z = 5;
-  const HUD_LOGOS = Object.fromEntries(['so', 'gpt', 'claude'].map(kind => {
-    const sc = new THREE.Scene();
-    sc.background = HUD_PAPER;
-    sc.add(new THREE.HemisphereLight('#ffffff', '#d8d2c4', 0.85));
-    const l = new THREE.DirectionalLight('#ffffff', 0.7); l.position.set(2, 3, 5); sc.add(l);
+  // a fighter's logo as a little 3D model, about one unit across, centred
+  function makeLogoModel(kind) {
     const logo = new THREE.Group();
     if (kind === 'so') {
       // the Stack Overflow mark: the grey tray with the orange bars fanning up out of it
@@ -3337,9 +3341,68 @@ button[aria-pressed="true"] { background: var(--ink); color: var(--paper); }
       g.position.y = -0.46; g.scale.setScalar(0.78);
       logo.add(g);
     } else logo.add(inked(kind === 'gpt' ? openaiGeo : claudeGeo, kind === 'gpt' ? openaiMat : claudeMat));
+    return logo;
+  }
+  function logoScene(kind, background) {
+    const sc = new THREE.Scene();
+    if (background) sc.background = background;
+    sc.add(new THREE.HemisphereLight('#ffffff', '#d8d2c4', 0.85));
+    const l = new THREE.DirectionalLight('#ffffff', 0.7); l.position.set(2, 3, 5); sc.add(l);
+    const logo = makeLogoModel(kind);
     sc.add(logo);
-    return [kind, { sc, logo }];
-  }));
+    return { sc, logo };
+  }
+  const HUD_LOGOS = Object.fromEntries(['so', 'gpt', 'claude'].map(kind => [kind, logoScene(kind, HUD_PAPER)]));
+
+  // ---------- the three real sites' logos at the foot of the main menu ----------
+  // Each link drifts about on its own slow path; its logo is drawn in 3D into one small canvas laid over the
+  // links. Hovering a link swells its logo; clicking one sets it jiggling (the link still opens the site).
+  const brandsEl = document.getElementById('brands');
+  const brandCanvas = document.getElementById('brandCanvas');
+  const bRenderer = new THREE.WebGLRenderer({ canvas: brandCanvas, antialias: true, alpha: true });
+  bRenderer.setPixelRatio(Math.min(devicePixelRatio, 2));
+  bRenderer.setClearColor(0x000000, 0);
+  const bCam = new THREE.OrthographicCamera(-0.62, 0.62, 0.62, -0.62, 0.1, 10);
+  bCam.position.z = 5;
+  const brands = [...brandsEl.querySelectorAll('a')].map((a, i) => {
+    const kind = a.querySelector('.logo3d').dataset.kind;
+    const b = { a, kind, ...logoScene(kind, null), hover: 0, grow: 1, jig: 0, phase: i * 2.1 + 0.4 };
+    a.addEventListener('pointerenter', () => { b.hover = 1; });
+    a.addEventListener('pointerleave', () => { b.hover = 0; });
+    a.addEventListener('focus', () => { b.hover = 1; });
+    a.addEventListener('blur', () => { b.hover = 0; });
+    a.addEventListener('click', () => { b.jig = 1; });
+    return b;
+  });
+  let brandSize = '';
+  function updateBrands(dt) {
+    if (menuEl.hidden) return;
+    const cr = brandCanvas.getBoundingClientRect();
+    if (!cr.width) return;
+    const key = `${Math.round(cr.width)}x${Math.round(cr.height)}`;
+    if (key !== brandSize) { brandSize = key; bRenderer.setSize(cr.width, cr.height, false); }
+    const t = performance.now() / 1000;
+    bRenderer.setScissorTest(false);
+    bRenderer.clear();
+    bRenderer.setScissorTest(true);
+    for (const b of brands) {
+      // drifting: a slow loop of its own, a few pixels each way
+      const dx = Math.sin(t * 0.55 + b.phase) * 14 + Math.sin(t * 1.3 + b.phase * 2) * 4;
+      const dy = Math.sin(t * 0.8 + b.phase * 1.7) * 7;
+      b.a.style.transform = `translate(${dx.toFixed(1)}px, ${dy.toFixed(1)}px)`;
+      b.grow += ((b.hover ? 1.45 : 1) - b.grow) * Math.min(1, dt * 12);
+      b.jig = Math.max(0, b.jig - dt * 1.8);
+      const wob = Math.sin((1 - b.jig) * 30) * b.jig;
+      const r = b.a.querySelector('.logo3d').getBoundingClientRect();
+      // the drawing box is bigger than the slot so a swollen logo has room
+      const size = r.width * 1.9, x = r.left + r.width / 2 - cr.left - size / 2, y = cr.bottom - (r.top + r.height / 2) - size / 2;
+      bRenderer.setViewport(x, y, size, size); bRenderer.setScissor(x, y, size, size);
+      b.logo.scale.setScalar(b.grow / 1.9 * (1 + 0.18 * wob));
+      const spin = b.kind === 'so' ? 0 : (b.kind === 'gpt' ? 1 : -1) * t * 0.6;
+      b.logo.rotation.set(Math.sin(t * 0.7 + b.phase) * 0.3, Math.sin(t * 0.9 + b.phase) * 0.45 + (b.hover ? Math.sin(t * 3) * 0.2 : 0), spin + wob * 0.5);
+      bRenderer.render(b.sc, bCam);
+    }
+  }
   const emptyHud = new THREE.Scene(); emptyHud.background = HUD_PAPER;
   function renderHudLogos(dt) {
     if (!plates.size) return;
@@ -3402,6 +3465,8 @@ button[aria-pressed="true"] { background: var(--ink); color: var(--paper); }
 
     updateCamera(dt);
     updatePreview(dt);
+    updateBrands(dt);
+    hud.hidden = !inMatch();          // the plates sit where the menu's logos float
     updateBubble(dt);
     updateMoves();
     checkResult(dt);
