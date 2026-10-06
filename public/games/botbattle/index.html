@@ -146,7 +146,7 @@ button[aria-pressed="true"] { background: var(--ink); color: var(--paper); }
 .carousel { position: relative; height: 520px; overflow: hidden; touch-action: pan-y; cursor: grab; }
 .carousel:active { cursor: grabbing; }
 .carousel .slot {
-  position: absolute; left: 50%; top: 0; width: var(--cw); margin-left: calc(var(--cw) / -2);
+  position: absolute; left: 50%; top: 16px; width: var(--cw); margin-left: calc(var(--cw) / -2);   /* room above for a hop */
   transition: transform 0.38s cubic-bezier(.2,.8,.2,1), opacity 0.38s; will-change: transform;
 }
 .carousel .card { width: 100%; padding-top: 0; border: 2px solid var(--ink); box-shadow: 3px 3px 0 var(--ink); }
@@ -287,7 +287,7 @@ button[aria-pressed="true"] { background: var(--ink); color: var(--paper); }
       <button type="button" class="mode" data-mode="training"><h2>Training</h2><span>Play-test one fighter against dummies. Health refills and knockouts respawn.</span></button>
       <button type="button" class="mode" data-mode="watch"><h2>Watch</h2><span>Three CPUs fight it out while you watch.</span></button>
     </div>
-    <p class="keys">Move <kbd>A</kbd> <kbd>D</kbd> or <kbd>&larr;</kbd> <kbd>&rarr;</kbd>, double-tap to dash &middot; Jump <kbd>W</kbd> <kbd>&uarr;</kbd> <kbd>Space</kbd> &middot; Shot <kbd>J</kbd> &middot; Melee <kbd>K</kbd> &middot; Power <kbd>L</kbd> &middot; Special <kbd>I</kbd> &middot; Parry <kbd>Backspace</kbd> toward the way you face or press, <kbd>W</kbd> + <kbd>Backspace</kbd> overhead &middot; Fall past an edge and you grab it; press toward the stage to climb up</p>
+    <p class="keys">Move <kbd>A</kbd> <kbd>D</kbd> or <kbd>&larr;</kbd> <kbd>&rarr;</kbd>, double-tap to dash &middot; Jump <kbd>W</kbd> <kbd>&uarr;</kbd> <kbd>Space</kbd> &middot; Crouch <kbd>S</kbd> &middot; Shot <kbd>J</kbd> &middot; Melee <kbd>K</kbd> &middot; Power <kbd>L</kbd> &middot; Special <kbd>I</kbd> &middot; Parry <kbd>Backspace</kbd> toward the way you face or press, <kbd>W</kbd> + <kbd>Backspace</kbd> overhead &middot; Fall past an edge and you grab it; press toward the stage to climb up</p>
   </div>
   <nav class="brands" id="brands" aria-label="The real ones">
     <canvas id="brandCanvas"></canvas>
@@ -312,7 +312,6 @@ button[aria-pressed="true"] { background: var(--ink); color: var(--paper); }
       <button type="button" id="randomBtn" hidden>Random opponent <kbd>R</kbd></button>
       <div class="ringdots" id="ringdots"></div>
       <div class="lives" id="livesPick" role="group" aria-label="Lives"><span>Lives</span><button type="button" data-lives="1">1</button><button type="button" data-lives="2">2</button><button type="button" data-lives="3">3</button><button type="button" data-lives="5">5</button></div>
-      <span class="hint">Click a card or use &larr; &rarr; to pick &middot; Enter to play</span>
     </div>
   </div>
 </div>
@@ -1135,7 +1134,8 @@ button[aria-pressed="true"] { background: var(--ink); color: var(--paper); }
     }
     return best;
   }
-  const boxH = h => BOX_H * (h.compact || 1);
+  const CROUCH_DROP = 0.4;           // how far the body sinks in a full crouch
+  const boxH = h => BOX_H * (h.compact || 1) * (1 - 0.3 * (h.crouch || 0));   // crouching makes a smaller target
   const centerOf = h => V(h.x, h.y + boxH(h) * 0.5, 0);
   function aimFrom(f, from, speed, frontOnly = true) {
     const t = nearestEnemy(f, frontOnly);
@@ -2261,6 +2261,10 @@ button[aria-pressed="true"] { background: var(--ink); color: var(--paper); }
     else if (f.tether) reelIn(f, dt);
     else {
       let move = (inp.right ? 1 : 0) - (inp.left ? 1 : 0);
+      // holding down on the ground crouches: the body sinks and it stays put, though it can still turn round
+      const crouching = !!inp.down && f.onGround && !rooted && !(f.stumble > 0);
+      f.crouch = THREE.MathUtils.clamp((f.crouch || 0) + (crouching ? dt : -dt) * 9, 0, 1);
+      if (crouching && move) { f.facing = move; move = 0; }
       if (rooted || f.stumble > 0) move = 0;
       f.intent = move;
       // double-tap a direction: a quick dash that slips past anyone in the way
@@ -2370,7 +2374,7 @@ button[aria-pressed="true"] { background: var(--ink); color: var(--paper); }
     const side = Math.sign(f.x);
     f.ledge = { side, t: 0, fromX: f.x, fromY: f.y, climb: -1 };
     f.vx = 0; f.vy = 0; f.onGround = false; f.lift = 0; f.passT = 0;
-    f.jumpsLeft = f.kit.jumps; f.facing = -side;
+    f.jumpsLeft = f.kit.jumps; f.facing = -side; f.crouch = 0;
     ring(V(side * STAGE_HALF, 0.02, 0), '#141414', 0.3);
   }
   function letGo(f) { f.ledge = null; f.ledgeCd = 0.6; }
@@ -2566,7 +2570,7 @@ button[aria-pressed="true"] { background: var(--ink); color: var(--paper); }
 
     const sep = Math.abs(f.feet[0].x - f.feet[1].x);
     const dip = f.onGround ? THREE.MathUtils.clamp((sep - 0.5) * 0.08, 0, 0.05) * f.gait : 0;
-    f.vis.position.y += (-dip - f.vis.position.y) * Math.min(1, dt * 20);
+    f.vis.position.y += (-dip - CROUCH_DROP * (f.crouch || 0) - f.vis.position.y) * Math.min(1, dt * 20);
     f.root.updateMatrixWorld(true);
 
     const vLocal = Math.sign(f.vx * f.facing) || 1;
@@ -2780,6 +2784,11 @@ button[aria-pressed="true"] { background: var(--ink); color: var(--paper); }
     if (!t) return inp;
     const dx = t.x - f.x, dist = Math.abs(dx), dy = Math.abs(t.y - f.y);
     const incoming = projectiles.find(p => p.team !== f.team && !p.suckedBy && Math.abs(p.pos.x - f.x) < 3 && Math.sign(f.x - p.pos.x) === Math.sign(p.vel.x));
+    // a shot coming in high: more often than not, duck under it (decided once per shot)
+    if (incoming && f.onGround && incoming.pos.y > f.y + BOX_H * 0.72 && Math.abs(incoming.vel.y) < 4) {
+      if (ai.duckFor !== incoming) { ai.duckFor = incoming; ai.duckIt = Math.random() < 0.6; }
+      if (ai.duckIt) { inp.down = true; return inp; }
+    }
     // sometimes guard the way the danger is coming from: overhead against things dropping in, else to the side
     if (!f.guard && f.guardCd <= 0 && f.busy <= 0) {
       const lash = dist < 3.4 && (t.whip || t.fling || t.compaction) && Math.random() < dt * 6;
@@ -2897,7 +2906,7 @@ button[aria-pressed="true"] { background: var(--ink); color: var(--paper); }
       }
       movesEl.appendChild(el);
     }
-    const extra = [['W', body.kit.jumps > 1 ? 'Double jump' : 'Jump'], ['AA DD', 'Dash'], ['\u232B', 'Parry'], ['W+\u232B', 'Overhead parry']];
+    const extra = [['W', body.kit.jumps > 1 ? 'Double jump' : 'Jump'], ['AA DD', 'Dash'], ['S', 'Crouch'], ['\u232B', 'Parry'], ['W+\u232B', 'Overhead parry']];
     for (const [k, label] of extra) {
       const el = document.createElement('div');
       el.className = 'move static';
@@ -3121,7 +3130,7 @@ button[aria-pressed="true"] { background: var(--ink); color: var(--paper); }
     const cw = Math.min(330, carouselEl.clientWidth * 0.78);
     carouselEl.style.setProperty('--cw', cw + 'px');
     // as tall as the tallest card (plus its shadow), so nothing below it is pushed off a normal screen
-    carouselEl.style.height = Math.max(...slots.map(sl => sl.slot.offsetHeight)) + 8 + 'px';
+    carouselEl.style.height = Math.max(...slots.map(sl => sl.slot.offsetHeight)) + 16 + 8 + 'px';
     slots.forEach((sl, i) => {
       let off = i - carIndex;
       if (off > 1) off -= 3; if (off < -1) off += 3;

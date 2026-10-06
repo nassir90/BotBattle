@@ -38,6 +38,7 @@ Every match starts with **3 lives** each by default; the picker next to Play set
 | Key | Action |
 |---|---|
 | `A` `D` or `←` `→` | Move |
+| Hold `S` or `↓` | Crouch: you sink down and make a smaller target, so shots fired level at head height (like Claude's fling) go over you. You can still turn round. |
 | Double-tap `A` or `D` | Dash, slipping past anyone in the way |
 | Walk into someone | Push them (see below) |
 | `W`, `↑` or `Space` | Jump (ChatGPT and Claude can double jump) |
