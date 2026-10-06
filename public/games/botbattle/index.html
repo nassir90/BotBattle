@@ -149,7 +149,7 @@ button[aria-pressed="true"] { background: var(--ink); color: var(--paper); }
   position: absolute; left: 50%; top: 16px; width: var(--cw); margin-left: calc(var(--cw) / -2);   /* room above for a hop */
   transition: transform 0.38s cubic-bezier(.2,.8,.2,1), opacity 0.38s; will-change: transform;
 }
-.carousel .card { width: 100%; padding-top: 0; border: 2px solid var(--ink); box-shadow: 3px 3px 0 var(--ink); }
+.carousel .card { width: 100%; box-sizing: border-box; padding-top: 0; border: 2px solid var(--ink); box-shadow: 3px 3px 0 var(--ink); }   /* exactly the slot's width, so it's centred where the layout puts it */
 .carousel .card .pedestal { overflow: hidden; }
 /* a click on a card makes it hop */
 @keyframes jiggle {
@@ -157,7 +157,7 @@ button[aria-pressed="true"] { background: var(--ink); color: var(--paper); }
   72% { transform: translateY(-4px); } 100% { transform: translateY(0); }
 }
 .carousel .card.jiggle { animation: jiggle 0.45s ease-out; }
-.carousel .card .pedestal { position: relative; height: clamp(170px, 28vh, 250px); margin: 0 -14px 4px; border-bottom: 2px solid var(--ink); background: linear-gradient(var(--paper), color-mix(in srgb, var(--c) 10%, var(--paper))); }
+.carousel .card .pedestal { position: relative; height: clamp(170px, 27vh, 250px); margin: 0 -14px 4px; border-bottom: 2px solid var(--ink); background: linear-gradient(var(--paper), color-mix(in srgb, var(--c) 10%, var(--paper))); }
 .carousel .slot.side .card { pointer-events: auto; }
 #previewCanvas { position: absolute; inset: 0; width: 100%; height: 100%; pointer-events: none; z-index: 3; }
 .carousel .nav { position: absolute; top: 100px; z-index: 4; width: 44px; height: 44px; padding: 0; font-size: 16px; }
@@ -3131,12 +3131,16 @@ button[aria-pressed="true"] { background: var(--ink); color: var(--paper); }
     carouselEl.style.setProperty('--cw', cw + 'px');
     // as tall as the tallest card (plus its shadow), so nothing below it is pushed off a normal screen
     carouselEl.style.height = Math.max(...slots.map(sl => sl.slot.offsetHeight)) + 16 + 8 + 'px';
+    // the side cards sit as far out as fits: their border and shadow stay inside the carousel (which clips),
+    // except on narrow screens, where they peek in from the edges
+    const W = carouselEl.clientWidth, SIDE = 0.84;
+    const spread = Math.max(cw * 0.9, Math.min(cw * 1.04, W / 2 - cw * SIDE / 2 - 10));
     slots.forEach((sl, i) => {
       let off = i - carIndex;
       if (off > 1) off -= 3; if (off < -1) off += 3;
       sl.offset = off;
       sl.slot.classList.toggle('side', off !== 0);
-      sl.slot.style.transform = `translateX(${off * cw * 1.04}px) scale(${off ? 0.84 : 1})`;
+      sl.slot.style.transform = `translateX(${off * spread}px) scale(${off ? SIDE : 1})`;
       sl.slot.style.opacity = off ? 0.55 : 1;
       sl.slot.style.zIndex = off ? 0 : 1;
       const card = sl.slot.querySelector('.card');
