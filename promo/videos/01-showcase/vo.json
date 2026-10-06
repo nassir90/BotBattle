@@ -1,0 +1,72 @@
+{
+ "duration": 56.52,
+ "lines": [
+  {
+   "line": "Bot Battle is a fighting game made from a meme, with Stack Overflow, ChatGPT and Claude drawn as stick figures with cups for heads.",
+   "start": 0.0,
+   "end": 10.748
+  },
+  {
+   "line": "Stack Overflow fires blocks off the top of its stack, then feeds all five up the stack into a single beam.",
+   "start": 11.974,
+   "end": 19.912
+  },
+  {
+   "line": "Its stack also works as a whip, stretching out to lash whoever stands too close.",
+   "start": 20.145,
+   "end": 26.603
+  },
+  {
+   "line": "ChatGPT tilts its head forward and spins its logo into a tornado that swallows blocks and rods in mid-air.",
+   "start": 27.0,
+   "end": 33.192
+  },
+  {
+   "line": "Everything it swallows becomes context, and half of it is enough to flatten everyone in front.",
+   "start": 34.154,
+   "end": 39.703
+  },
+  {
+   "line": "Claude punches out dots, in a line of three or a square of four.",
+   "start": 40.57,
+   "end": 44.466
+  },
+  {
+   "line": "It also fires the rays of its own logo, and they grow back one at a time.",
+   "start": 45.113,
+   "end": 49.39
+  },
+  {
+   "line": "Anyone can shield and parry a hit at the last moment, and anyone can be knocked clean off the page.",
+   "start": 50.187,
+   "end": 56.198
+  }
+ ],
+ "heard": [
+  "Bot Battle is a fighting game made from a meme.",
+  "With stock overflow,",
+  "Chat GPT",
+  "And Claude",
+  "drawn as stick figures with cups for heads.",
+  "Stack Overflow fires blocks off the top of its stack.",
+  "then feeds all five up the stock into a single beam.",
+  "It's dark.",
+  "also works as a whip.",
+  "stretching out to lash whoever stands too close.",
+  "Chat GPT",
+  "Tilt its head forward.",
+  "and spins its logo into a tornado.",
+  "that swallows blocks and rods in midair.",
+  "Everything it swallows becomes content.",
+  "and half of it.",
+  "It's enough to flatten you.",
+  "everyone in front.",
+  "Claude punches out dots.",
+  "in a line of three",
+  "or a square four.",
+  "It also fires the rays of its own logo.",
+  "And they grow back one at a time.",
+  "Anyone can shield and parry a hit at the last moment.",
+  "and anyone can be knocked clean off the page."
+ ]
+}

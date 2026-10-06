@@ -1,4 +1,4 @@
-# BotBattle: Stick Figure Standoff
+# Bot Battle
 
 **Live:** [mpts.ie/games/botbattle](https://mpts.ie/games/botbattle/)
 
@@ -6,9 +6,17 @@ Stack Overflow, ChatGPT and Claude settle it on a sheet of paper. It's a 3D stic
 
 ![Three stick figures brawling on the paper stage](docs/screenshots/brawl.jpg)
 
+## Videos
+
+| [Showcase: three bots, one sheet of paper](promo/out/01-showcase.mp4) | [Devlog: what the inhale eats](promo/out/02-inhale.mp4) |
+|---|---|
+| [![Showcase video](docs/screenshots/video-showcase.jpg)](promo/out/01-showcase.mp4) | [![Inhale devlog video](docs/screenshots/video-inhale.jpg)](promo/out/02-inhale.mp4) |
+
+Both are made in [`promo/`](promo/) with TapaTab (recording) and ShadowKit (compositing, narration, music): `takes.mjs` stages each scene in training mode, and `videos/<id>/edl.js` is each video's edit list.
+
 ## Modes
 
-![Main menu with four modes](docs/screenshots/menu.jpg)
+![Main menu: four modes in rows, with links to the three real sites at the bottom](docs/screenshots/menu.jpg)
 
 | Mode | What it is |
 |---|---|
@@ -17,7 +25,9 @@ Stack Overflow, ChatGPT and Claude settle it on a sheet of paper. It's a 3D stic
 | Training | Play-test one fighter against two dummies. Dummies refill their health, knockouts respawn, and you can make the dummies stand still, move around or fight back. |
 | Watch | Three CPUs fight while you watch. |
 
-![Fighter select for a duel](docs/screenshots/fighter-select.jpg)
+Fighters are picked from a carousel: rotate with the arrow buttons, the arrow keys, a drag or the mouse wheel. Each card has its fighter standing on top in 3D, and the one in the middle shows off a move every few seconds.
+
+![Fighter select carousel with the fighters standing on their cards](docs/screenshots/fighter-select.jpg)
 
 ## Controls
 
@@ -45,9 +55,9 @@ Carries five orange blocks on a spring above its head. The spring is invisible a
 
 | Key | Move | |
 |---|---|---|
-| `J` | **Block shot** | Rapid fire. Each block slides up the stack, magazine style, before it flies off. Light damage, real knockback. Hold `J` to keep firing. |
+| `J` | **Block shot** | Rapid fire. The blocks rest at the bottom of the stack; the top one slides up and flies off the end, and new ones drop in on top. 3 damage each. Hold `J` to keep firing. |
 | `K` | **Unified beam** | The stack bends toward the enemy like a barrel, and all five blocks feed up it into one glowing beam. |
-| `L` | **Block whip** | The spring stretches out to the length of Claude's fling and lashes the blocks forward. |
+| `L` | **Block whip** | The spring stretches out to the length of Claude's fling and lashes the blocks forward, bending at the base first. |
 | `I` | **Correction** | A condescending remark ("Please provide a minimal reproducible example.") that stuns everyone nearby. |
 
 ![Rapid-fire block shots](docs/screenshots/blocks.jpg)
@@ -62,7 +72,7 @@ Its logo spins on top of its head like rotor blades. On a double jump the blades
 |---|---|---|
 | `J` | **Computer use** | A homing mouse cursor: off-white, with a green outline and glow. |
 | `K` | **Computer use (advanced)** | A bigger cursor. Whoever it hits glows green and is yours to control for 2 seconds. |
-| `L` | **Inhale** | The logo bends down, grows, and spins up a tornado that sucks in enemies and their attacks. Builds **context**. |
+| `L` | **Inhale** | ChatGPT tilts its head forward, the logo grows and spins up a tornado that sucks in enemies and their attacks. Builds **context**. |
 | `I` | **Compaction** | Spends 50% context to flatten everyone in front of it and deal some damage. Flattened fighters grow back slowly, and faster as they land hits. |
 
 ![Taking control of Stack Overflow with the advanced cursor](docs/screenshots/takeover.jpg)
@@ -84,13 +94,13 @@ Inhale reacts differently to each attack it swallows:
 
 ### Claude
 
-Its logo is the real Claude mark, split into its 12 separate rays.
+Its logo is the real Claude mark, split into its 12 rays along their seams, with one outline around the outside so it still reads as a single mark.
 
 | Key | Move | |
 |---|---|---|
-| `J` | **Combobulating** | Alternates between three dots in a line and four in a square. Claude punches them out one at a time, alternating hands. |
+| `J` | **Combobulating** | Alternates between three dots in a line (the outer two smaller) and four in a square (one diagonal smaller). The dots bob and trail Claude on springs, and Claude punches them out one at a time, alternating hands. |
 | `K` | **Fling** | One rod leaves the logo and pokes forward. It's gone until it grows back. |
-| `L` | **Shoot** | Launches one of the logo's rods. Rods grow back one per second. |
+| `L` | **Shoot** | Rapid fire: the logo's rods fly off one after another, light damage with full knockback. Hold `L` to keep firing. Rods grow back one per second. |
 
 ![Combobulating: three dots in a line](docs/screenshots/combo-line.jpg)
 ![Combobulating: four dots in a square](docs/screenshots/combo-square.jpg)

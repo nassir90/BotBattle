@@ -1,4 +1,4 @@
-<title>Stick Figure Standoff</title>
+<title>Bot Battle</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Silkscreen&family=IBM+Plex+Mono:wght@400;500;600&display=swap">
 <style>
@@ -106,14 +106,45 @@ button[aria-pressed="true"] { background: var(--ink); color: var(--paper); }
 
 /* overlays */
 .overlay {
-  position: fixed; inset: 0; display: grid; place-items: center; padding: 16px;
+  position: fixed; inset: 0; display: grid; place-items: start center; padding: 16px;
   background: color-mix(in srgb, var(--paper) 74%, transparent); overflow-y: auto;
 }
+.overlay > .panel { margin-block: auto; }
+#select { background: color-mix(in srgb, var(--paper) 94%, transparent); }
 .panel { width: min(980px, 100%); display: grid; gap: 18px; }
 .result.panel { gap: 14px; }
 .panel h1 { margin: 0; font-family: var(--display); font-weight: 400; font-size: clamp(24px, 5vw, 44px); line-height: 1; text-wrap: balance; }
 .panel .sub { margin: 0; color: var(--ink-soft); font-size: 13px; max-width: 60ch; }
-.modes { display: grid; grid-template-columns: repeat(auto-fit, minmax(210px, 1fr)); gap: 14px; }
+.modes { display: grid; grid-template-columns: 1fr; gap: 10px; max-width: 760px; }
+.mode { grid-template-columns: 170px minmax(0, 1fr) auto; align-items: center; gap: 16px; padding: 14px 18px; }
+.mode span:not(.go) { color: var(--ink-soft); }
+@media (max-width: 560px) { .mode { grid-template-columns: 1fr auto; } .mode span:not(.go) { grid-column: 1 / -1; grid-row: 2; } }
+.brands { position: fixed; left: 0; right: 0; bottom: calc(env(safe-area-inset-bottom, 0px) + 18px); display: flex; justify-content: center; gap: 28px; }
+.brands a { display: grid; justify-items: center; gap: 4px; color: var(--ink-soft); text-decoration: none; font-size: 10px; letter-spacing: 0.06em; text-transform: uppercase; }
+.brands a:hover { color: var(--ink); }
+.brands a:focus-visible { outline: 3px solid var(--so); outline-offset: 4px; }
+.brands svg { width: 34px; height: 34px; transition: transform 0.15s; }
+.brands a:hover svg { transform: translateY(-2px) rotate(-6deg); }
+#menu .panel { padding-bottom: 72px; }
+
+/* fighter carousel: cards on a ring, the 3D fighter stands on top of each card */
+.carousel { position: relative; height: 590px; overflow: hidden; touch-action: pan-y; cursor: grab; }
+.carousel:active { cursor: grabbing; }
+.carousel .slot {
+  position: absolute; left: 50%; top: 0; width: var(--cw); margin-left: calc(var(--cw) / -2);
+  transition: transform 0.38s cubic-bezier(.2,.8,.2,1), opacity 0.38s; will-change: transform;
+}
+.carousel .card { width: 100%; padding-top: 0; }
+.carousel .card .pedestal { height: 230px; margin: 0 -14px 4px; border-bottom: 2px solid var(--ink); background: linear-gradient(var(--paper), color-mix(in srgb, var(--c) 10%, var(--paper))); }
+.carousel .slot.side .card { pointer-events: auto; }
+#previewCanvas { position: absolute; inset: 0; width: 100%; height: 100%; pointer-events: none; z-index: 3; }
+.carousel .nav { position: absolute; top: 100px; z-index: 4; width: 44px; height: 44px; padding: 0; font-size: 16px; }
+.carousel .nav.prev { left: 6px; } .carousel .nav.next { right: 6px; }
+.pickrow { display: flex; gap: 12px; align-items: center; flex-wrap: wrap; }
+.pickrow .hint { font-size: 11px; color: var(--ink-soft); }
+.ringdots { display: flex; gap: 6px; }
+.ringdots i { width: 9px; height: 9px; border: 1.5px solid var(--ink); }
+.ringdots i.on { background: var(--ink); }
 .mode, .card {
   display: grid; gap: 8px; align-content: start; text-align: left; text-transform: none; letter-spacing: 0;
   font: 400 12px/1.45 var(--mono); padding: 14px; background: var(--paper);
@@ -214,7 +245,7 @@ button[aria-pressed="true"] { background: var(--ink); color: var(--paper); }
 
 <div class="overlay" id="menu">
   <div class="panel">
-    <h1>Stick Figure Standoff</h1>
+    <h1>Bot Battle</h1>
     <p class="sub">Stack Overflow, ChatGPT and Claude settle it on a sheet of paper. Choose how you want to play.</p>
     <div class="modes">
       <button type="button" class="mode" data-mode="ffa"><h2>Free-for-all</h2><span>You against both CPUs at once. Last one standing wins.</span><span class="go">Play &rarr;</span></button>
@@ -224,6 +255,11 @@ button[aria-pressed="true"] { background: var(--ink); color: var(--paper); }
     </div>
     <p class="keys">Move <kbd>A</kbd> <kbd>D</kbd> or <kbd>&larr;</kbd> <kbd>&rarr;</kbd> &middot; Jump <kbd>W</kbd> <kbd>&uarr;</kbd> <kbd>Space</kbd> &middot; Abilities <kbd>J</kbd> <kbd>K</kbd> <kbd>L</kbd> <kbd>I</kbd> &middot; Hold <kbd>Backspace</kbd> to shield, let go just before a hit lands to parry &middot; Fall off the edge and you're out.</p>
   </div>
+  <nav class="brands" aria-label="The real ones">
+    <a href="https://stackoverflow.com" target="_blank" rel="noopener" title="stackoverflow.com"><svg viewBox="0 0 24 24" aria-hidden="true"><path fill="#bcbbbb" d="M3 13h2.2v6.6h12.6V13H20v9H3z"/><g fill="#f48024"><rect x="6.8" y="17.0" width="9.4" height="1.9" transform="rotate(0 7.4 18.2) translate(0 0.00)"/><rect x="6.8" y="16.8" width="9.4" height="1.9" transform="rotate(-10 7.4 18.0) translate(0 -2.25)"/><rect x="6.8" y="16.6" width="9.4" height="1.9" transform="rotate(-22 7.4 17.8) translate(0 -4.50)"/><rect x="6.8" y="16.4" width="9.4" height="1.9" transform="rotate(-38 7.4 17.6) translate(0 -6.75)"/><rect x="6.8" y="16.2" width="9.4" height="1.9" transform="rotate(-58 7.4 17.4) translate(0 -9.00)"/></g></svg>Stack Overflow</a>
+    <a href="https://openai.com" target="_blank" rel="noopener" title="openai.com"><svg viewBox="0 0 24 24" aria-hidden="true"><path fill="#10a37f" d="M22.2819 9.8211a5.9847 5.9847 0 0 0-.5157-4.9108 6.0462 6.0462 0 0 0-6.5098-2.9A6.0651 6.0651 0 0 0 4.9807 4.1818a5.9847 5.9847 0 0 0-3.9977 2.9 6.0462 6.0462 0 0 0 .7427 7.0966 5.98 5.98 0 0 0 .511 4.9107 6.051 6.051 0 0 0 6.5146 2.9001A5.9847 5.9847 0 0 0 13.2599 24a6.0557 6.0557 0 0 0 5.7718-4.2058 5.9894 5.9894 0 0 0 3.9977-2.9001 6.0557 6.0557 0 0 0-.7475-7.0729zm-9.022 12.6081a4.4755 4.4755 0 0 1-2.8764-1.0408l.1419-.0804 4.7783-2.7582a.7948.7948 0 0 0 .3927-.6813v-6.7369l2.02 1.1686a.071.071 0 0 1 .038.052v5.5826a4.504 4.504 0 0 1-4.4945 4.4944zm-9.6607-4.1254a4.4708 4.4708 0 0 1-.5346-3.0137l.142.0852 4.783 2.7582a.7712.7712 0 0 0 .7806 0l5.8428-3.3685v2.3324a.0804.0804 0 0 1-.0332.0615L9.74 19.9502a4.4992 4.4992 0 0 1-6.1408-1.6464zM2.3408 7.8956a4.485 4.485 0 0 1 2.3655-1.9728V11.6a.7664.7664 0 0 0 .3879.6765l5.8144 3.3543-2.0201 1.1685a.0757.0757 0 0 1-.071 0l-4.8303-2.7865A4.504 4.504 0 0 1 2.3408 7.872zm16.5963 3.8558L13.1038 8.364 15.1192 7.2a.0757.0757 0 0 1 .071 0l4.8303 2.7913a4.4944 4.4944 0 0 1-.6765 8.1042v-5.6772a.79.79 0 0 0-.407-.667zm2.0107-3.0231l-.142-.0852-4.7735-2.7818a.7759.7759 0 0 0-.7854 0L9.409 9.2297V6.8974a.0662.0662 0 0 1 .0284-.0615l4.8303-2.7866a4.4992 4.4992 0 0 1 6.6802 4.66zM8.3065 12.863l-2.02-1.1638a.0804.0804 0 0 1-.038-.0567V6.0742a4.4992 4.4992 0 0 1 7.3757-3.4537l-.142.0805L8.704 5.459a.7948.7948 0 0 0-.3927.6813zm1.0976-2.3654l2.602-1.4998 2.6069 1.4998v2.9994l-2.5974 1.4997-2.6067-1.4997Z"/></svg>OpenAI</a>
+    <a href="https://claude.ai" target="_blank" rel="noopener" title="claude.ai"><svg viewBox="0 0 24 24" aria-hidden="true"><path fill="#d97757" d="M4.7144 15.9555l4.7174-2.6471.079-.2307-.079-.1275h-.2307l-.7893-.0486-2.6956-.0729-2.3375-.0971-2.2646-.1214-.5707-.1215-.5343-.7042.0546-.3522.4797-.3218.686.0608 1.5179.1032 2.2767.1578 1.6514.0972 2.4468.255h.3886l.0546-.1579-.1336-.0971-.1032-.0972L6.973 9.8356l-2.55-1.6879-1.3356-.9714-.7225-.4918-.3643-.4614-.1578-1.0078.6557-.7225.8803.0607.2246.0607.8925.686 1.9064 1.4754 2.4893 1.8336.3643.3035.1457-.1032.0182-.0728-.164-.2733-1.3539-2.4467-1.445-2.4893-.6435-1.032-.17-.6194c-.0607-.255-.1032-.4674-.1032-.7285L6.287.1335 6.6997 0l.9957.1336.419.3642.6192 1.4147 1.0018 2.2282 1.5543 3.0296.4553.8985.2429.8318.091.255h.1579v-.1457l.1275-1.706.2368-2.0947.2307-2.6957.0789-.7589.3764-.9107.7468-.4918.5828.2793.4797.686-.0668.4433-.2853 1.8517-.5586 2.9021-.3643 1.9429h.2125l.2429-.2429.9835-1.3053 1.6514-2.0643.7286-.8196.85-.9046.5464-.4311h1.0321l.7589 1.1293-.34 1.1657-1.0625 1.3478-.8804 1.1414-1.2628 1.7-.7893 1.36.0729.1093.1882-.0183 2.8535-.607 1.5421-.2794 1.8396-.3157.8318.3886.091.3946-.3278.8075-1.967.4857-2.3072.4614-3.4364.8136-.0425.0304.0486.0607 1.5482.1457.6618.0364h1.621l3.0175.2247.7892.522.4736.6376-.079.4857-1.2142.6193-1.6393-.3886-3.825-.9107-1.3113-.3279h-.1822v.1093l1.0929 1.0686 2.0035 1.8092 2.5075 2.3314.1275.5768-.3218.4554-.34-.0486-2.2039-1.6575-.85-.7468-1.9246-1.621h-.1275v.17l.4432.6496 2.3436 3.5214.1214 1.0807-.17.3521-.6071.2125-.6679-.1214-1.3721-1.9246L14.38 17.959l-1.1414-1.9428-.1397.079-.674 7.2552-.3156.3703-.7286.2793-.6071-.4614-.3218-.7468.3218-1.4753.3886-1.9246.3157-1.53.2853-1.9004.17-.6314-.0121-.0425-.1397.0182-1.4328 1.9672-2.1796 2.9446-1.7243 1.8456-.4128.164-.7164-.3704.0667-.6618.4008-.5889 2.386-3.0357 1.4389-1.882.929-1.0868-.0062-.1579h-.0546l-6.3385 4.1164-1.1293.1457-.4857-.4554.0608-.7467.2307-.2429 1.9064-1.3114Z"/></svg>Claude</a>
+  </nav>
 </div>
 
 <div class="overlay" id="select" hidden>
@@ -231,7 +267,17 @@ button[aria-pressed="true"] { background: var(--ink); color: var(--paper); }
     <div class="toprow"><button type="button" id="backBtn">&larr; Modes</button></div>
     <h1 id="selectTitle">Pick your fighter</h1>
     <p class="sub" id="selectSub"></p>
-    <div class="cards" id="cards"></div>
+    <div class="carousel" id="carousel">
+      <div id="track"></div>
+      <canvas id="previewCanvas"></canvas>
+      <button type="button" class="nav prev" id="prevBtn" aria-label="Previous fighter">&#9664;</button>
+      <button type="button" class="nav next" id="nextBtn" aria-label="Next fighter">&#9654;</button>
+    </div>
+    <div class="pickrow">
+      <button type="button" id="pickBtn">Play</button>
+      <div class="ringdots" id="ringdots"></div>
+      <span class="hint">&larr; &rarr; or drag to browse &middot; Enter to choose</span>
+    </div>
   </div>
 </div>
 
@@ -349,11 +395,32 @@ button[aria-pressed="true"] { background: var(--ink); color: var(--paper); }
     shellCache.set(key, g);
     return g;
   }
-  const LOGO_LINE = LINE_W * 0.6;
+  const LOGO_LINE = LINE_W;           // logo pieces use the same line as the bodies
   function inked(geo, mat, t = LOGO_LINE) {
     const m = shadowed(new THREE.Mesh(geo, mat));
     m.add(new THREE.Mesh(inkShellGeo(geo, t), outlineBase));
     return m;
+  }
+
+  // Grow a polygon outward with a separate distance per edge (edge i runs from vertex i to i+1),
+  // mitring the corners; maxOff stops very sharp corners from spiking out.
+  function offsetPolygonEdges(pts, dist, maxOff) {
+    const n = pts.length;
+    let area = 0;
+    for (let i = 0; i < n; i++) { const [x1, y1] = pts[i], [x2, y2] = pts[(i + 1) % n]; area += x1 * y2 - x2 * y1; }
+    const sg = area > 0 ? 1 : -1;
+    const nrm = i => { const [x1, y1] = pts[i], [x2, y2] = pts[(i + 1) % n], l = Math.hypot(x2 - x1, y2 - y1) || 1; return [sg * (y2 - y1) / l, -sg * (x2 - x1) / l]; };
+    return pts.map((p, i) => {
+      const ip = (i - 1 + n) % n, d1 = dist(ip), d2 = dist(i), n1 = nrm(ip), n2 = nrm(i);
+      const a = [pts[ip][0] + n1[0] * d1, pts[ip][1] + n1[1] * d1], b = [p[0] + n2[0] * d2, p[1] + n2[1] * d2];
+      const t1 = [p[0] - pts[ip][0], p[1] - pts[ip][1]], t2 = [pts[(i + 1) % n][0] - p[0], pts[(i + 1) % n][1] - p[1]];
+      const cr = t1[0] * t2[1] - t1[1] * t2[0];
+      let q;
+      if (Math.abs(cr) < 1e-9) q = [p[0] + n2[0] * Math.max(d1, d2), p[1] + n2[1] * Math.max(d1, d2)];
+      else { const u = ((b[0] - a[0]) * t2[1] - (b[1] - a[1]) * t2[0]) / cr; q = [a[0] + t1[0] * u, a[1] + t1[1] * u]; }
+      const dx = q[0] - p[0], dy = q[1] - p[1], L = Math.hypot(dx, dy);
+      return L > maxOff ? [p[0] + dx / L * maxOff, p[1] + dy / L * maxOff] : q;
+    });
   }
 
   function limb(points, mat, r = LIMB_R) {
@@ -430,14 +497,14 @@ button[aria-pressed="true"] { background: var(--ink); color: var(--paper); }
   // ================= Springs (the coils themselves are invisible) =================
   // 'arc' springs bend as one smooth curve, left or right only.
   let springs = [];
-  function makeSpring(base, o) {
+  function makeSpring(base, o, list = springs) {
     const sp = Object.assign({ stiff: 85, arcDamp: 7.5, gain: 0.55, maxBend: 2.3 }, o, {
-      base, override: null, theta: 0, omega: 0, stretch: 1,
+      base, override: null, theta: 0, omega: 0, stretch: 1, profile: null,
       loads: [], nodes: [], tangents: [], squash: 0, squashV: 0, ready: false,
       prevPos: V(), prevVel: V(),
     });
     for (let i = 0; i < sp.n; i++) { const load = new THREE.Group(); base.add(load); sp.loads.push(load); }
-    springs.push(sp);
+    list.push(sp);
     return sp;
   }
 
@@ -471,9 +538,11 @@ button[aria-pressed="true"] { background: var(--ink); color: var(--paper); }
     sp.nodes = [V(px, py, 0)]; sp.tangents = [0];
     for (let i = 0; i < sp.n; i++) {
       const len = (i === 0 ? sp.first - 0.02 : sp.gap) * sq;
-      const mid = sp.theta * (i + 0.5) / sp.n;
+      // profile(u) is how much of the total bend has happened by fraction u of the way up (default: evenly)
+      const W = sp.profile || (u => u);
+      const mid = sp.theta * W((i + 0.5) / sp.n);
       px += len * Math.sin(mid); py += len * Math.cos(mid);
-      const tang = sp.theta * (i + 1) / sp.n;
+      const tang = sp.theta * W((i + 1) / sp.n);
       sp.loads[i].position.set(px, py, 0);
       sp.loads[i].rotation.set(0, 0, -tang);
       sp.nodes.push(V(px, py, 0)); sp.tangents.push(tang);
@@ -539,13 +608,19 @@ button[aria-pressed="true"] { background: var(--ink); color: var(--paper); }
       const poly = [c.clone()];
       let far = a;
       for (let j = a; ; j = (j + 1) % N) { poly.push(pts[j]); if (r[j] > r[far]) far = j; if (j === b) break; }
-      const geo = new THREE.ExtrudeGeometry(new THREE.Shape(poly), {
-        depth: 1.4, bevelEnabled: true, bevelThickness: 0.25, bevelSize: 0.08, bevelSegments: 2, curveSegments: 4,
-      });
+      // flat extrusion, so neighbouring rays meet flush and the logo reads as one piece
+      const geo = new THREE.ExtrudeGeometry(new THREE.Shape(poly), { depth: 1.4, bevelEnabled: false, curveSegments: 4 });
       geo.translate(-c.x, -c.y, -0.7);
       geo.scale(s, -s, -s);
+      // ink line only around the outer edge: the two cut edges through the centre are not offset
+      const t = LOGO_LINE / s, last = poly.length - 1;
+      const off = offsetPolygonEdges(poly.map(q => [q.x, q.y]), i => (i === 0 || i === last ? 0 : t), t * 3);
+      const shell = new THREE.ExtrudeGeometry(new THREE.Shape(off.map(([x, y]) => new THREE.Vector2(x, y))),
+        { depth: 1.4, bevelEnabled: false, curveSegments: 4 });
+      shell.translate(-c.x, -c.y, -0.7);
+      shell.scale(s, -s, -s);
       const tip = V((pts[far].x - c.x) * s, -(pts[far].y - c.y) * s, 0);
-      return { geo, tip };
+      return { geo, shell, tip };
     });
   })();
 
@@ -626,6 +701,7 @@ button[aria-pressed="true"] { background: var(--ink); color: var(--paper); }
   const barGeo = new THREE.BoxGeometry(0.62, 0.1, 0.18);
   const starGeo = new THREE.OctahedronGeometry(0.07);
   const makeBlock = () => inked(barGeo, barMat);
+  const trayBaseGeo = new THREE.BoxGeometry(0.95, TRAY_T, 0.5), traySideGeo = new THREE.BoxGeometry(0.08, 0.34, 0.5);
   const makeDot = () => inked(dotGeo, claudeMat);
 
   // ================= Jointed limbs (two-bone IK) =================
@@ -679,7 +755,7 @@ button[aria-pressed="true"] { background: var(--ink); color: var(--paper); }
       name: 'Stack Overflow', short: 'SO', color: '#f48024', jumps: 1, range: 4,
       blurb: 'Angry, well-sourced, and already closed your question.',
       abilities: {
-        a1: { name: 'Block shot', short: 'Block', cd: 0.06, desc: 'Rapid fire: each block slides up the stack and flies off. Light damage, real knockback.' },
+        a1: { name: 'Block shot', short: 'Block', cd: 0.06, desc: 'Rapid fire: the top block slides up the stack and flies off. Hold to empty the stack.' },
         a2: { name: 'Unified beam', short: 'Beam', cd: 1.2, desc: 'Bend the stack at the enemy and feed all five blocks up it into a beam.' },
         a3: { name: 'Block whip', short: 'Whip', cd: 0.8, desc: 'The spring stretches out to rod length and lashes the blocks forward.' },
         a4: { name: 'Correction', short: 'Correct', cd: 7, desc: 'A condescending remark that stuns everyone nearby.' },
@@ -702,7 +778,7 @@ button[aria-pressed="true"] { background: var(--ink); color: var(--paper); }
       abilities: {
         a1: { name: 'Combobulating', short: 'Dots', cd: 2.4, desc: 'Alternates three dots in a line and four in a square; Claude punches them out one by one.' },
         a2: { name: 'Fling', short: 'Fling', cd: 0.9, desc: 'Fling one rod out of the logo to poke whoever is in front. It has to grow back.' },
-        a3: { name: 'Shoot', short: 'Shoot', cd: 0.7, desc: 'Launch one of the logo\'s rods at the nearest enemy. Rods grow back over time.' },
+        a3: { name: 'Shoot', short: 'Shoot', cd: 0.12, desc: 'Rapid fire: rods leave the logo one after another. Light damage, real knockback. Rods grow back.' },
       },
       passive: 'Double jump.',
     },
@@ -724,13 +800,13 @@ button[aria-pressed="true"] { background: var(--ink); color: var(--paper); }
   const addT = m => { scene.add(m); transient.add(m); return m; };
   const dropT = m => { scene.remove(m); transient.delete(m); };
 
-  function buildFighter(kind, x, isPlayer) {
+  function buildFighter(kind, x, isPlayer, parent = scene, springList = springs) {
     const kit = KITS[kind];
     const mats = { ink: inkBase.clone(), cup: cupBase.clone(), outline: outlineBase.clone() };
     const root = new THREE.Group();
     const vis = new THREE.Group();
     root.add(vis);
-    scene.add(root);
+    parent.add(root);
 
     const f = {
       id: nextId++, kind, kit, isPlayer, root, vis, mats, spawnX: x,
@@ -773,17 +849,18 @@ button[aria-pressed="true"] { background: var(--ink); color: var(--paper); }
     if (kind === 'so') {
       const crown = new THREE.Group();
       crown.position.set(0, RIM_Y + LIP_R + TRAY_T / 2, 0);
-      crown.add(shadowed(new THREE.Mesh(new THREE.BoxGeometry(0.95, TRAY_T, 0.5), trayMat)));
+      crown.add(inked(trayBaseGeo, trayMat));
       for (const sx of [-1, 1]) {
-        const side = shadowed(new THREE.Mesh(new THREE.BoxGeometry(0.08, 0.34, 0.5), trayMat));
+        const side = inked(traySideGeo, trayMat);
         side.position.set(0.44 * sx, 0.17, 0); crown.add(side);
       }
       vis.add(crown);
-      f.spring = makeSpring(crown, { n: 5, gap: 0.19, first: 0.44, stiff: 38, arcDamp: 2.8, gain: 0.85 });
+      f.spring = makeSpring(crown, { n: 5, gap: 0.19, first: 0.44, stiff: 38, arcDamp: 2.8, gain: 0.85 }, springList);
       // the blocks are a magazine: they sit at the top of the stack and slide up as the top one fires
-      f.barMeshes = [0, 1, 2, 3, 4].map(() => { const m = makeBlock(); crown.add(m); return m; });
+      f.barMeshes = [0, 1, 2, 3, 4, 5, 6].map(() => { const m = makeBlock(); crown.add(m); return m; });
       f.bars = 5;
-      f.magSlots = [4, 3, 2, 1, 0];
+      f.magSlots = [0, 1, 2, 3, 4];
+      f.launch = [];
       const hand = fist();
       const finger = shadowed(new THREE.Mesh(new THREE.CylinderGeometry(LIMB_R, LIMB_R, 0.22, 8), mats.ink));
       finger.rotation.z = Math.PI / 2; finger.position.set(0.14, 0, 0);
@@ -797,7 +874,7 @@ button[aria-pressed="true"] { background: var(--ink); color: var(--paper); }
       const base = new THREE.Group();
       base.position.y = CUP_H - 0.12;
       head.add(base);
-      f.spring = makeSpring(base, { n: 2, gap: 0.14, first: 0.2, stiff: 45, arcDamp: 4, gain: 0.5, maxBend: 1.0 });
+      f.spring = makeSpring(base, { n: 2, gap: 0.14, first: 0.2, stiff: 45, arcDamp: 4, gain: 0.5, maxBend: 1.0 }, springList);
       const top = f.spring.loads[f.spring.n - 1];
       const hub = shadowed(new THREE.Mesh(new THREE.CylinderGeometry(0.045, 0.045, 0.06, 12), springMat));
       hub.position.y = 0.03;
@@ -808,7 +885,8 @@ button[aria-pressed="true"] { background: var(--ink); color: var(--paper); }
       logo.rotation.x = -Math.PI / 2;
       if (kind === 'claude' && claudeRays) {
         f.rods = claudeRays.map(ray => {
-          const m = inked(ray.geo, claudeMat);
+          const m = shadowed(new THREE.Mesh(ray.geo, claudeMat));
+          m.add(new THREE.Mesh(ray.shell, outlineBase));
           logo.add(m);
           return { mesh: m, tip: ray.tip, present: true, grow: 1 };
         });
@@ -907,6 +985,7 @@ button[aria-pressed="true"] { background: var(--ink); color: var(--paper); }
   // A parry takes no damage, freezes the action for a moment, skips the rest of the
   // shield drop, and leaves a nearby attacker stuck in extra lag.
   const DROP_TIME = 11 / 60, PARRY_TIME = 5 / 60, SHIELD_MAX = 60;
+  const KB_MAX = 10;
   let hitstop = 0;
   let trainDamage = 0;
   function hurt(h, dmg, kbx, kby, from, opts = {}) {
@@ -934,7 +1013,9 @@ button[aria-pressed="true"] { background: var(--ink); color: var(--paper); }
     }
     const dealt = Math.min(dmg, h.hp);         // damage past zero health doesn't count in the stats
     h.hp = Math.max(0, h.hp - dmg);
-    h.vx += kbx; if (kby > 0) { h.vy = Math.max(h.vy, kby); h.onGround = false; }
+    // knockback stacks from rapid fire, up to a limit, so a single burst can't clear the stage
+    h.vx = THREE.MathUtils.clamp(h.vx + kbx, -KB_MAX, KB_MAX);
+    if (kby > 0) { h.vy = Math.max(h.vy, kby); h.onGround = false; }
     h.lastKb = { x: kbx, y: kby };
     h.flash = 0.18;
     h.lastHitT = 0;
@@ -1168,25 +1249,18 @@ button[aria-pressed="true"] { background: var(--ink); color: var(--paper); }
   const wp = V();
   const ABILITY = {
     so: {
-      a1(f) {       // Block shot: the top block of the magazine flies off once it has slid to the top
-        const n = f.spring.n;
-        if (f.bars < 1 || !f.magSlots.length || f.magSlots[0] < n - 1.3) return false;
-        f.magSlots.shift();
+      a1(f) {       // Block shot: the top block of the stack slides up and off the end (it fires when it gets there)
+        const top = f.magSlots.length - 1;
+        if (f.bars < 1 || top < 0 || Math.abs(f.magSlots[top] - top) > 0.35) return false;
+        f.launch.push({ s: f.magSlots.pop() });
         f.bars -= 1;
-        const local = V();
-        slotPose(f.spring, n - 0.6, local);
-        const from = f.spring.base.localToWorld(local);
-        spawnProjectile({
-          mesh: makeBlock(), pos: from, vel: aimFrom(f, from, 28), team: f.team, owner: f, kind: 'block',
-          dmg: 1, kb: 2.4, kbUp: 2, radius: 0.28, life: 1.4, gravity: -2, color: '#f48024', spin: 14,
-        });
       },
       a2(f) {       // Unified beam: the stack bends toward the enemy like a barrel; blocks feed up it into the beam
         if (f.bars < 5) { floatText(f.x, f.y + BOX_H + 0.4, 'Needs 5 blocks', 'info'); return false; }
         f.busy = BEAM_AIM + BEAM_FEED * 5 + BEAM_TAIL;
         const b = { t: 0, shift: 0, fed: 0, mesh: null, aim: beamAim(f), dir: V(), origin: V(), len: BEAM_LEN };
         f.beam = b;
-        f.magSlots = [4, 3, 2, 1, 0];
+        f.magSlots = [0, 1, 2, 3, 4];
         f.spring.override = (sp, dt) => {
           sp.theta += (b.aim - sp.theta) * Math.min(1, dt * 18);
           sp.omega = 0;
@@ -1201,6 +1275,9 @@ button[aria-pressed="true"] { background: var(--ink); color: var(--paper); }
           sp.theta = s * 1.75;
           sp.omega = Math.cos(p * Math.PI) * 1.75 * Math.PI / 0.46;
           sp.stretch = 1 + s * (WHIP_REACH / 1.2 - 1);
+          // most of the bend sits near the base at first, then evens out as the lash travels up
+          const k = 3.4 - 2.2 * p;
+          sp.profile = u => 1 - Math.pow(1 - u, k);
         };
       },
       a4(f) {       // Correction
@@ -1255,11 +1332,16 @@ button[aria-pressed="true"] { background: var(--ink); color: var(--paper); }
         const layout = f.comboShape === 'line'
           ? [[-1.15, 0], [0, 0], [1.15, 0]]
           : [[-1, 1], [1, 1], [1, -1], [-1, -1]];
-        const dots = layout.map(([dx, dy]) => {
+        // line: the outer two balls are smaller; square: one random diagonal is smaller
+        const diag = Math.random() < 0.5 ? [0, 2] : [1, 3];
+        const sizes = f.comboShape === 'line' ? [0.78, 1, 0.78] : [0, 1, 2, 3].map(i => (diag.includes(i) ? 0.78 : 1));
+        const start = f.vis.localToWorld(V(0.6, 1.9, 0.2));
+        const dots = layout.map(([dx, dy], i) => {
           const m = makeDot();
           m.scale.setScalar(0.01);
           addT(m);
-          return { mesh: m, local: V(1.08 + dx * 0.26, 2.05 + dy * 0.26, 0.18), fired: false };
+          return { mesh: m, local: V(1.08 + dx * 0.26, 2.05 + dy * 0.26, 0.18), size: sizes[i], fired: false,
+            pos: start.clone(), vel: V(), phase: Math.random() * 10 };
         });
         f.combo = { t: 0, dots };
       },
@@ -1280,8 +1362,8 @@ button[aria-pressed="true"] { background: var(--ink); color: var(--paper); }
         const mesh = inked(rodGeoCentered, claudeMat);
         mesh.scale.set(1, 0.9, 1);
         spawnProjectile({
-          mesh, pos: rod.from, vel: aimFrom(f, rod.from, 22), team: f.team, owner: f, kind: 'rod',
-          dmg: 8, kb: 4, radius: 0.25, life: 1.4, orient: 'vel', color: '#d97757',
+          mesh, pos: rod.from, vel: aimFrom(f, rod.from, 30), team: f.team, owner: f, kind: 'rod',
+          dmg: 1.4, kb: 4, kbUp: 2.5, radius: 0.25, life: 1.1, orient: 'vel', color: '#d97757',
         });
       },
     },
@@ -1298,7 +1380,10 @@ button[aria-pressed="true"] { background: var(--ink); color: var(--paper); }
       const score = (tipW.x - center.x) * f.facing;
       if (score > bestScore) { bestScore = score; best = { r, tipW }; }
     }
-    if (!best) { floatText(f.x, f.y + BOX_H + 0.4, 'No rods left', 'info'); return null; }
+    if (!best) {
+      if (!f.noRodT || performance.now() > f.noRodT) { floatText(f.x, f.y + BOX_H + 0.4, 'No rods left', 'info'); f.noRodT = performance.now() + 900; }
+      return null;
+    }
     best.r.present = false; best.r.mesh.visible = false;
     return { from: best.tipW };
   }
@@ -1354,7 +1439,7 @@ button[aria-pressed="true"] { background: var(--ink); color: var(--paper); }
     f.inhale = { t: 0, dur: 1.9, points, parts, rings, chompT: 0 };
     f.spring.override = (sp, dt) => {
       // bend down so the logo faces the enemy like a vacuum mouth
-      sp.theta += (1.45 - sp.theta) * Math.min(1, dt * 12);
+      sp.theta += (0.85 - sp.theta) * Math.min(1, dt * 12);   // the head tilts too, so the stalk bends less
       sp.omega = 0;
     };
   }
@@ -1415,10 +1500,9 @@ button[aria-pressed="true"] { background: var(--ink); color: var(--paper); }
     const slab = new THREE.Group();
     const body = new THREE.Mesh(new THREE.BoxGeometry(1, 1, 2.2),
       new THREE.MeshBasicMaterial({ color: GPT_GREEN, transparent: true, opacity: 0.28, depthWrite: false }));
-    const lid = new THREE.Mesh(new THREE.BoxGeometry(1, LINE_W * 2, 2.2), new THREE.MeshBasicMaterial({ color: '#141414' }));
-    lid.position.y = 0.5;
-    body.position.y = 0;
-    slab.add(body, lid);
+    // thin ink edges rather than a solid lid, which read as a black plate from above
+    const edges = new THREE.LineSegments(new THREE.EdgesGeometry(body.geometry), new THREE.LineBasicMaterial({ color: '#141414' }));
+    slab.add(body, edges);
     addT(slab);
     f.compaction = { t: 0, slab, done: false, dir: f.facing, x0: f.x };
     f.spring.override = (sp, dt) => { sp.theta += (1.9 - sp.theta) * Math.min(1, dt * 20); sp.omega = 0; };
@@ -1465,7 +1549,7 @@ button[aria-pressed="true"] { background: var(--ink); color: var(--paper); }
             w.hit.add(h);
             if (isInhaling(h) && (f.x - h.x) * h.facing > 0 && f.bars >= 1) {
               // ChatGPT yanks a block off the end of the whip and swallows it
-              f.bars -= 1; f.magSlots.shift();
+              f.bars -= 1; f.magSlots.pop();
               const from = f.spring.base.localToWorld(V().copy(f.spring.nodes[f.spring.n]));
               const pr = spawnProjectile({ mesh: makeBlock(), pos: from, vel: V(-f.facing * 4, 2, 0), team: f.team, owner: f, kind: 'block', dmg: 0, kb: 0 });
               pr.suckedBy = h;
@@ -1476,7 +1560,7 @@ button[aria-pressed="true"] { background: var(--ink); color: var(--paper); }
             hurt(h, 10, f.facing * 7, 5, f);
           }
         }
-        if (p >= 1) { f.whip = null; f.spring.override = null; f.spring.stretch = 1; }
+        if (p >= 1) { f.whip = null; f.spring.override = null; f.spring.stretch = 1; f.spring.profile = null; }
       }
     }
 
@@ -1510,17 +1594,25 @@ button[aria-pressed="true"] { background: var(--ink); color: var(--paper); }
       const c = f.combo; c.t += dt;
       c.dots.forEach((d, i) => {
         if (d.fired) return;
-        d.mesh.position.copy(f.vis.localToWorld(d.local.clone()));
-        d.mesh.scale.setScalar(Math.min(1, c.t / 0.2));
+        // each dot chases its spot on a critically damped spring, with a little wander of its own
+        const tgt = f.vis.localToWorld(d.local.clone());
+        const tt = performance.now() / 1000 + d.phase;
+        tgt.x += Math.sin(tt * 6.3) * 0.05; tgt.y += Math.sin(tt * 7.7 + 1) * 0.06; tgt.z += Math.sin(tt * 5.1 + 2) * 0.05;
+        const w = 16;
+        d.vel.addScaledVector(tgt.sub(d.pos), w * w * dt).addScaledVector(d.vel, -2 * w * dt);
+        d.pos.addScaledVector(d.vel, dt);
+        d.mesh.position.copy(d.pos);
+        d.mesh.scale.setScalar(Math.min(1, c.t / 0.2) * d.size);
         const eater = inhalerFor(f.team, d.mesh.position);
         const start = PUNCH_START + i * PUNCH_GAP;
         if (eater || c.t >= start + PUNCH_DUR * 0.5) {
           d.fired = true;
           dropT(d.mesh);
           const from = d.mesh.position.clone();
+          const dm = makeDot(); dm.scale.setScalar(d.size);
           const pr = spawnProjectile({
-            mesh: makeDot(), pos: from, vel: aimFrom(f, from, 22), kind: 'dot',
-            team: f.team, owner: f, dmg: 5, kb: 2, radius: 0.18, life: 1.4, color: '#d97757',
+            mesh: dm, pos: from, vel: aimFrom(f, from, 22), kind: 'dot',
+            team: f.team, owner: f, dmg: 5 * d.size, kb: 2, radius: 0.18 * d.size, life: 1.4, color: '#d97757',
           });
           if (eater) { pr.suckedBy = eater; pr.vel.set(0, 0, 0); }   // pulled out of formation
           else burst(from, '#d97757');
@@ -1641,29 +1733,44 @@ button[aria-pressed="true"] { background: var(--ink); color: var(--paper); }
     }
   }
 
-  // The block magazine, drawn after the spring is placed each frame
+  function fireBlock(f, local) {
+    const from = f.spring.base.localToWorld(local.clone());
+    spawnProjectile({
+      mesh: makeBlock(), pos: from, vel: aimFrom(f, from, 18), team: f.team, owner: f, kind: 'block',
+      dmg: 3, kb: 2.4, kbUp: 2, radius: 0.28, life: 1.8, gravity: -3, color: '#f48024', spin: 10,
+    });
+  }
+  // The block magazine, drawn after the spring is placed each frame. Blocks rest at the bottom of the
+  // stack (index 0 lowest); new ones drop in on top; a fired block travels up and leaves from the tip.
   function renderMagazine(f) {
     const sp = f.spring, n = sp.n, dt = lastDt;
     if (f.beam) {
-      f.magSlots = f.magSlots.map((_, j) => (n - 1 - j) + f.beam.shift);
+      f.magSlots = f.magSlots.map((_, j) => j + f.beam.shift);
     } else {
       const count = Math.floor(f.bars);
-      while (f.magSlots.length < count) f.magSlots.push(-0.9);       // a new block enters at the bottom
+      while (f.magSlots.length < count) f.magSlots.push(n + 0.3);       // a new block drops in from above
       while (f.magSlots.length > count) f.magSlots.pop();
       f.magSlots = f.magSlots.map((s, j) => {
-        const target = n - 1 - j, step = dt * 16;
-        return s < target ? Math.min(target, s + step) : Math.max(target, s - step);
+        const step = dt * 14;
+        return s < j ? Math.min(j, s + step) : Math.max(j, s - step);
       });
     }
     const pos = V();
+    f.launch = f.launch.filter(l => {
+      l.s += dt * 24;
+      if (l.s >= n - 0.4) { slotPose(sp, n - 0.4, pos); if (alive(f)) fireBlock(f, pos); return false; }
+      return true;
+    });
+    const shown = f.magSlots.concat(f.launch.map(l => l.s));
     f.barMeshes.forEach((m, j) => {
-      const s = f.magSlots[j];
-      if (s === undefined || s >= n) { m.visible = false; return; }
+      const s = shown[j];
+      if (s === undefined || s >= n + (f.beam ? 0 : 0.5)) { m.visible = false; return; }
       m.visible = true;
       const tang = slotPose(sp, s, pos);
       m.position.copy(pos);
       m.rotation.set(0, 0, -tang);
-      const enter = THREE.MathUtils.clamp(s + 1, 0, 1), exit = s > n - 1 ? 1 - (s - (n - 1)) : 1;
+      const exit = s > n - 1 ? 1 - (s - (n - 1)) * (f.beam ? 1 : 0.7) : 1;
+      const enter = 1;
       m.scale.setScalar(Math.max(0.01, Math.min(enter, exit)));
     });
   }
@@ -1887,6 +1994,12 @@ button[aria-pressed="true"] { background: var(--ink); color: var(--paper); }
     }
     updateAbilities(f, dt);
 
+    // ChatGPT bends its whole head forward to inhale (and to slam down a compaction)
+    if (f.kind === 'gpt') {
+      const tilt = f.inhale ? -0.7 : f.compaction ? -0.45 : 0;
+      f.head.rotation.z += (tilt - f.head.rotation.z) * Math.min(1, dt * 10);
+    }
+
     // compaction grows back slowly on its own
     if (f.compact < 1) f.compact = Math.min(1, f.compact + dt * 0.04);
 
@@ -2017,7 +2130,8 @@ button[aria-pressed="true"] { background: var(--ink); color: var(--paper); }
           const p = (f.combo.t - (PUNCH_START + k * PUNCH_GAP)) / PUNCH_DUR;
           if (p <= 0 || p >= 1) return;
           const reach = p < 0.5 ? 1 - Math.pow(1 - p / 0.5, 3) : 1 - (p - 0.5) / 0.5;
-          _hand.lerp(V(d.local.x - 0.16, d.local.y, d.local.z), reach);
+          const at = d.pos ? f.vis.worldToLocal(d.pos.clone()) : d.local.clone();
+          _hand.lerp(V(at.x - 0.16, at.y, at.z), reach);
         });
       }
       const end = solveLimb(arm.limb, SHOULDER_LOCAL, _hand, planeHint(SHOULDER_LOCAL, _hand, bend));
@@ -2034,6 +2148,7 @@ button[aria-pressed="true"] { background: var(--ink); color: var(--paper); }
     'KeyJ', 'KeyK', 'KeyL', 'KeyI', 'Digit1', 'Digit2', 'Digit3', 'Digit4']);
   addEventListener('keydown', e => {
     if (e.code === 'Escape' && inMatch()) { openMenu(); return; }
+    if (e.code === 'Escape' && !selectEl.hidden) { document.getElementById('backBtn').click(); return; }
     if (!GAME_KEYS.has(e.code) || !player) return;
     if (document.activeElement && document.activeElement.tagName === 'BUTTON' && e.code === 'Space') document.activeElement.blur();
     e.preventDefault();
@@ -2060,9 +2175,9 @@ button[aria-pressed="true"] { background: var(--ink); color: var(--paper); }
       right: k('KeyD') || k('ArrowRight'),
       jump: p('KeyW') || p('ArrowUp') || p('Space'),
       shield: k('Backspace'),
-      a1: p('KeyJ') || p('Digit1') || (k('KeyJ') && controlledBody()?.kind === 'so'),   // hold J to keep firing blocks
+      a1: p('KeyJ') || p('Digit1') || (k('KeyJ') && controlledBody()?.kind === 'so'),     // hold J to keep firing blocks
       a2: p('KeyK') || p('Digit2'),
-      a3: p('KeyL') || p('Digit3'),
+      a3: p('KeyL') || p('Digit3') || (k('KeyL') && controlledBody()?.kind === 'claude'), // hold L to keep shooting rods
       a4: p('KeyI') || p('Digit4'),
     };
   }
@@ -2085,7 +2200,7 @@ button[aria-pressed="true"] { background: var(--ink); color: var(--paper); }
     } else {
       if (dist < 2.6) return 'a2';
       if (ready('a1') && Math.random() < 0.35) return 'a1';
-      return 'a3';
+      return 'burst';
     }
     return null;
   }
@@ -2136,8 +2251,8 @@ button[aria-pressed="true"] { background: var(--ink); color: var(--paper); }
     }
     inp.left = ai.move < 0; inp.right = ai.move > 0;
     if (ai.jump) { inp.jump = true; ai.jump = false; }
-    if (ai.act === 'burst') { ai.burstT = 0.25 + Math.random() * 0.2; ai.act = null; ai.rest = 0.6 + Math.random() * 0.8; }
-    if (ai.burstT > 0) { inp.a1 = true; inp.face = Math.sign(dx) || f.facing; }
+    if (ai.act === 'burst') { ai.burstT = 0.25 + Math.random() * 0.3; ai.act = null; ai.rest = 0.6 + Math.random() * 0.8; }
+    if (ai.burstT > 0) { inp[f.kind === 'claude' ? 'a3' : 'a1'] = true; inp.face = Math.sign(dx) || f.facing; }
     if (ai.act) { inp[ai.act] = true; inp.face = Math.sign(dx) || f.facing; ai.act = null; ai.rest = 0.55 + Math.random() * 0.9; }
     return inp;
   }
@@ -2393,7 +2508,81 @@ button[aria-pressed="true"] { background: var(--ink); color: var(--paper); }
     pending = { kind, step: 'pick' };
     showSelect();
   }));
-  const cardsEl = document.getElementById('cards');
+  // ---------- fighter carousel ----------
+  const ORDER = ['so', 'gpt', 'claude'];
+  const track = document.getElementById('track');
+  const carouselEl = document.getElementById('carousel');
+  const pickBtn = document.getElementById('pickBtn');
+  let carIndex = 0;
+  const slots = ORDER.map(kind => {
+    const kit = KITS[kind];
+    const slot = document.createElement('div');
+    slot.className = 'slot';
+    const list = SLOTS.filter(s => kit.abilities[s]).map(s =>
+      `<li><kbd>${KEY_LABEL[s]}</kbd><span><strong>${kit.abilities[s].name}.</strong> ${kit.abilities[s].desc}</span></li>`).join('');
+    const passive = kit.passive ? `<li><kbd>W</kbd><span>${kit.passive}</span></li>` : '';
+    slot.innerHTML = `<div class="card" role="group" aria-label="${kit.name}" style="--c:${kit.color}"><div class="pedestal"></div><h2>${kit.name}</h2><span>${kit.blurb}</span><ul>${list}${passive}</ul></div>`;
+    slot.addEventListener('click', () => { const i = ORDER.indexOf(kind); if (i !== carIndex) rotateTo(i); else choose(); });
+    track.appendChild(slot);
+    return { kind, slot };
+  });
+  const dotsEl = document.getElementById('ringdots');
+  dotsEl.innerHTML = ORDER.map(() => '<i></i>').join('');
+  function layoutCarousel() {
+    const cw = Math.min(330, carouselEl.clientWidth * 0.78);
+    carouselEl.style.setProperty('--cw', cw + 'px');
+    slots.forEach((sl, i) => {
+      let off = i - carIndex;
+      if (off > 1) off -= 3; if (off < -1) off += 3;
+      sl.offset = off;
+      sl.slot.classList.toggle('side', off !== 0);
+      sl.slot.style.transform = `translateX(${off * cw * 1.04}px) scale(${off ? 0.84 : 1})`;
+      sl.slot.style.opacity = off ? 0.55 : 1;
+      sl.slot.style.zIndex = off ? 0 : 1;
+      const card = sl.slot.querySelector('.card');
+      const taken = pending && pending.step === 'opponent' && sl.kind === pending.pick;
+      card.style.filter = taken ? 'grayscale(1)' : '';
+    });
+    dotsEl.querySelectorAll('i').forEach((d, i) => d.classList.toggle('on', i === carIndex));
+    const kind = ORDER[carIndex], taken = pending && pending.step === 'opponent' && kind === pending.pick;
+    pickBtn.disabled = !!taken;
+    pickBtn.textContent = taken ? `${KITS[kind].name} is you` : pending && pending.step === 'opponent' ? `Fight ${KITS[kind].short}` : `Play as ${KITS[kind].short}`;
+  }
+  function rotateTo(i) { carIndex = (i + 3) % 3; layoutCarousel(); previewDemoT = 0.6; }
+  function choose() {
+    const kind = ORDER[carIndex];
+    if (pending.step === 'opponent' && kind === pending.pick) return;
+    if (pending.kind === 'duel' && pending.step !== 'opponent') { pending.pick = kind; pending.step = 'opponent'; showSelect(); return; }
+    if (pending.step === 'opponent') pending.opponent = kind; else pending.pick = kind;
+    selectEl.hidden = true; cornerEl.hidden = false;
+    startMatch({ kind: pending.kind, pick: pending.pick, opponent: pending.opponent });
+  }
+  document.getElementById('prevBtn').addEventListener('click', e => { e.stopPropagation(); rotateTo(carIndex - 1); });
+  document.getElementById('nextBtn').addEventListener('click', e => { e.stopPropagation(); rotateTo(carIndex + 1); });
+  pickBtn.addEventListener('click', choose);
+  // drag or swipe to rotate
+  let dragX = null;
+  carouselEl.addEventListener('pointerdown', e => { dragX = e.clientX; });
+  addEventListener('pointerup', e => {
+    if (dragX === null) return;
+    const dx = e.clientX - dragX; dragX = null;
+    if (Math.abs(dx) > 40) { rotateTo(carIndex + (dx < 0 ? 1 : -1)); carouselEl.dataset.dragged = '1'; setTimeout(() => delete carouselEl.dataset.dragged, 0); }
+  });
+  carouselEl.addEventListener('click', e => { if (carouselEl.dataset.dragged) e.stopPropagation(); }, true);
+  let wheelLock = 0;
+  carouselEl.addEventListener('wheel', e => {
+    const d = Math.abs(e.deltaX) > Math.abs(e.deltaY) ? e.deltaX : e.deltaY;
+    if (Math.abs(d) < 12 || performance.now() < wheelLock) return;
+    e.preventDefault(); wheelLock = performance.now() + 380;
+    rotateTo(carIndex + (d > 0 ? 1 : -1));
+  }, { passive: false });
+  addEventListener('keydown', e => {
+    if (selectEl.hidden) return;
+    if (e.code === 'ArrowLeft') { e.preventDefault(); rotateTo(carIndex - 1); }
+    else if (e.code === 'ArrowRight') { e.preventDefault(); rotateTo(carIndex + 1); }
+    else if (e.code === 'Enter' && document.activeElement?.closest?.('.pickrow, .carousel, body') && document.activeElement.id !== 'backBtn') { e.preventDefault(); choose(); }
+  });
+
   function showSelect() {
     menuEl.hidden = true; resultEl.hidden = true; selectEl.hidden = false;
     const title = { ffa: 'Free-for-all', duel: 'Duel', training: 'Training' }[pending.kind];
@@ -2404,25 +2593,88 @@ button[aria-pressed="true"] { background: var(--ink); color: var(--paper); }
       : pending.kind === 'training'
         ? 'Training: try every move on two dummies. They refill their health, knockouts respawn, and you can make them move or fight back.'
         : pending.kind === 'duel' ? 'Duel: first pick yourself, then your opponent.' : `${title}: you against the other two.`;
-    cardsEl.innerHTML = '';
-    for (const [kind, kit] of Object.entries(KITS)) {
-      const b = document.createElement('button');
-      b.type = 'button'; b.className = 'card';
-      b.style.setProperty('--c', kit.color);
-      const list = SLOTS.filter(s => kit.abilities[s]).map(s =>
-        `<li><kbd>${KEY_LABEL[s]}</kbd><span><strong>${kit.abilities[s].name}.</strong> ${kit.abilities[s].desc}</span></li>`).join('');
-      const passive = kit.passive ? `<li><kbd>W</kbd><span>${kit.passive}</span></li>` : '';
-      b.innerHTML = `<h2>${kit.name}</h2><span>${kit.blurb}</span><ul>${list}${passive}</ul><span class="pick">${opp ? 'Fight' : 'Play as'} ${kit.short} &rarr;</span>`;
-      if (opp && kind === pending.pick) b.disabled = true;
-      b.addEventListener('click', () => {
-        if (pending.kind === 'duel' && !opp) { pending.pick = kind; pending.step = 'opponent'; showSelect(); return; }
-        if (opp) pending.opponent = kind; else pending.pick = kind;
-        selectEl.hidden = true; cornerEl.hidden = false;
-        startMatch({ kind: pending.kind, pick: pending.pick, opponent: pending.opponent });
-      });
-      cardsEl.appendChild(b);
-    }
+    if (opp && ORDER[carIndex] === pending.pick) carIndex = (carIndex + 1) % 3;
+    resizePreview();
+    layoutCarousel();
+    selectEl.scrollTop = 0;
+    pickBtn.focus({ preventScroll: true });
   }
+
+  // ---------- the 3D fighters standing on the carousel cards ----------
+  const previewCanvas = document.getElementById('previewCanvas');
+  const pRenderer = new THREE.WebGLRenderer({ canvas: previewCanvas, antialias: true, alpha: true });
+  pRenderer.setPixelRatio(Math.min(devicePixelRatio, 2));
+  const pScene = new THREE.Scene();
+  pScene.add(new THREE.HemisphereLight('#ffffff', '#d8d2c4', 0.8));
+  const pSun = new THREE.DirectionalLight('#ffffff', 0.75); pSun.position.set(3, 8, 6); pScene.add(pSun);
+  const pCam = new THREE.OrthographicCamera(-1, 1, 1, -1, 0.1, 100);
+  pCam.position.set(0, 0, 30);
+  const pSprings = [];
+  const previews = ORDER.map(kind => {
+    const f = buildFighter(kind, 0, false, pScene, pSprings);
+    f.root.rotation.x = 0.32;              // tipped toward the viewer so the logos show
+    return f;
+  });
+  let pxPerUnit = 48, previewDemoT = 0;
+  function resizePreview() {
+    const w = carouselEl.clientWidth, h = carouselEl.clientHeight;
+    if (!w) return;
+    pRenderer.setSize(w, h, false);
+    pxPerUnit = Math.min(58, carouselEl.clientWidth * 0.78 / 5.6);
+    pCam.left = -w / 2 / pxPerUnit; pCam.right = w / 2 / pxPerUnit;
+    pCam.top = h / 2 / pxPerUnit; pCam.bottom = -h / 2 / pxPerUnit;
+    pCam.updateProjectionMatrix();
+  }
+  addEventListener('resize', () => { if (!selectEl.hidden) { resizePreview(); layoutCarousel(); } });
+  const _rest = V();
+  function updatePreview(dt) {
+    if (selectEl.hidden) return;
+    const cr = carouselEl.getBoundingClientRect();
+    previewDemoT += dt;
+    const t = performance.now() / 1000;
+    previews.forEach((f, i) => {
+      const sl = slots[i];
+      const ped = sl.slot.querySelector('.pedestal').getBoundingClientRect();
+      const scale = ped.width / (parseFloat(carouselEl.style.getPropertyValue('--cw')) || ped.width);
+      const cx = ped.left + ped.width / 2 - cr.left, cy = ped.bottom - cr.top - 14 * scale;
+      const selected = sl.offset === 0;
+      // a little hop for the chatbots, a whip for Stack Overflow, every few seconds on the selected card
+      const demo = selected ? (previewDemoT % 3.4) : 9;
+      let hop = 0;
+      if (f.kind !== 'so' && demo < 0.55) { hop = Math.sin(demo / 0.55 * Math.PI) * 0.9; f.rotorBoost = 1; }
+      f.root.position.set((cx - cr.width / 2) / pxPerUnit, (cr.height / 2 - cy) / pxPerUnit + hop * scale, 0);
+      f.root.scale.setScalar(scale * (selected ? 1 : 0.92));
+      f.root.rotation.y = selected ? Math.sin(t * 0.8) * 0.5 : 0;
+      f.x = f.root.position.x; f.y = f.root.position.y;
+      // stand in the stance, legs solved locally
+      for (const ft of f.feet) {
+        _rest.set(ft.s * FOOT_SPREAD, ANKLE_H + (hop > 0.05 ? 0.18 : 0), 0.04);
+        const end = solveLimb(ft.limb, HIP_LOCAL, _rest, _kh.set(ft.s, 0, 0.3));
+        ft.mesh.position.set(end.x + ft.s * (FOOT_L / 2 - LIMB_R), end.y - ANKLE_H + LINE_W / 2, end.z);
+      }
+      f.onGround = hop === 0; f.vx = 0;
+      updateArms(f, dt);
+      if (f.rotor) {
+        f.rotorBoost = Math.max(0, f.rotorBoost - dt * 1.2);
+        f.rotor.rotation.y += dt * (5 + f.rotorBoost * 45) * f.spinDir;
+      }
+      if (f.kind === 'so') {
+        const w = demo < 0.46 ? demo / 0.46 : -1;
+        if (w >= 0) {
+          const sN = Math.sin(w * Math.PI);
+          f.spring.theta = sN * 1.75; f.spring.omega = 0;
+          f.spring.stretch = 1 + sN * (WHIP_REACH / 1.2 - 1);
+          const k = 3.4 - 2.2 * w; f.spring.profile = u => 1 - Math.pow(1 - u, k);
+          f.arms[0].rest.set(0.85, 2.3, 0.1);
+        } else if (f.spring.profile) { f.spring.profile = null; f.spring.stretch = 1; f.arms[0].rest.set(1.15, 1.89, 0.08); }
+      }
+    });
+    pScene.updateMatrixWorld();
+    for (const sp of pSprings) { stepSpring(sp, Math.max(dt, 1 / 240)); placeSpring(sp); }
+    renderMagazine(previews[0]);
+    pRenderer.render(pScene, pCam);
+  }
+
   document.getElementById('backBtn').addEventListener('click', () => {
     if (pending && pending.step === 'opponent') { pending.step = 'pick'; showSelect(); return; }
     openMenu();
@@ -2519,6 +2771,7 @@ button[aria-pressed="true"] { background: var(--ink); color: var(--paper); }
     for (const f of fighters) if (f.kind === 'so') renderMagazine(f);
 
     updateCamera(dt);
+    updatePreview(dt);
     updateBubble(dt);
     updateMoves();
     checkResult(dt);

@@ -11,7 +11,7 @@ const page = `<!doctype html>
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
-<meta name="description" content="Stick Figure Standoff: Stack Overflow, ChatGPT and Claude fight it out on a sheet of paper.">
+<meta name="description" content="Bot Battle: Stack Overflow, ChatGPT and Claude fight it out on a sheet of paper.">
 ${head}
 </head>
 <body>

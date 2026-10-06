@@ -1,0 +1,8 @@
+clips/
+videos/*/*
+!videos/*/edl.js
+!videos/*/script.json
+!videos/*/vo.wav
+!videos/*/vo.json
+!videos/*/words.json
+out/*_cuts.png
