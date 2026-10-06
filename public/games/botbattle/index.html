@@ -471,6 +471,7 @@ body.two-players .corner { left: 50%; right: auto; transform: translateX(-50%); 
     <button type="button" data-key="Backspace" aria-label="Parry to the side">Parry</button>
     <button type="button" data-key="ParryUp" aria-label="Parry overhead">&uarr; Parry</button>
     <button type="button" data-key="Space" aria-label="Jump">Jump</button>
+    <button type="button" data-key="KeyH" class="strike" aria-label="Punch, or a low kick while crouched">Punch</button>
   </div>
 </div>
 
@@ -1437,6 +1438,7 @@ body.two-players .corner { left: 50%; right: auto; transform: translateX(-50%); 
     return best;
   }
   const CROUCH_DROP = 0.4;           // how far the body sinks in a full crouch
+  const CROUCH_SLOW = 0.55;          // and how much slower it walks
   const boxH = h => BOX_H * (h.compact || 1) * (1 - 0.3 * (h.crouch || 0));   // crouching makes a smaller target
   const centerOf = h => V(h.x, h.y + boxH(h) * 0.5, 0);
   function aimFrom(f, from, speed, frontOnly = true) {
@@ -1542,7 +1544,7 @@ body.two-players .corner { left: 50%; right: auto; transform: translateX(-50%); 
     if (h.possessedBy) release(h);
     endInhale(h);
     // whatever it was doing stops; the stack and stalk go stiff so they lie on the paper with the body
-    h.whip = null; h.shot = null; h.launch = []; h.tether = null;
+    h.whip = null; h.shot = null; h.launch = []; h.tether = null; h.strike = null;
     if (h.beam) { if (h.beam.mesh) dropT(h.beam.mesh); h.beam = null; }
     if (h.compaction) { dropT(h.compaction.slab); h.compaction = null; }
     if (h.spring) { h.spring.stretch = 1; h.spring.profile = null; h.spring.firstStretch = null; h.spring.override = sp => { sp.theta *= 0.8; sp.omega = 0; }; }
@@ -2571,10 +2573,9 @@ body.two-players .corner { left: 50%; right: auto; transform: translateX(-50%); 
     else if (f.tether) reelIn(f, dt);
     else {
       let move = (inp.right ? 1 : 0) - (inp.left ? 1 : 0);
-      // holding down on the ground crouches: the body sinks and it stays put, though it can still turn round
+      // holding down on the ground crouches: the body sinks, and it can still walk, slowly
       const crouching = !!inp.down && f.onGround && !rooted && !(f.stumble > 0);
       f.crouch = THREE.MathUtils.clamp((f.crouch || 0) + (crouching ? dt : -dt) * 9, 0, 1);
-      if (crouching && move) { f.facing = move; move = 0; }
       if (rooted || f.stumble > 0) move = 0;
       f.intent = move;
       // double-tap a direction: a quick dash that slips past anyone in the way
@@ -2584,7 +2585,7 @@ body.two-players .corner { left: 50%; right: auto; transform: translateX(-50%); 
         if (f.onGround) ring(V(f.x, 0.03, 0), '#141414', 0.35, true);
       }
       const rate = f.stumble > 0 ? 7 : f.onGround ? 30 : 12;     // a stumble slides to a stop
-      const speed = 5.5 * (0.7 + 0.3 * f.compact);
+      const speed = 5.5 * (0.7 + 0.3 * f.compact) * (1 - CROUCH_SLOW * f.crouch);
       if (f.passT > 0) f.vx = f.passDir * PASS_SPEED;
       else f.vx += THREE.MathUtils.clamp(move * speed - f.vx, -rate * dt, rate * dt);
       if (move && f.passT <= 0 && !f.pushing) f.facing = move;
@@ -2618,6 +2619,8 @@ body.two-players .corner { left: 50%; right: auto; transform: translateX(-50%); 
     if (f.y < RING_OUT_Y) { ringOut(f); return; }
 
     f.aimUp = !!inp.up;                       // holding up turns the whip upward
+    if (inp.strike) tryStrike(f, inp.face);
+    updateStrike(f, dt);
     for (const s of SLOTS) {
       if (inp[s]) {
         if (inp.face) f.facing = inp.face;
@@ -2640,7 +2643,7 @@ body.two-players .corner { left: 50%; right: auto; transform: translateX(-50%); 
     // discomfort shows on the face, which also shakes while it lasts
     setFace(f, f.flash > 0 || f.stumble > 0 || f.strain > 0 || f.stun > 0);
     // leaning: into a dash, along a stumble (the top runs ahead of the feet), or into a push
-    const lean = f.passT > 0 ? -f.facing * 0.28 : f.jolt > 0 ? -f.joltDir * 0.2 * (f.jolt / 0.2) : f.shoveT > 0 ? -f.shoveDir * 0.22 * (f.shoveK || 1) * Math.min(1, f.shoveT / 0.15) : f.stumble > 0 ? -f.stumbleDir * 0.32 * Math.min(1, f.stumble / 0.2) : (f.lean || 0);
+    const lean = f.passT > 0 ? -f.facing * 0.28 : f.strike ? f.facing * (f.strike.low ? 0.16 : -0.1) * strikeReach(f) : f.jolt > 0 ? -f.joltDir * 0.2 * (f.jolt / 0.2) : f.shoveT > 0 ? -f.shoveDir * 0.22 * (f.shoveK || 1) * Math.min(1, f.shoveT / 0.15) : f.stumble > 0 ? -f.stumbleDir * 0.32 * Math.min(1, f.stumble / 0.2) : (f.lean || 0);
     f.vis.rotation.z += (lean - f.vis.rotation.z) * Math.min(1, dt * 14);
     const c = f.compact;
     f.root.scale.set(1 + (1 - c) * 0.35, c, 1 + (1 - c) * 0.35);
@@ -2676,6 +2679,46 @@ body.two-players .corner { left: 50%; right: auto; transform: translateX(-50%); 
     }
     f.mats.outline.color.set(glow ? f.possessedBy.kit.color : '#141414');
   }
+  // ================= Punch and low kick =================
+  // Every fighter has one: a quick jab at head height, or, crouched, a low kick along the floor that knocks the
+  // other fighter off balance. Neither stops you walking. reach, y0 and y1 are where it hits, from the body's middle.
+  const STRIKE = {
+    punch: { dur: 0.3, from: 0.06, to: 0.16, cd: 0.36, reach: 1.4, y0: 1.5, y1: 2.7, dmg: 4, kbx: 3.5, kby: 1.2 },
+    kick: { dur: 0.36, from: 0.08, to: 0.2, cd: 0.5, reach: 1.35, y0: 0, y1: 0.8, dmg: 5, kbx: 1.5, kby: 0 },
+  };
+  const strikeOf = f => f.strike.low ? STRIKE.kick : STRIKE.punch;
+  function tryStrike(f, face) {
+    if (f.strike || f.strikeCd > 0 || f.busy > 0 || f.guard || f.ledge || f.tether || f.stumble > 0 || f.possessing) return;
+    if (face) f.facing = face;
+    f.strike = { t: 0, low: f.onGround && f.crouch > 0.5, hit: new Set() };
+    f.strikeCd = strikeOf(f).cd;
+    f.stats.moves++;
+    cue(f.strike.low ? 'kick' : 'punch', f.kind);
+  }
+  // how far out the fist or foot is: out fast, held while it can hit, then back
+  function strikeReach(f) {
+    const S = strikeOf(f), t = f.strike.t;
+    if (t < S.from) return smooth(t / S.from);
+    return t < S.to ? 1 : Math.max(0, 1 - (t - S.to) / (S.dur - S.to));
+  }
+  function updateStrike(f, dt) {
+    f.strikeCd = Math.max(0, (f.strikeCd || 0) - dt);
+    const st = f.strike;
+    if (!st) return;
+    const S = strikeOf(f);
+    st.t += dt;
+    if (st.t >= S.dur) { f.strike = null; return; }
+    if (st.t < S.from || st.t > S.to) return;
+    const x0 = f.x + f.facing * 0.2, x1 = f.x + f.facing * S.reach;
+    for (const h of enemiesOf(f)) {
+      if (st.hit.has(h) || !overlapsBox(h, x0, x1, f.y + S.y0, f.y + S.y1)) continue;
+      st.hit.add(h);
+      const out = hurt(h, S.dmg, f.facing * S.kbx, S.kby, f, { dir: { x: f.facing, y: 0 } });
+      burst(V(h.x - f.facing * BOX_W, f.y + (S.y0 + S.y1) / 2, 0), out === 'parry' ? '#ffffff' : f.kit.color);
+      if (out === 'hit' && st.low) stumble(h, f.facing, 3, 3);      // swept off its feet
+    }
+  }
+
   // ================= Ledges =================
   // A fighter falling past either end of the stage grabs its lip and hangs there by the hands, head just over
   // the edge. From the ledge: toward the stage climbs up, jump leaps up off it, away or down lets go (and so
@@ -2877,6 +2920,12 @@ body.two-players .corner { left: 50%; right: auto; transform: translateX(-50%); 
           ft.dur = walking ? THREE.MathUtils.clamp(STRIDE / speed * 0.85, 0.13, 0.3) : 0.14;
         }
       }
+      if (f.strike && f.strike.low && ft.s > 0) {
+        const k = strikeReach(f);
+        ft.stepping = false;
+        ft.x = home + (f.x + f.facing * 1.0 - home) * k; ft.y = 0.16 * k;
+        continue;
+      }
       if (ft.stepping) {
         ft.t += dt;
         const p = Math.min(1, ft.t / ft.dur);
@@ -2955,6 +3004,11 @@ body.two-players .corner { left: 50%; right: auto; transform: translateX(-50%); 
         });
       }
       // running at someone: hands come up ready; on contact they thrust out in a shove, then come back
+      if (f.strike && !f.strike.low) {
+        const k = strikeReach(f);
+        if (i === 0) _hand.lerp(V(1.2, 2.0, 0.14), k); else _hand.lerp(V(0.4, 1.9, -0.12), k * 0.7);
+        bend = -1;
+      }
       const shoveArm = shoveReach(f);
       if (shoveArm > 0) { _hand.lerp(V(0.92, i ? 1.8 : 2.0, i ? -0.12 : 0.14), shoveArm); bend = -1; }
       // pushing: both hands on the other fighter; stumbling: arms flung up
@@ -2996,7 +3050,7 @@ body.two-players .corner { left: 50%; right: auto; transform: translateX(-50%); 
   const keys = new Set(), pressed = new Set();
   const GAME_KEYS = new Set(['KeyA', 'KeyD', 'KeyW', 'KeyS', 'ArrowLeft', 'ArrowRight', 'ArrowUp', 'ArrowDown', 'Space', 'Backspace',
     'KeyF', 'KeyG', 'KeyH', 'KeyT', 'KeyQ', 'Comma', 'Period', 'Slash', 'Quote', 'ShiftRight', 'Numpad0', 'Numpad1', 'Numpad2', 'Numpad3', 'Numpad4',
-    'KeyJ', 'KeyK', 'KeyL', 'KeyI', 'Digit1', 'Digit2', 'Digit3', 'Digit4']);
+    'KeyJ', 'KeyK', 'KeyL', 'KeyI', 'Digit1', 'Digit2', 'Digit3', 'Digit4', 'KeyR', 'KeyM', 'Numpad5']);
   // a second press of the same direction within a moment is a double tap: the dash
   const lastTap = {};
   function noteTap(code) {
@@ -3028,8 +3082,8 @@ body.two-players .corner { left: 50%; right: auto; transform: translateX(-50%); 
   // with two players on one phone, each pad's buttons stand for its own player's keys (SCHEMES A and B). User B
   // sees the arena turned round, so their right is the arena's left: their arrows are swapped
   const PAD_KEYS = {
-    A: { ArrowLeft: 'KeyA', ArrowRight: 'KeyD', ArrowDown: 'KeyS', Space: 'KeyW', KeyJ: 'KeyF', KeyK: 'KeyG', KeyL: 'KeyH', KeyI: 'KeyT', Backspace: 'KeyQ', ParryUp: 'ParryUpA' },
-    B: { ArrowLeft: 'ArrowRight', ArrowRight: 'ArrowLeft', ArrowDown: 'ArrowDown', Space: 'ArrowUp', KeyJ: 'Comma', KeyK: 'Period', KeyL: 'Slash', KeyI: 'Quote', Backspace: 'ShiftRight', ParryUp: 'ParryUpB' },
+    A: { ArrowLeft: 'KeyA', ArrowRight: 'KeyD', ArrowDown: 'KeyS', Space: 'KeyW', KeyJ: 'KeyF', KeyK: 'KeyG', KeyL: 'KeyH', KeyI: 'KeyT', Backspace: 'KeyQ', ParryUp: 'ParryUpA', KeyH: 'KeyR' },
+    B: { ArrowLeft: 'ArrowRight', ArrowRight: 'ArrowLeft', ArrowDown: 'ArrowDown', Space: 'ArrowUp', KeyJ: 'Comma', KeyK: 'Period', KeyL: 'Slash', KeyI: 'Quote', Backspace: 'ShiftRight', ParryUp: 'ParryUpB', KeyH: 'KeyM' },
   };
   document.querySelectorAll('.touch button').forEach(btn => {
     const mine = btn.closest('.touch-b') ? 'B' : 'A';
@@ -3047,17 +3101,17 @@ body.two-players .corner { left: 50%; right: auto; transform: translateX(-50%); 
   // left of the keyboard and User B the right (KEYS_FOR shows them)
   const SCHEMES = {
     all: { left: ['KeyA', 'ArrowLeft'], right: ['KeyD', 'ArrowRight'], jump: ['KeyW', 'ArrowUp', 'Space'], down: ['KeyS', 'ArrowDown'],
-      parry: ['Backspace', 'ParryUp'], up: ['ParryUp'], a1: ['KeyJ', 'Digit1'], a2: ['KeyK', 'Digit2'], a3: ['KeyL', 'Digit3'], a4: ['KeyI', 'Digit4'],
+      parry: ['Backspace', 'ParryUp'], up: ['ParryUp'], strike: ['KeyH'], a1: ['KeyJ', 'Digit1'], a2: ['KeyK', 'Digit2'], a3: ['KeyL', 'Digit3'], a4: ['KeyI', 'Digit4'],
       dashL: ['DashLA', 'DashLB'], dashR: ['DashRA', 'DashRB'] },
-    A: { left: ['KeyA'], right: ['KeyD'], jump: ['KeyW', 'Space'], down: ['KeyS'], parry: ['KeyQ', 'ParryUpA'], up: ['ParryUpA'],
+    A: { left: ['KeyA'], right: ['KeyD'], jump: ['KeyW', 'Space'], down: ['KeyS'], parry: ['KeyQ', 'ParryUpA'], up: ['ParryUpA'], strike: ['KeyR'],
       a1: ['KeyF'], a2: ['KeyG'], a3: ['KeyH'], a4: ['KeyT'], dashL: ['DashLA'], dashR: ['DashRA'] },
-    B: { left: ['ArrowLeft'], right: ['ArrowRight'], jump: ['ArrowUp'], down: ['ArrowDown'], parry: ['ShiftRight', 'Numpad0', 'ParryUpB'], up: ['ParryUpB'],
+    B: { left: ['ArrowLeft'], right: ['ArrowRight'], jump: ['ArrowUp'], down: ['ArrowDown'], parry: ['ShiftRight', 'Numpad0', 'ParryUpB'], up: ['ParryUpB'], strike: ['KeyM', 'Numpad5'],
       a1: ['Comma', 'Numpad1'], a2: ['Period', 'Numpad2'], a3: ['Slash', 'Numpad3'], a4: ['Quote', 'Numpad4'], dashL: ['DashLB'], dashR: ['DashRB'] },
   };
   function playerInput(scheme = 'all', body = controlledBody()) {
     const S = SCHEMES[scheme], k = c => S[c].some(x => keys.has(x)), p = c => S[c].some(x => pressed.has(x));
     return {
-      left: k('left'), right: k('right'), jump: p('jump'), parry: p('parry'), down: k('down'),
+      left: k('left'), right: k('right'), jump: p('jump'), parry: p('parry'), down: k('down'), strike: p('strike'),
       dash: p('dashL') ? -1 : p('dashR') ? 1 : 0,
       up: k('jump') || p('up'),
       a1: p('a1') || (keys.has(S.a1[0]) && body?.kind !== 'gpt'),     // hold it to keep firing blocks or rods
@@ -3171,6 +3225,14 @@ body.two-players .corner { left: 50%; right: auto; transform: translateX(-50%); 
     if (ai.burstT > 0) { inp.a1 = true; inp.face = Math.sign(dx) || f.facing; }
     if (ai.act === 'a2up') { ai.act = 'a2'; inp.up = true; }
     if (ai.act) { inp[ai.act] = true; inp.face = Math.sign(dx) || f.facing; ai.act = null; ai.rest = 0.55 + Math.random() * 0.9; }
+    // up close: a punch now and then, or a crouch into a low kick
+    if (dist < 1.8 && dy < 1 && f.onGround && !(ai.kickT > 0) && !f.strike && Math.random() < dt * 2.5) {
+      if (Math.random() < 0.35) ai.kickT = 0.4; else { inp.strike = true; inp.face = Math.sign(dx) || f.facing; }
+    }
+    if (ai.kickT > 0) {
+      ai.kickT -= dt; inp.down = true;
+      if (f.crouch > 0.6) { inp.strike = true; inp.face = Math.sign(dx) || f.facing; ai.kickT = 0; }
+    }
     return inp;
   }
 
@@ -3237,9 +3299,9 @@ body.two-players .corner { left: 50%; right: auto; transform: translateX(-50%); 
   // the keys each player uses: alone, all of them; with User B in the match, User A has the left of the keyboard
   // and User B the right
   const KEYS_FOR = {
-    all: { a1: 'J', a2: 'K', a3: 'L', a4: 'I', jump: 'W', dash: 'AA DD', crouch: 'S', parry: '\u232B', over: 'W+\u232B' },
-    A: { a1: 'F', a2: 'G', a3: 'H', a4: 'T', jump: 'W', dash: 'AA DD', crouch: 'S', parry: 'Q', over: 'W+Q' },
-    B: { a1: ',', a2: '.', a3: '/', a4: "'", jump: '\u2191', dash: '\u2190\u2190 \u2192\u2192', crouch: '\u2193', parry: 'R\u21E7', over: '\u2191+R\u21E7' },
+    all: { a1: 'J', a2: 'K', a3: 'L', a4: 'I', strike: 'H', jump: 'W', dash: 'AA DD', crouch: 'S', parry: '\u232B', over: 'W+\u232B' },
+    A: { a1: 'F', a2: 'G', a3: 'H', a4: 'T', strike: 'R', jump: 'W', dash: 'AA DD', crouch: 'S', parry: 'Q', over: 'W+Q' },
+    B: { a1: ',', a2: '.', a3: '/', a4: "'", strike: 'M', jump: '\u2191', dash: '\u2190\u2190 \u2192\u2192', crouch: '\u2193', parry: 'R\u21E7', over: '\u2191+R\u21E7' },
   };
   const movesBEl = document.getElementById('movesB');
   let movesForB = null;
@@ -3270,7 +3332,7 @@ body.two-players .corner { left: 50%; right: auto; transform: translateX(-50%); 
       }
       el.appendChild(m);
     }
-    const extra = [[keyFor.jump, body.kit.jumps > 1 ? 'Double jump' : 'Jump'], [keyFor.dash, 'Dash'], [keyFor.crouch, 'Crouch'], [keyFor.parry, 'Parry'], [keyFor.over, 'Overhead parry']];
+    const extra = [[keyFor.strike, 'Punch'], [keyFor.crouch + '+' + keyFor.strike, 'Low kick'], [keyFor.jump, body.kit.jumps > 1 ? 'Double jump' : 'Jump'], [keyFor.dash, 'Dash'], [keyFor.crouch, 'Crouch'], [keyFor.parry, 'Parry'], [keyFor.over, 'Overhead parry']];
     for (const [k, text] of extra) {
       const m = document.createElement('div');
       m.className = 'move static';
@@ -3302,6 +3364,8 @@ body.two-players .corner { left: 50%; right: auto; transform: translateX(-50%); 
       const ab = body.kit.abilities[b.dataset.slot];
       if (ab) b.querySelector('.cool').style.width = (body.cd[b.dataset.slot] / ab.cd * 100) + '%';
     });
+    const st = pad.querySelector('.strike'), word = body.crouch > 0.5 ? 'Kick' : 'Punch';     // crouched, it kicks
+    if (st && st.textContent !== word) st.textContent = word;
   }
   function tickMoves(el, body) {
     if (!body) return;
@@ -3976,7 +4040,7 @@ body.two-players .corner { left: 50%; right: auto; transform: translateX(-50%); 
   const GAME_URL = `${location.origin}/games/botbattle/`;   // where any sign-in step that leaves the page comes back to
   const EMOTES = [['\u{1F44D}', 'Thumbs up'], ['\u{1F602}', 'Laughing'], ['\u{1F62D}', 'Crying'], ['\u{1F621}', 'Angry'], ['\u{1F525}', 'Fire'], ['\u{1F91D}', 'Good game']];
   // controls as bits: held ones, then ones pressed since the last message
-  const IN = { left: 1, right: 2, down: 4, up: 8, fire: 16, jump: 32, parry: 64, dashL: 128, dashR: 256, a1: 512, a2: 1024, a3: 2048, a4: 4096 };
+  const IN = { left: 1, right: 2, down: 4, up: 8, fire: 16, jump: 32, parry: 64, dashL: 128, dashR: 256, a1: 512, a2: 1024, a3: 2048, a4: 4096, strike: 8192 };
   const HELD = 31;
   const esc = s => String(s).replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' })[c]);
   const net = { ws: null, me: null, room: null, lobby: null, match: null, remote: new Map(), frame: 0, error: null, ping: 0, pendingJoin: null, view: null };
@@ -4380,7 +4444,7 @@ body.two-players .corner { left: 50%; right: auto; transform: translateX(-50%); 
       r.inp = {
         left: !!(b & IN.left), right: !!(b & IN.right), down: !!(b & IN.down), up: !!(b & IN.up),
         jump: !!(b & IN.jump), parry: !!(b & IN.parry), dash: b & IN.dashL ? -1 : b & IN.dashR ? 1 : 0,
-        a1: !!(b & (IN.a1 | IN.fire)), a2: !!(b & IN.a2), a3: !!(b & IN.a3), a4: !!(b & IN.a4),
+        a1: !!(b & (IN.a1 | IN.fire)), a2: !!(b & IN.a2), a3: !!(b & IN.a3), a4: !!(b & IN.a4), strike: !!(b & IN.strike),
       };
       r.pend = 0; r.frame = net.frame;
     }
@@ -4389,7 +4453,7 @@ body.two-players .corner { left: 50%; right: auto; transform: translateX(-50%); 
   function encodeInput(p) {
     return (p.left ? IN.left : 0) | (p.right ? IN.right : 0) | (p.down ? IN.down : 0) | (p.up ? IN.up : 0) | (p.a1 ? IN.fire : 0)
       | (p.jump ? IN.jump : 0) | (p.parry ? IN.parry : 0) | (p.dash < 0 ? IN.dashL : 0) | (p.dash > 0 ? IN.dashR : 0)
-      | (p.a1 ? IN.a1 : 0) | (p.a2 ? IN.a2 : 0) | (p.a3 ? IN.a3 : 0) | (p.a4 ? IN.a4 : 0);
+      | (p.a1 ? IN.a1 : 0) | (p.a2 ? IN.a2 : 0) | (p.a3 ? IN.a3 : 0) | (p.a4 ? IN.a4 : 0) | (p.strike ? IN.strike : 0);
   }
   const r2 = v => Math.round(v * 100) / 100;
   const snapOf = f => [r2(f.x), r2(f.y), r2(f.vx), r2(f.vy), f.facing, Math.round(f.hp * 10) / 10, Number.isFinite(f.stocks) ? f.stocks : 0,
@@ -4505,7 +4569,8 @@ body.two-players .corner { left: 50%; right: auto; transform: translateX(-50%); 
   }
   // local testing only (?dev=<name> on localhost): where everyone is, as this browser sees it
   if (DEV_USER) {
-    window.__bb = () => fighters.map(f => ({ id: f.netId, kind: f.kind, x: f.x, y: f.y, z: f.z || 0, face: f.face.rotation.y, hp: f.hp, dead: f.dead, out: !!f.out, stocks: f.stocks, versus: !!versus }));
+    window.__bb = () => fighters.map(f => ({ id: f.netId, kind: f.kind, x: f.x, y: f.y, z: f.z || 0, face: f.face.rotation.y, hp: f.hp, dead: f.dead, out: !!f.out, stocks: f.stocks, versus: !!versus,
+      vx: f.vx, crouch: f.crouch || 0, stumble: f.stumble || 0, facing: f.facing }));
     window.__bbKO = i => { const f = fighters[i]; if (f && !f.dead) { f.hp = 0; die(f); } };   // knocks a fighter out, as this browser
     window.__bbCam = on => { if (on) { camLog = []; return null; } const r = camLog; camLog = null; return r; };   // the camera, frame by frame
     // hands and heads in the versus gestures: steps one fighter's gesture through and reports how deep any part of

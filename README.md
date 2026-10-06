@@ -81,10 +81,12 @@ The server is the same Worker that serves the page: each room is a Durable Objec
 | Key | Action |
 |---|---|
 | `A` `D` or `←` `→` | Move |
-| Hold `S` or `↓` | Crouch: you sink down and make a smaller target, so shots fired level at head height (like Claude's fling) go over you. You can still turn round. |
+| Hold `S` or `↓` | Crouch: you sink down and make a smaller target, so shots fired level at head height (like Claude's fling) go over you. You can still walk, at a little under half speed. |
 | Double-tap `A` or `D` | Dash, slipping past anyone in the way |
 | Walk into someone | Push them (see below) |
 | `W`, `↑` or `Space` | Jump (ChatGPT and Claude can double jump) |
+| `H` | Punch: a quick jab at head height (4 damage). Every fighter has it, and you can keep walking while you throw it. |
+| `S` + `H` (crouched) | Low kick along the floor (5 damage) that knocks the other fighter off balance for a moment |
 | `J` (or `1`) | Shot: Block shot, Computer use, Shoot |
 | `K` (or `2`) | Melee: Block whip, Inhale, Fling |
 | `L` (or `3`) | Power: Unified beam, Computer use (advanced), Combobulating |
@@ -100,12 +102,13 @@ With User B in a Play match, the keyboard is split between the two:
 |---|---|---|
 | Move, jump, crouch | `A` `D`, `W` (or `Space`), `S` | `←` `→`, `↑`, `↓` |
 | Dash | double-tap `A` or `D` | double-tap `←` or `→` |
+| Punch (crouched: low kick) | `R` | `M` (or numpad `5`) |
 | Shot, melee, power, special | `F` `G` `H` `T` | `,` `.` `/` `'` (or numpad `1`–`4`) |
 | Parry (with up: overhead) | `Q` | right `Shift` (or numpad `0`) |
 
 Each user's moves are listed along the bottom with their own keys: User A's on the left, User B's on the right, in smaller chips, with the Menu button between them at the bottom so nothing crowds the plates. Measured at 1024×768, 1280×720, 1440×900 and 1920×1080 with two and four seats, no two of them overlap or come within 6px (before, up to 17 pairs did).
 
-On phones and tablets, the same controls appear as on-screen buttons (with ▼ to crouch and separate Parry and ↑ Parry buttons), held upright or on its side. Each fighter shows as its logo square with a thin health bar under it and an `x3` lives badge on its corner; held upright, the camera uses a wider lens so the whole fight fits across the screen.
+On phones and tablets, the same controls appear as on-screen buttons (with ▼ to crouch, separate Parry and ↑ Parry buttons, and a Punch button that reads Kick while you're crouched), held upright or on its side. Each fighter shows as its logo square with a thin health bar under it and an `x3` lives badge on its corner; held upright, the camera uses a wider lens so the whole fight fits across the screen.
 
 | Upright | On its side |
 |---|---|
@@ -269,6 +272,7 @@ BOTBATTLE_URL=http://localhost:5173/games/botbattle/ ~/projects/ShadowKit/.venv/
 BOTBATTLE_URL=http://localhost:5173/games/botbattle/ ~/projects/ShadowKit/.venv/bin/python tests/play_test.py
 BOTBATTLE_URL=http://localhost:5173/games/botbattle/ ~/projects/ShadowKit/.venv/bin/python tests/split_test.py
 BOTBATTLE_URL=http://localhost:5173/games/botbattle/ ~/projects/ShadowKit/.venv/bin/python tests/camera_test.py
+BOTBATTLE_URL=http://localhost:5173/games/botbattle/ ~/projects/ShadowKit/.venv/bin/python tests/strike_test.py
 ```
 
-`online_test.py` makes a room, refuses a wrong password, joins by password and by invite link, picks, readies, plays (both screens agree on positions and health), emotes, has a player leave, and checks the leaderboard. `split_test.py` plays User A against User B on a phone: the split screen, User B's pad and plates turned round at the top, the pads apart and in their own halves, each pad moving only its own fighter (User B's arrows the other way round), and the Menu clear of the plates. `camera_test.py` records the camera through a duel while User A jumps and counts jitter and snaps. `play_test.py` goes through Play: the seats, a colour, User B, removing and adding seats, both users' keys moving only their own fighter, the result, and the leaderboard's benchmark table. `visual_test.py` measures three things on the real page: ink blobs inside the OpenAI and Claude logos, arms going into heads during the versus gestures, and controls cut off by a phone's rounded corners (55px, with no safe area reported). `invite_test.py` checks that an invite opened while signed out survives signing up and lands you in the room. `ko_test.py` checks that only the host knocks anyone out, that comebacks and the result reach every screen, and that the win is recorded.
+`online_test.py` makes a room, refuses a wrong password, joins by password and by invite link, picks, readies, plays (both screens agree on positions and health), emotes, has a player leave, and checks the leaderboard. `split_test.py` plays User A against User B on a phone: the split screen, User B's pad and plates turned round at the top, the pads apart and in their own halves, each pad moving only its own fighter (User B's arrows the other way round), and the Menu clear of the plates. `strike_test.py` walks while crouched (slower than walking) and lands a punch and a low kick with `H` alone, `R` for User A and `M` for User B. `camera_test.py` records the camera through a duel while User A jumps and counts jitter and snaps. `play_test.py` goes through Play: the seats, a colour, User B, removing and adding seats, both users' keys moving only their own fighter, the result, and the leaderboard's benchmark table. `visual_test.py` measures three things on the real page: ink blobs inside the OpenAI and Claude logos, arms going into heads during the versus gestures, and controls cut off by a phone's rounded corners (55px, with no safe area reported). `invite_test.py` checks that an invite opened while signed out survives signing up and lands you in the room. `ko_test.py` checks that only the host knocks anyone out, that comebacks and the result reach every screen, and that the win is recorded.
