@@ -321,6 +321,13 @@ button[aria-pressed="true"] { background: var(--ink); color: var(--paper); }
 #clerkSignIn h1 { font: 400 20px/1.2 var(--display); }
 #clerkSignIn button { text-transform: none; letter-spacing: 0; box-shadow: none; }
 #clerkSignIn button:hover { transform: none; box-shadow: none; }
+/* the form's card is drawn like a fighter card: an ink border with a hard offset shadow, square, on paper */
+#clerkSignIn .cl-cardBox { border: 2px solid var(--ink); border-radius: 0; box-shadow: 3px 3px 0 var(--ink); background: var(--paper); }
+#clerkSignIn .cl-card { border: 0; border-radius: 0; box-shadow: none; background: var(--paper); }
+#clerkSignIn .cl-footer { background: var(--paper); border-top: 2px solid var(--ink); }
+#clerkSignIn .cl-formFieldInput { border: 2px solid var(--ink); border-radius: 0; box-shadow: none; background: var(--paper); }
+#clerkSignIn .cl-socialButtonsBlockButton { border: 2px solid var(--ink); border-radius: 0; box-shadow: 3px 3px 0 var(--ink); background: var(--paper); }
+#clerkSignIn .cl-formButtonPrimary { border: 2px solid var(--ink); border-radius: 0; box-shadow: 3px 3px 0 var(--ink); background: var(--ink); background-image: none; }
 .online .sub.err { color: var(--hurt); }
 .rooms { display: grid; grid-template-columns: repeat(auto-fit, minmax(260px, 1fr)); gap: 16px; }
 .roomform { display: grid; gap: 10px; align-content: start; border: 2px solid var(--ink); padding: 16px; background: var(--paper); box-shadow: 4px 4px 0 var(--ink); }
