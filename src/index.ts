@@ -19,6 +19,8 @@ const CLERK = "https://merry-filly-2600.clerk.accounts.dev";
 const JWKS = createRemoteJWKSet(new URL(`${CLERK}/.well-known/jwks.json`));
 const ORIGINS = new Set(["https://mpts.ie", "http://localhost:5173", "http://127.0.0.1:5173"]);
 const KINDS = ["so", "gpt", "claude"];
+// each fighter's colours, as on the fighter cards (the first is its own); two players may pick the same fighter
+const VARIANTS: Record<string, string[]> = { so: ["orange", "blue"], gpt: ["green", "white"], claude: ["orange", "black"] };
 const MAX_PLAYERS = 3, CASUAL_PLAYERS = 2;
 const IDLE_MS = 10 * 60 * 1000;          // an empty room is deleted this long after its last player leaves
 const profanity = new RegExpMatcher({ ...englishDataset.build(), ...englishRecommendedTransformers });
@@ -156,7 +158,7 @@ export default {
 } satisfies ExportedHandler<Env>;
 
 type Info = { name: string; key: string; salt: string; hash: string | null; invite: string; created: number; casual?: boolean };
-type Player = { id: string; name: string; kind: string | null; ready: boolean; ws: WebSocket; emoteAt: number };
+type Player = { id: string; name: string; kind: string | null; variant: string | null; ready: boolean; ws: WebSocket; emoteAt: number };
 
 export class Room extends DurableObject<Env> {
 	info: Info | null = null;
@@ -229,7 +231,7 @@ export class Room extends DurableObject<Env> {
 		const most = info.casual ? CASUAL_PLAYERS : MAX_PLAYERS;
 		if (this.players.length >= most) return fail(info.casual ? "Someone else got that match first. Try again." : "That room is full (three players).");
 		if (this.match && !this.match.players.includes(id)) return fail("A match is on in that room. Try again when it ends.");
-		const me: Player = { id, name: displayName(msg.name), kind: again?.kind ?? null, ready: false, ws, emoteAt: 0 };
+		const me: Player = { id, name: displayName(msg.name), kind: again?.kind ?? null, variant: again?.variant ?? null, ready: false, ws, emoteAt: 0 };
 		this.players.push(me);
 		if (!this.host) this.host = id;
 		await this.ctx.storage.deleteAlarm();
@@ -242,8 +244,10 @@ export class Room extends DurableObject<Env> {
 		const isHost = me.id === this.host;
 		switch (msg.t) {
 			case "pick":
-				if (this.match || !KINDS.includes(msg.kind) || this.players.some(p => p !== me && p.kind === msg.kind)) return;
-				me.kind = msg.kind; me.ready = false; this.lobby(); return;
+				if (this.match || !KINDS.includes(msg.kind)) return;
+				me.kind = msg.kind;
+				me.variant = VARIANTS[msg.kind].includes(msg.variant) ? msg.variant : VARIANTS[msg.kind][0];
+				me.ready = false; this.lobby(); return;
 			case "ready":
 				if (this.match || !me.kind) return;
 				me.ready = !!msg.on;
@@ -279,7 +283,7 @@ export class Room extends DurableObject<Env> {
 	begin() {
 		this.match = { id: randomToken(9), players: this.players.map(p => p.id), names: new Map(this.players.map(p => [p.id, p.name])) };
 		this.send(null, { t: "start", mid: this.match.id, lives: this.lives, host: this.host,
-			players: this.players.map(p => ({ id: p.id, name: p.name, kind: p.kind })) });
+			players: this.players.map(p => ({ id: p.id, name: p.name, kind: p.kind, variant: p.variant })) });
 		this.lobby();
 	}
 
@@ -323,7 +327,7 @@ export class Room extends DurableObject<Env> {
 
 	lobby() {
 		this.send(null, { t: "lobby", host: this.host, lives: this.lives, playing: !!this.match,
-			players: this.players.map(p => ({ id: p.id, name: p.name, kind: p.kind, ready: p.ready })) });
+			players: this.players.map(p => ({ id: p.id, name: p.name, kind: p.kind, variant: p.variant, ready: p.ready })) });
 	}
 	send(except: Player | null, msg: unknown) {
 		const data = typeof msg === "string" ? msg : JSON.stringify(msg);

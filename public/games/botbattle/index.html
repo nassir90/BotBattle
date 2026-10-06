@@ -252,8 +252,6 @@ body.two-players .corner { left: 50%; right: auto; transform: translateX(-50%); 
 /* touch pad */
 .touch { display: none; }
 @media (pointer: coarse) {
-  .vs-skip .keys { display: none; }
-  .vs-skip .tap { display: inline; }
   body { touch-action: manipulation; }
   .moves, .keys { display: none; }
   .hud { top: calc(env(safe-area-inset-top, 0px) + 10px); left: 12px; right: 12px; gap: 18px; grid-template-columns: repeat(var(--n, 3), 52px); }
@@ -347,7 +345,6 @@ body.two-players .corner { left: 50%; right: auto; transform: translateX(-50%); 
 }
 @keyframes vsStamp { from { transform: translate(-50%, -50%) rotate(-8deg) scale(2.4); opacity: 0; } }
 #vsCanvas { position: absolute; inset: 0; width: 100%; height: 100%; z-index: 2; pointer-events: none; }
-.vs-skip { position: absolute; bottom: 12px; left: 0; right: 0; z-index: 3; margin: 0; text-align: center; font: 500 11px/1 var(--mono); color: var(--ink-soft); }
 /* play: a row of seats (a fighter and who plays it), as many as four */
 .play.panel { width: min(1000px, 100%); }
 .seats { position: relative; display: flex; gap: 18px; align-items: center; flex-wrap: wrap; padding-top: 14px; }
@@ -394,8 +391,7 @@ body.two-players .corner { left: 50%; right: auto; transform: translateX(-50%); 
 .roomform input { font: 500 15px var(--mono); color: var(--ink); background: var(--paper); border: 2px solid var(--ink); padding: 8px 10px; min-width: 0; }
 .roomform input:focus { outline: 3px solid color-mix(in srgb, var(--gpt) 50%, transparent); outline-offset: 1px; }
 .roomform button { justify-self: start; }
-.roomform.casual { grid-column: 1 / -1; grid-template-columns: minmax(0, 1fr) auto; align-items: center; }
-.roomform.casual p { margin: 4px 0 0; font-size: 13px; color: var(--ink-soft); }
+.roomform.casual p { margin: 0; font-size: 13px; color: var(--ink-soft); }
 .lobby.casual .invite { display: none; }
 .lobby { display: grid; grid-template-columns: minmax(0, 1fr) auto; gap: 20px; align-items: start; }
 .lobby-main { display: grid; gap: 14px; min-width: 0; }
@@ -434,7 +430,6 @@ body.two-players .corner { left: 50%; right: auto; transform: translateX(-50%); 
   font: 400 clamp(48px, 11vw, 140px)/1 var(--display); color: var(--ink); animation: fightCall 1s ease-out both;
 }
 @keyframes fightCall { 0% { transform: scale(1.8); opacity: 0; } 15% { transform: scale(1); opacity: 1; } 70% { opacity: 1; } 100% { transform: scale(1.06); opacity: 0; } }
-.vs-skip .tap { display: none; }
 @media (prefers-reduced-motion: reduce) { .vs-panel, .vs-mark, .fight-call { animation-duration: .01s; } }
 </style>
 </head>
@@ -540,10 +535,6 @@ body.two-players .corner { left: 50%; right: auto; transform: translateX(-50%); 
     <p class="sub" id="onlineMsg" role="status"></p>
     <div id="signedOut" hidden><div id="clerkSignIn"></div></div>
     <div class="rooms" id="rooms" hidden>
-      <div class="roomform casual">
-        <div><h2>Casual match</h2><p>Play one match against whoever's looking for one too.</p></div>
-        <button type="button" id="casualBtn">Find a match</button>
-      </div>
       <form class="roomform" id="createForm" autocomplete="off">
         <h2>Make a room</h2>
         <label>Room name<input id="createName" maxlength="16" required placeholder="Paper Arena"></label>
@@ -556,12 +547,18 @@ body.two-players .corner { left: 50%; right: auto; transform: translateX(-50%); 
         <label>Password (if it has one)<input id="joinPass" type="password" maxlength="64" autocomplete="off"></label>
         <button type="submit">Join</button>
       </form>
+      <div class="roomform casual">
+        <h2>Casual match</h2>
+        <p>Get matched with whoever else is looking for a match.</p>
+        <button type="button" id="casualBtn">Find a match</button>
+      </div>
     </div>
     <div class="lobby" id="lobby" hidden>
       <div class="lobby-main">
         <ul class="roster" id="roster"></ul>
         <h2>Your fighter</h2>
         <div class="picks" id="picks"></div>
+        <div class="variants" id="lobbyVariants" role="group" aria-label="Colour"></div>
         <div class="lobby-actions">
           <button type="button" id="readyBtn">Ready</button>
           <button type="button" id="startBtn" hidden>Start match</button>
@@ -610,7 +607,6 @@ body.two-players .corner { left: 50%; right: auto; transform: translateX(-50%); 
 
 <div class="versus" id="versus" hidden>
   <canvas id="vsCanvas"></canvas>
-  <p class="vs-skip"><span class="keys">Enter to skip</span><span class="tap">Tap to skip</span></p>
 </div>
 <div class="fight-call" id="fightCall" hidden>Fight!</div>
 
@@ -1364,6 +1360,7 @@ body.two-players .corner { left: 50%; right: auto; transform: translateX(-50%); 
       const hub = shadowed(new THREE.Mesh(new THREE.CylinderGeometry(0.045, 0.045, 0.06, 12), springMat));
       hub.position.y = 0.03;
       top.add(hub);
+      f.hub = hub;
       f.rotor = new THREE.Group();
       f.rotor.position.y = 0.08;
       const logo = new THREE.Group();
@@ -1771,7 +1768,7 @@ body.two-players .corner { left: 50%; right: auto; transform: translateX(-50%); 
     const ab = f.kit.abilities[slot];
     if (!ab || f.cd[slot] > 0 || f.busy > 0 || f.guard || f.ledge || f.tether || f.stumble > 0) return false;
     const ok = ABILITY[f.kind][slot](f);
-    if (ok !== false) { f.cd[slot] = ab.cd; f.stats.moves++; }
+    if (ok !== false) { f.cd[slot] = ab.cd; f.stats.moves++; holdAim(f); }
     return ok !== false;
   }
 
@@ -1880,7 +1877,7 @@ body.two-players .corner { left: 50%; right: auto; transform: translateX(-50%); 
         const sizes = f.comboShape === 'line' ? [0.78, 1, 0.78] : [0, 1, 2, 3].map(i => (diag.includes(i) ? 0.78 : 1));
         const start = f.vis.localToWorld(V(0.6, 1.9, 0.2));
         const dots = layout.map(([dx, dy], i) => {
-          const m = makeDot();
+          const m = makeDot(f.logoMat);
           m.scale.setScalar(0.01);
           addT(m);
           return { mesh: m, local: V(1.08 + dx * 0.26, 2.05 + dy * 0.26, 0.18), size: sizes[i], fired: false,
@@ -2191,7 +2188,7 @@ body.two-players .corner { left: 50%; right: auto; transform: translateX(-50%); 
             team: f.team, owner: f, dmg: 5 * d.size, kb: 2, radius: 0.18 * d.size, life: 1.4, color: f.kit.color,
           });
           if (eater) { pr.suckedBy = eater; pr.vel.set(0, 0, 0); }   // pulled out of formation
-          else burst(from, '#d97757');
+          else burst(from, f.kit.color);
         }
       });
       if (c.t > PUNCH_START + (c.dots.length - 1) * PUNCH_GAP + PUNCH_DUR + 0.1 || f.dead) {
@@ -2564,6 +2561,7 @@ body.two-players .corner { left: 50%; right: auto; transform: translateX(-50%); 
     f.strain = Math.max(0, (f.strain || 0) - dt);
     f.shoveT = Math.max(0, (f.shoveT || 0) - dt);
     f.kbT = Math.max(0, (f.kbT || 0) - dt);
+    f.bashT = Math.max(0, (f.bashT || 0) - dt);
     f.jolt = Math.max(0, (f.jolt || 0) - dt);
     if (f.pushT <= 0) { f.lean = 0; f.pushing = 0; }
     if (f.stun > 0) { f.stun -= dt; inp = NO_INPUT; }
@@ -2592,31 +2590,29 @@ body.two-players .corner { left: 50%; right: auto; transform: translateX(-50%); 
     else {
       let move = (inp.right ? 1 : 0) - (inp.left ? 1 : 0);
       // holding down on the ground crouches: the body sinks, and it can still walk, slowly
-      const crouching = !!inp.down && f.onGround && !rooted && !(f.stumble > 0);
+      const crouching = !!inp.down && f.onGround && !(f.busy > 0) && !(f.stumble > 0);      // a shield can crouch too
       f.crouch = THREE.MathUtils.clamp((f.crouch || 0) + (crouching ? dt : -dt) * 9, 0, 1);
       if (rooted || f.stumble > 0) move = 0;
       f.intent = move;
       // double-tap a direction: a quick dash that slips past anyone in the way
       f.passT = Math.max(0, f.passT - dt);
       f.dashSettle = Math.max(0, (f.dashSettle || 0) - dt);
-      if (inp.dash && !rooted && f.passT <= 0) {
-        f.passT = PASS_TIME; f.passDir = inp.dash; f.facing = inp.dash; f.brushed = new Set(); f.backT = 0; f.airBack = false;
+      // a dash started just as the shield comes up (or the shield raised during a dash) is a shield bash
+      const freshGuard = f.guard && f.guard.dir === 'side' && !f.guard.held && f.guard.t < 0.15 && !(f.busy > 0);
+      if (inp.dash && (!rooted || freshGuard) && f.passT <= 0) {
+        if (f.guard) { f.guard.bash = true; f.guard.side = inp.dash; }
+        f.passT = PASS_TIME; f.passDir = inp.dash; f.facing = inp.dash; f.brushed = new Set(); f.aimHold = 0; f.airBack = false;
         if (f.onGround) ring(V(f.x, 0.03, 0), '#141414', 0.35, true);
       }
-      // setting off (from standing, from the other way, or after letting go): a short burst that eases to walking
-      // pace. Turning round from a walk, you first walk backwards for a moment, still facing the way you were
-      // going: shots and parries still go that way, and a jump in that moment keeps facing it until you land.
+      // setting off (from standing, from the other way, or after letting go): a short burst that eases to walking pace
       let kick = false;
-      if (move && move !== f.lastMove && f.passT <= 0 && f.onGround) {
-        f.burstT = BURST_TIME; kick = true;
-        const wasGoing = f.lastMove === f.facing || (f.lastDir === f.facing && f.sinceDir < 0.15);
-        if (move === -f.facing && wasGoing) f.backT = BACK_TIME;
-      }
-      if (move === f.facing) { f.backT = 0; f.airBack = false; }
-      if (f.onGround) { f.backT = Math.max(0, (f.backT || 0) - dt); f.airBack = false; }
-      else if (f.backT > 0) f.airBack = true;
+      if (move && move !== f.lastMove && f.passT <= 0 && f.onGround) { f.burstT = BURST_TIME; kick = true; }
+      // direction inertia: having just attacked one way, walking the other way is walking backwards, still facing
+      // that way (shots, punches and parries still go there); a jump taken then faces that way until it lands
+      f.aimHold = Math.max(0, (f.aimHold || 0) - dt);
+      if (f.onGround) f.airBack = false;
+      else if (f.aimHold > 0 && f.lastMove === -f.facing) f.airBack = true;
       f.burstT = Math.max(0, (f.burstT || 0) - dt);
-      if (move) { f.lastDir = move; f.sinceDir = 0; } else f.sinceDir = (f.sinceDir || 0) + dt;
       f.lastMove = move;
       const back = backing(f) && move === -f.facing;
       const speed = 5.5 * (0.7 + 0.3 * f.compact) * (1 - CROUCH_SLOW * f.crouch) * (back ? BACK_SPEED : 1) * (1 + BURST_K * f.burstT / BURST_TIME);
@@ -2629,7 +2625,7 @@ body.two-players .corner { left: 50%; right: auto; transform: translateX(-50%); 
       } else if (kick) f.vx = move * speed;               // the burst starts at full speed
       else if (!(f.guard && !f.onGround)) {          // a guard in the air keeps its momentum
         // a stumble slides to a stop; just out of a dash, the body settles more gently
-        const rate = f.stumble > 0 ? 7 : !f.onGround ? 12 : f.dashSettle > 0 ? 24 : f.burstT > 0 ? 90 : 60;
+        const rate = f.stumble > 0 ? 7 : !f.onGround ? 12 : f.kbT > 0 ? 30 : f.dashSettle > 0 ? 24 : Infinity;
         f.vx += THREE.MathUtils.clamp(move * speed - f.vx, -rate * dt, rate * dt);
       }
       if (move && f.passT <= 0 && !f.pushing && !backing(f)) f.facing = move;
@@ -2661,6 +2657,7 @@ body.two-players .corner { left: 50%; right: auto; transform: translateX(-50%); 
       }
     }
     if (f.y < RING_OUT_Y) { ringOut(f); return; }
+    if (f.guard && f.guard.bash && f.passT > 0) shieldBash(f);
 
     f.aimUp = !!inp.up;                       // holding up turns the whip upward
     if (inp.strike) tryStrike(f, inp.face);
@@ -2726,6 +2723,24 @@ body.two-players .corner { left: 50%; right: auto; transform: translateX(-50%); 
     }
     f.mats.outline.color.set(glow ? f.possessedBy.kit.color : '#141414');
   }
+  // ================= Shield bash =================
+  // Dash with the shield up (double-tap and parry, in either order): the shield leads, and whoever it meets is
+  // knocked flying. The dash stops there.
+  const BASH = { dmg: 9, kbx: 10, kby: 6 };
+  function shieldBash(f) {
+    const x0 = f.x, x1 = f.x + f.facing * 1.35;
+    for (const h of enemiesOf(f)) {
+      if (!overlapsBox(h, x0, x1, f.y + 0.8, f.y + 2.8)) continue;
+      const out = hurt(h, BASH.dmg, f.facing * BASH.kbx, BASH.kby, f, { dir: { x: f.facing, y: 0 } });
+      burst(V(h.x - f.facing * BOX_W, f.y + 1.9, 0), out === 'parry' ? '#ffffff' : f.kit.color);
+      if (out === 'hit') { floatText(f.x, f.y + BOX_H + 0.5, 'Bash!', 'info'); hitstop = Math.max(hitstop, 0.06); h.bashBy = f; h.bashT = 0.3; }
+      f.passT = 0; f.vx = -f.facing * 2;          // it stops dead, bouncing back a little
+      f.guard.bash = false;
+      cue('bash', f.kind);
+      return;
+    }
+  }
+
   // ================= Punch and low kick =================
   // Every fighter has one: a quick jab at head height, or, crouched, a low kick along the floor that knocks the
   // other fighter off balance. Neither stops you walking. reach, y0 and y1 are where it hits, from the body's middle.
@@ -2740,7 +2755,7 @@ body.two-players .corner { left: 50%; right: auto; transform: translateX(-50%); 
     if (face) f.facing = face;
     f.strike = { t: 0, low: f.onGround && f.crouch > 0.5, hit: new Set() };
     f.strikeCd = strikeOf(f).cd;
-    f.stats.moves++;
+    f.stats.moves++; holdAim(f);
     cue(f.strike.low ? 'kick' : 'punch', f.kind);
   }
   // how far out the fist or foot is: out fast, held while it can hit, then back
@@ -2775,8 +2790,10 @@ body.two-players .corner { left: 50%; right: auto; transform: translateX(-50%); 
   const PASS_TIME = 0.32, PASS_SPEED = 9, REEL_TIME = 0.32;
   const PASS_EASE = 0.45, DASH_SETTLE = 0.3;       // the dash slows over its last 45%, then the body settles
   const BURST_TIME = 0.16, BURST_K = 0.6;          // setting off: up to 60% faster, easing to walking pace
-  const BACK_TIME = 0.3, BACK_SPEED = 0.8;         // turning round: walking backwards first, a little slower
-  const backing = f => (f.backT || 0) > 0 || !!f.airBack;
+  const BACK_SPEED = 0.8;                          // walking backwards is a little slower
+  const AIM_GAIN = 0.35, AIM_MAX = 1.2;            // direction inertia: seconds added by each attack, and the most
+  const backing = f => ((f.aimHold || 0) > 0 && f.lastMove === -f.facing) || !!f.airBack;
+  const holdAim = f => { f.aimHold = Math.min(AIM_MAX, (f.aimHold || 0) + AIM_GAIN); };
   // it catches the lip once its hands come level with it, from anywhere within reach of that end
   function canGrab(f) {
     if (f.ledge || f.ledgeCd > 0 || f.vy > 0 || f.guard || f.y > LEDGE_Y + 0.5 || f.y < LEDGE_Y - 0.9) return false;
@@ -2875,7 +2892,8 @@ body.two-players .corner { left: 50%; right: auto; transform: translateX(-50%); 
     if (dir === 'up' && f.jumpT < 0.1 && f.vy > 0 && f.y < 1.2) {
       f.y = 0; f.vy = 0; f.onGround = true; f.jumpsLeft = f.kit.jumps;
     }
-    f.guard = { t: 0, dir, side };
+    f.guard = { t: 0, dir, side, bash: f.passT > 0 && dir === 'side' };
+    if (f.guard.bash) f.guard.side = f.facing = f.passDir;
     if (f.shot && f.spring.override === f.shot.bend) f.spring.override = null;
     f.shot = null;
     if (f.launch && f.launch.length) { f.bars += f.launch.length; f.launch = []; }   // blocks on their way up go back
@@ -2893,6 +2911,7 @@ body.two-players .corner { left: 50%; right: auto; transform: translateX(-50%); 
   const _hp = V(), _hq = new THREE.Quaternion(), _hs = V(), _bp = V(), _bq = new THREE.Quaternion();
   function poseGuard(f) {
     const w = guardWeight(f), g = f.guard;
+    if (f.hub) f.hub.visible = w < 0.2;          // the cap the logo sits on would float alone over the head
     const pose = g ? GUARD_POSES[f.kind][g.dir] : null;
     if (f.crown) {
       // the tray is a child of the body: blend straight between its seat on the head and the guard
@@ -3503,7 +3522,8 @@ body.two-players .corner { left: 50%; right: auto; transform: translateX(-50%); 
     }
     else if (m.kind === 'online') {      // the room's players, in the order the room lists them
       const xs = m.players.length === 2 ? [-4, 4] : [-6, 0.5, 6];
-      placement = m.players.map((p, i) => [p.kind, xs[i], p.id === net.me, p]);
+      const list = resolveSeats(m.players.map(p => ({ kind: p.kind, variant: p.variant })));
+      placement = m.players.map((p, i) => [list[i].kind, xs[i], p.id === net.me, p, { variant: list[i].variant }]);
     }
     else placement = [['so', -6], ['gpt', 0], ['claude', 6]];
     if (m.kind !== 'training') m.lives = m.lives || 3;
@@ -3986,7 +4006,7 @@ body.two-players .corner { left: 50%; right: auto; transform: translateX(-50%); 
       el.style.setProperty('--i', i);
       el.innerHTML = `<div class="vs-tag">${esc(tagOf(mf))}</div><div class="vs-floor"></div>
         <div class="vs-caption"><h2 class="vs-name">${mf.kit.name}</h2><p class="vs-line">“${VS_LINES[mf.kind]}”</p></div>`;
-      versusEl.insertBefore(el, versusEl.querySelector('.vs-skip'));
+      versusEl.appendChild(el);
       return { w, f, el, line: el.querySelector('.vs-line'), started: false };
     });
     for (let k = 1; k < n; k++) {
@@ -3995,7 +4015,6 @@ body.two-players .corner { left: 50%; right: auto; transform: translateX(-50%); 
       versusEl.appendChild(mark);
     }
     versus = { t: 0, panels, skipped: false };
-    versusEl.querySelector('.vs-skip').hidden = mode.kind === 'online';
     versusEl.classList.remove('leaving');
     versusEl.hidden = false;
     fightCallEl.hidden = true;
@@ -4329,7 +4348,7 @@ body.two-players .corner { left: 50%; right: auto; transform: translateX(-50%); 
     const b = document.createElement('button');
     b.type = 'button'; b.dataset.kind = kind; b.style.setProperty('--c', KITS[kind].color);
     b.innerHTML = `<span class="pick-logo" data-logo="${kind}" aria-hidden="true"></span>${KITS[kind].name}`;
-    b.addEventListener('click', () => sendNet({ t: 'pick', kind }));
+    b.addEventListener('click', () => sendNet({ t: 'pick', kind, variant: carVariant[kind] }));
     picksEl.appendChild(b);
   });
   const emoteButtons = el => EMOTES.forEach(([e, label], i) => {
@@ -4337,6 +4356,12 @@ body.two-players .corner { left: 50%; right: auto; transform: translateX(-50%); 
     b.type = 'button'; b.textContent = e; b.title = label; b.setAttribute('aria-label', label);
     b.addEventListener('click', () => { sendNet({ t: 'emote', e: i }); if (el.id === 'emoteList') toggleTray(false); });
     el.appendChild(b);
+  });
+  document.getElementById('lobbyVariants').addEventListener('click', e => {
+    const b = e.target.closest('button[data-v]'), me = net.lobby && net.lobby.players.find(p => p.id === net.me);
+    if (!b || !me || !me.kind) return;
+    carVariant[me.kind] = b.dataset.v;                // remembered for the fighter cards too
+    sendNet({ t: 'pick', kind: me.kind, variant: b.dataset.v });
   });
   emoteButtons(document.getElementById('lobbyEmotes'));
   emoteButtons(document.getElementById('emoteList'));
@@ -4382,15 +4407,25 @@ body.two-players .corner { left: 50%; right: auto; transform: translateX(-50%); 
     document.getElementById('roster').innerHTML = L.players.map(p => {
       const kit = p.kind ? KITS[p.kind] : null;
       const tags = [kit ? kit.name : 'picking a fighter', p.id === net.me ? 'you' : '', p.id === L.host ? 'host' : ''].filter(Boolean).join(' · ');
-      return `<li data-id="${esc(p.id)}"><span class="sw"${p.kind ? ` data-logo="${p.kind}"` : ''} aria-hidden="true"></span>
+      return `<li data-id="${esc(p.id)}"><span class="sw"${p.kind ? ` data-logo="${p.kind}" data-variant="${esc(p.variant || '')}"` : ''} aria-hidden="true"></span>
         <span class="nm">${esc(p.name)}<small>${tags}</small></span>
         <span class="st${p.ready ? ' ok' : ''}">${L.playing ? 'playing' : p.ready ? 'ready' : 'not ready'}</span></li>`;
     }).join('');
     picksEl.querySelectorAll('button').forEach(b => {
-      const owner = L.players.find(p => p.kind === b.dataset.kind);
-      b.disabled = L.playing || (!!owner && owner.id !== net.me);
+      b.disabled = L.playing;
       b.setAttribute('aria-pressed', String(!!me && me.kind === b.dataset.kind));
+      const mine = me && me.kind === b.dataset.kind ? me.variant : carVariant[b.dataset.kind];
+      b.querySelector('.pick-logo').dataset.variant = mine || '';
+      b.style.setProperty('--c', kitFor(b.dataset.kind, mine).color);
     });
+    // your fighter's colours (the same swatches as on the fighter cards)
+    const vEl = document.getElementById('lobbyVariants');
+    const vKey = me && me.kind ? me.kind + ':' + me.variant + ':' + L.playing : '';
+    if (vEl.dataset.key !== vKey) {
+      vEl.dataset.key = vKey;
+      vEl.innerHTML = me && me.kind ? VARIANTS[me.kind].map(v => `<button type="button" data-v="${v.id}" style="--sw:${v.logo}" title="${v.name}"
+        aria-label="${v.name}" aria-pressed="${me.variant === v.id}"${L.playing ? ' disabled' : ''}></button>`).join('') : '';
+    }
     const ready = document.getElementById('readyBtn');
     ready.disabled = L.playing || !me || !me.kind;
     ready.textContent = me && me.ready ? 'Not ready' : 'Ready';
@@ -4404,7 +4439,7 @@ body.two-players .corner { left: 50%; right: auto; transform: translateX(-50%); 
       net.room.casual && L.players.length < 2 ? 'Looking for another player… You’ll be matched with the next person who asks for a casual match.' :
       net.room.casual ? 'Matched! Pick a fighter and press Ready. The match starts when you’re both ready.' :
       L.players.length < 2 ? 'Waiting for someone to join. Share the QR code or the link.' :
-      !allReady ? 'Pick a fighter and press Ready. Everyone needs a different fighter.' :
+      !allReady ? 'Pick a fighter and its colour, and press Ready.' :
       host ? 'Everyone’s ready. Keep this tab open while you host the match.' : 'Everyone’s ready. Waiting for the host to start.';
   }
 
@@ -4640,7 +4675,7 @@ body.two-players .corner { left: 50%; right: auto; transform: translateX(-50%); 
   // local testing only (?dev=<name> on localhost): where everyone is, as this browser sees it
   if (DEV_USER) {
     window.__bb = () => fighters.map(f => ({ id: f.netId, kind: f.kind, x: f.x, y: f.y, z: f.z || 0, face: f.face.rotation.y, hp: f.hp, dead: f.dead, out: !!f.out, stocks: f.stocks, versus: !!versus,
-      vx: f.vx, crouch: f.crouch || 0, stumble: f.stumble || 0, facing: f.facing }));
+      vx: f.vx, crouch: f.crouch || 0, stumble: f.stumble || 0, facing: f.facing, variant: f.kit.variant }));
     window.__bbKO = i => { const f = fighters[i]; if (f && !f.dead) { f.hp = 0; die(f); } };   // knocks a fighter out, as this browser
     // one fighter, frame by frame: speed, facing, walking backwards, the guard, the lean
     window.__bbTrack = (i, on) => { if (on) { trackLog = { i, rows: [] }; return null; } const r = trackLog && trackLog.rows; trackLog = null; return r; };
@@ -5001,6 +5036,7 @@ body.two-players .corner { left: 50%; right: auto; transform: translateX(-50%); 
       if (a.ledge || b.ledge || a.tether || b.tether) continue;
       if (Math.abs(a.y - b.y) > BOX_H * 0.7) continue;
       if (a.passT > 0 || b.passT > 0) { brushPast(a, b); continue; }
+      if ((a.bashT > 0 && a.bashBy === b) || (b.bashT > 0 && b.bashBy === a)) continue;   // just bashed: it flies clear
       const dx = b.x - a.x, d = Math.abs(dx);
       const key = Math.min(a.id, b.id) + ':' + Math.max(a.id, b.id);
       const gap = pairGaps.get(key) || restGap(a, b);
@@ -5261,7 +5297,7 @@ body.two-players .corner { left: 50%; right: auto; transform: translateX(-50%); 
     if (trackLog && fighters[trackLog.i]) {
       const f = fighters[trackLog.i];
       trackLog.rows.push({ dt, x: f.x, y: f.y, vx: f.vx, facing: f.facing, back: backing(f), ground: f.onGround, dash: f.passT > 0,
-        guard: f.guard ? { t: f.guard.t, held: !!f.guard.held } : null, lean: f.vis.rotation.z });
+        guard: f.guard ? { t: f.guard.t, held: !!f.guard.held, bash: !!f.guard.bash } : null, lean: f.vis.rotation.z, crouch: f.crouch || 0 });
     }
     renderScene();
     renderHudLogos(dt);

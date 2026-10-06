@@ -60,11 +60,15 @@ async def main():
         check("an invite link joins a password room without the password", await carol.evaluate("location.hash") == "")
         await carol.close()
 
-        # picks: one fighter each
+        # picks: the same fighter for both, alice in blue
         await alice.click('#picks button[data-kind="so"]')
-        await bob.wait_for_function("document.querySelector('#picks button[data-kind=so]').disabled", timeout=5000)
-        check("a fighter someone picked is greyed out for the others", True)
-        await bob.click('#picks button[data-kind="gpt"]')
+        await alice.wait_for_selector('#lobbyVariants button[data-v="blue"]', timeout=8000)
+        await alice.click('#lobbyVariants button[data-v="blue"]')
+        await bob.wait_for_function("document.querySelector('#roster li .sw[data-variant=blue]')", timeout=8000)
+        check("a colour can be picked in the lobby, and the others see it", True)
+        check("a fighter someone picked can still be picked by others", not await bob.locator('#picks button[data-kind="so"]').is_disabled())
+        await bob.click('#picks button[data-kind="so"]')
+        await alice.wait_for_function("document.querySelectorAll('#roster li .sw[data-logo=so]').length === 2", timeout=8000)
         await alice.click("#readyBtn"); await bob.click("#readyBtn")
         await alice.wait_for_function("!document.getElementById('startBtn').disabled", timeout=5000)
         check("start unlocks for the host when everyone is ready", await bob.locator("#startBtn").is_hidden())
@@ -81,6 +85,9 @@ async def main():
         await alice.wait_for_function("!window.__bb()[0].versus", timeout=30000)
         await bob.wait_for_function("!window.__bb()[0].versus", timeout=30000)
         before = await bob.evaluate("window.__bb()")
+        vs = [(f["kind"], f["variant"]) for f in before]
+        check("both play Stack Overflow, alice in blue and bob in orange, on both screens",
+              vs == [("so", "blue"), ("so", "orange")] and [(f["kind"], f["variant"]) for f in await alice.evaluate("window.__bb()")] == vs, vs)
         # bob walks right, alice walks left, then both attack
         await bob.keyboard.down("KeyD"); await alice.keyboard.down("KeyA")
         await asyncio.sleep(1.5)
@@ -92,6 +99,9 @@ async def main():
         check("bob moved right, as both screens show", b[1]["x"] > before[1]["x"] + 0.5 and a[1]["x"] > before[1]["x"] + 0.5)
         check("alice moved left, as both screens show", a[0]["x"] < before[0]["x"] - 0.5 and b[0]["x"] < before[0]["x"] - 0.5)
         check("both screens agree on positions (within 0.6)", all(abs(p["x"] - q["x"]) < 0.6 for p, q in zip(a, b)))
+        # walk back toward each other, ending face to face and in range (Stack Overflow's blocks fly straight ahead)
+        await alice.keyboard.down("KeyD"); await bob.keyboard.down("KeyA"); await asyncio.sleep(1.5)
+        await alice.keyboard.up("KeyD"); await bob.keyboard.up("KeyA"); await asyncio.sleep(0.6)
         for _ in range(6):
             await bob.keyboard.press("KeyJ"); await alice.keyboard.press("KeyJ"); await asyncio.sleep(0.9)
         await asyncio.sleep(1.5)

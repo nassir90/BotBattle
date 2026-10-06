@@ -21,7 +21,7 @@ async def main():
         await host.wait_for_selector("#lobby:not([hidden])", timeout=8000)
         await guest.fill("#joinName", "ko room"); await guest.click("#joinForm button[type=submit]")
         await guest.wait_for_selector("#lobby:not([hidden])", timeout=8000)
-        await host.click('#picks button[data-kind="claude"]'); await guest.wait_for_function("document.querySelector('#picks button[data-kind=claude]').disabled")
+        await host.click('#picks button[data-kind="claude"]'); await guest.wait_for_function("document.querySelector('#roster li .sw[data-logo=claude]')")
         await guest.click('#picks button[data-kind="so"]')
         await host.click("#readyBtn"); await guest.click("#readyBtn")
         await host.click('#lobbyLives button[data-lives="2"]')
