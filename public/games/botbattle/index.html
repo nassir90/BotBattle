@@ -3742,6 +3742,7 @@ button[aria-pressed="true"] { background: var(--ink); color: var(--paper); }
   const CLERK_HOST = 'merry-filly-2600.clerk.accounts.dev';
   const CLERK_KEY = 'pk_test_bWVycnktZmlsbHktMjYwMC5jbGVyay5hY2NvdW50cy5kZXYk';
   const DEV_USER = LOCAL ? new URLSearchParams(location.search).get('dev') : null;   // local testing without Clerk
+  const GAME_URL = `${location.origin}/games/botbattle/`;   // where any sign-in step that leaves the page comes back to
   const EMOTES = [['\u{1F44D}', 'Thumbs up'], ['\u{1F602}', 'Laughing'], ['\u{1F62D}', 'Crying'], ['\u{1F621}', 'Angry'], ['\u{1F525}', 'Fire'], ['\u{1F91D}', 'Good game']];
   // controls as bits: held ones, then ones pressed since the last message
   const IN = { left: 1, right: 2, down: 4, up: 8, fire: 16, jump: 32, parry: 64, dashL: 128, dashR: 256, a1: 512, a2: 1024, a3: 2048, a4: 4096 };
@@ -3768,7 +3769,11 @@ button[aria-pressed="true"] { background: var(--ink); color: var(--paper); }
     if (!clerkLoading) {
       clerkLoading = addScript(`https://${CLERK_HOST}/npm/@clerk/ui@1/dist/ui.browser.js`)
         .then(() => addScript(`https://${CLERK_HOST}/npm/@clerk/clerk-js@6/dist/clerk.browser.js`, { 'data-clerk-publishable-key': CLERK_KEY }))
-        .then(() => window.Clerk.load({ ui: { ClerkUI: window.__internal_ClerkUICtor } }))
+        .then(() => window.Clerk.load({
+          ui: { ClerkUI: window.__internal_ClerkUICtor },
+          signInForceRedirectUrl: GAME_URL, signUpForceRedirectUrl: GAME_URL,
+          signInFallbackRedirectUrl: GAME_URL, signUpFallbackRedirectUrl: GAME_URL,
+        }))
         .then(() => {
           window.Clerk.addListener(() => { if (!onlineEl.hidden && !net.ws) showOnline(); });
           return window.Clerk;
@@ -3824,8 +3829,15 @@ button[aria-pressed="true"] { background: var(--ink); color: var(--paper); }
     showView('rooms');
     say(message || 'Make a room and share it, or join one by its name.', err);
   }
+  // signing in (or up) stays in Clerk's window over the game: Google opens in a popup, and a new account's
+  // extra step (a username) happens in the same window, so the page never navigates away
   document.getElementById('signInBtn').addEventListener('click', async () => {
-    try { (await loadClerk()).openSignIn(); } catch (err) { say(err.message, true); }
+    try {
+      (await loadClerk()).openSignIn({
+        withSignUp: true, oauthFlow: 'popup',
+        forceRedirectUrl: GAME_URL, signUpForceRedirectUrl: GAME_URL, fallbackRedirectUrl: GAME_URL, signUpFallbackRedirectUrl: GAME_URL,
+      });
+    } catch (err) { say(err.message, true); }
   });
   document.getElementById('onlineBack').addEventListener('click', openMenu);
 
@@ -4143,6 +4155,8 @@ button[aria-pressed="true"] { background: var(--ink); color: var(--paper); }
     document.getElementById('modeLinks').hidden = false;
     const join = location.hash.match(/^#join\/([^/]+)\/([A-Za-z0-9_-]+)$/);
     if (join) { net.pendingJoin = { key: decodeURIComponent(join[1]), invite: join[2] }; openOnline(); }
+    // back from a sign-in step that left the page: Clerk finishes it as it loads, so load it now
+    else if (/[?&]__clerk/.test(location.search)) openOnline();
   }
   // local testing only (?dev=<name> on localhost): where everyone is, as this browser sees it
   if (DEV_USER) {
