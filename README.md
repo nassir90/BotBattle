@@ -61,8 +61,8 @@ On mpts.ie the menu has an **Online** mode and a **Leaderboard**. (The copy publ
 - **Rooms:** make one with a name and an optional password, or join one by name.
   - Names are 3 to 16 Latin letters, digits or spaces, checked on the server with the [obscenity](https://github.com/jo3-l/obscenity) profanity filter (it catches look-alike spellings such as "sh1t").
   - Passwords are stored only as a salted PBKDF2 hash. An empty room deletes itself after ten minutes.
-- **Inviting:** every lobby shows a QR code and an invite link (`#join/<room>/<invite>`). Opening it joins straight away, without the password. The invite sits after the `#`, so it never reaches a server log.
-- **The lobby:** up to three players. Each picks a different fighter and presses Ready; the host (whoever made the room) sets the lives and starts.
+- **Inviting:** every lobby shows a QR code and an invite link (`#join/<room>/<invite>`). Opening it joins straight away, without the password. The invite sits after the `#`, so it never reaches a server log. If you aren't signed in yet, the invite waits on the device (for half an hour) while you sign in or make an account, and you land in the room afterwards.
+- **The lobby:** up to three players. Each picks a different fighter (shown by its turning 3D logo, the same one as on the health plates; your pick bounces, and fighters someone else has taken are faded) and presses Ready; the host (whoever made the room) sets the lives and starts.
 - **Emotes:** six of them, sent as a number from 0 to 5, so there's no free text to moderate. They pop next to your name in the lobby, and over your fighter in a match (the smiley button on the right).
 - **Matches:** they open on the versus screen with everyone's names. The host's browser runs the match and decides knockouts, comebacks and the result. Every browser plays the match out with everyone's controls, and the host's positions, health and lives correct the others about 20 times a second. Keep the host's tab in front: a background tab pauses the match for everyone.
 - **Leaderboard:** wins, matches, knockouts and parries per player, across every room, recorded by the room when a match ends.
@@ -240,6 +240,7 @@ Locally, `npm run dev` runs the same API against a local Durable Object and data
 ```bash
 BOTBATTLE_URL=http://localhost:5173/games/botbattle/ ~/projects/ShadowKit/.venv/bin/python tests/online_test.py
 BOTBATTLE_URL=http://localhost:5173/games/botbattle/ ~/projects/ShadowKit/.venv/bin/python tests/ko_test.py
+BOTBATTLE_URL=http://localhost:5173/games/botbattle/ ~/projects/ShadowKit/.venv/bin/python tests/invite_test.py
 ```
 
-`online_test.py` makes a room, refuses a wrong password, joins by password and by invite link, picks, readies, plays (both screens agree on positions and health), emotes, has a player leave, and checks the leaderboard. `ko_test.py` checks that only the host knocks anyone out, that comebacks and the result reach every screen, and that the win is recorded.
+`online_test.py` makes a room, refuses a wrong password, joins by password and by invite link, picks, readies, plays (both screens agree on positions and health), emotes, has a player leave, and checks the leaderboard. `invite_test.py` checks that an invite opened while signed out survives signing up and lands you in the room. `ko_test.py` checks that only the host knocks anyone out, that comebacks and the result reach every screen, and that the win is recorded.

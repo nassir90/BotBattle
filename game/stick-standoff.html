@@ -339,18 +339,21 @@ button[aria-pressed="true"] { background: var(--ink); color: var(--paper); }
 .lobby { display: grid; grid-template-columns: minmax(0, 1fr) auto; gap: 20px; align-items: start; }
 .lobby-main { display: grid; gap: 14px; min-width: 0; }
 .roster { list-style: none; margin: 0; padding: 0; display: grid; gap: 8px; }
-.roster li { display: grid; grid-template-columns: 14px minmax(0, 1fr) auto; gap: 10px; align-items: center; border: 2px solid var(--ink); padding: 8px 12px; background: var(--paper); position: relative; }
-.roster .sw { width: 14px; height: 14px; border: 2px solid var(--ink); background: var(--c, var(--paper-2)); }
+.roster li { display: grid; grid-template-columns: 28px minmax(0, 1fr) auto; gap: 10px; align-items: center; border: 2px solid var(--ink); padding: 6px 12px; background: var(--paper); position: relative; }
+.roster .sw { width: 28px; height: 28px; }
+.roster .sw:not([data-logo]) { box-sizing: border-box; border: 2px dashed color-mix(in srgb, var(--ink) 35%, transparent); width: 24px; height: 24px; margin: 2px; }
 .roster .nm { font-weight: 600; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .roster .nm small { font-weight: 400; color: var(--ink-soft); margin-left: 6px; }
 .roster .st { font-size: 11px; text-transform: uppercase; letter-spacing: .06em; color: var(--ink-soft); }
 .roster .st.ok { color: var(--ink); background: color-mix(in srgb, var(--gpt) 22%, var(--paper)); padding: 3px 6px; }
 .roster .pop { position: absolute; right: -10px; top: -18px; font-size: 26px; animation: pop 2s ease-out both; pointer-events: none; }
 @keyframes pop { 0% { transform: scale(.3); opacity: 0; } 12% { transform: scale(1.15); opacity: 1; } 20% { transform: scale(1); } 80% { opacity: 1; } 100% { opacity: 0; } }
-.picks { display: flex; gap: 8px; flex-wrap: wrap; }
-.picks button { display: flex; gap: 8px; align-items: center; }
-.picks button i { width: 12px; height: 12px; border: 2px solid var(--ink); background: var(--c); }
-.picks button[aria-pressed="true"] { background: color-mix(in srgb, var(--c) 30%, var(--paper)); }
+.lobby-main { position: relative; }
+.lobby-logos { position: absolute; inset: 0; width: 100%; height: 100%; pointer-events: none; z-index: 2; }
+.picks { display: flex; gap: 10px; flex-wrap: wrap; }
+.picks button { display: grid; justify-items: center; gap: 6px; padding: 10px 14px 9px; min-width: 112px; }
+.picks .pick-logo { width: 54px; height: 54px; }
+.picks button[aria-pressed="true"] { background: color-mix(in srgb, var(--c) 22%, var(--paper)); color: var(--ink); }
 .picks button:disabled, .lobby-actions button:disabled { opacity: .4; cursor: not-allowed; transform: none; box-shadow: 3px 3px 0 var(--ink); }
 .lobby-actions { display: flex; gap: 10px; flex-wrap: wrap; align-items: center; }
 .lobby-note { font-size: 12px; color: var(--ink-soft); margin: 0; }
@@ -3871,9 +3874,15 @@ button[aria-pressed="true"] { background: var(--ink); color: var(--paper); }
     signInMounted = false;
     window.Clerk.unmountSignIn(clerkBox);
   }
-  // an invite link waits through a trip to Google and back
-  function keepJoin(j) { try { if (j) sessionStorage.setItem('botbattle.join', JSON.stringify(j)); else sessionStorage.removeItem('botbattle.join'); } catch { /* storage blocked */ } }
-  document.getElementById('onlineBack').addEventListener('click', openMenu);
+  // an invite waits on this device until it's used: through signing up, a trip to Google, and any reload in
+  // between, however the page comes back (for half an hour at most)
+  const JOIN_KEY = 'botbattle.join', JOIN_FOR = 30 * 60 * 1000;
+  function keepJoin(j) { try { if (j) localStorage.setItem(JOIN_KEY, JSON.stringify({ key: j.key, invite: j.invite, at: Date.now() })); else localStorage.removeItem(JOIN_KEY); } catch { /* storage blocked */ } }
+  function savedJoin() {
+    try { const j = JSON.parse(localStorage.getItem(JOIN_KEY)); return j && Date.now() - j.at < JOIN_FOR ? { key: j.key, invite: j.invite } : null; }
+    catch { return null; }
+  }
+  document.getElementById('onlineBack').addEventListener('click', () => { net.pendingJoin = null; keepJoin(null); openMenu(); });
 
   document.getElementById('createForm').addEventListener('submit', async e => {
     e.preventDefault();
@@ -3963,7 +3972,7 @@ button[aria-pressed="true"] { background: var(--ink); color: var(--paper); }
   ORDER.forEach(kind => {
     const b = document.createElement('button');
     b.type = 'button'; b.dataset.kind = kind; b.style.setProperty('--c', KITS[kind].color);
-    b.innerHTML = `<i></i>${KITS[kind].name}`;
+    b.innerHTML = `<span class="pick-logo" data-logo="${kind}" aria-hidden="true"></span>${KITS[kind].name}`;
     b.addEventListener('click', () => sendNet({ t: 'pick', kind }));
     picksEl.appendChild(b);
   });
@@ -4017,7 +4026,7 @@ button[aria-pressed="true"] { background: var(--ink); color: var(--paper); }
     document.getElementById('roster').innerHTML = L.players.map(p => {
       const kit = p.kind ? KITS[p.kind] : null;
       const tags = [kit ? kit.name : 'picking a fighter', p.id === net.me ? 'you' : '', p.id === L.host ? 'host' : ''].filter(Boolean).join(' · ');
-      return `<li data-id="${esc(p.id)}" style="${kit ? `--c:${kit.color}` : ''}"><span class="sw"></span>
+      return `<li data-id="${esc(p.id)}"><span class="sw"${p.kind ? ` data-logo="${p.kind}"` : ''} aria-hidden="true"></span>
         <span class="nm">${esc(p.name)}<small>${tags}</small></span>
         <span class="st${p.ready ? ' ok' : ''}">${L.playing ? 'playing' : p.ready ? 'ready' : 'not ready'}</span></li>`;
     }).join('');
@@ -4039,6 +4048,57 @@ button[aria-pressed="true"] { background: var(--ink); color: var(--paper); }
       L.players.length < 2 ? 'Waiting for someone to join. Share the QR code or the link.' :
       !allReady ? 'Pick a fighter and press Ready. Everyone needs a different fighter.' :
       host ? 'Everyone’s ready. Keep this tab open while you host the match.' : 'Everyone’s ready. Waiting for the host to start.';
+  }
+
+  // the fighters' logos in the lobby: the same 3D models as the health plates, drawn into one canvas laid over
+  // the lobby, each in its slot (a pick button, or a player's row). They turn as the plates' do; your pick
+  // bounces, and a fighter someone else has taken is faded.
+  const lobbyMain = document.querySelector('.lobby-main');
+  const lobbyCanvas = document.createElement('canvas');
+  lobbyCanvas.className = 'lobby-logos';
+  lobbyMain.appendChild(lobbyCanvas);
+  const lRenderer = new THREE.WebGLRenderer({ canvas: lobbyCanvas, antialias: true, alpha: true });
+  lRenderer.setPixelRatio(Math.min(devicePixelRatio, 2));
+  lRenderer.setClearColor(0x000000, 0);
+  lRenderer.autoClear = false;
+  const LOGO_ROOM = 1.6;               // each logo's drawing box is this much bigger than its slot, so a bounce has room
+  const lCam = new THREE.OrthographicCamera(-0.62, 0.62, 0.62, -0.62, 0.1, 10);
+  lCam.position.z = 5;
+  const lobbyLogos = Object.fromEntries(ORDER.map(kind => {
+    const L = logoScene(kind, null);
+    const side = 1.24 / LOGO_ROOM;     // the slot's size, in the drawing box's units
+    L.veil = new THREE.Mesh(new THREE.PlaneGeometry(side, side), new THREE.MeshBasicMaterial({ color: '#fbfaf7', transparent: true, opacity: 0.68, depthTest: false }));
+    L.veil.position.z = 2; L.veil.renderOrder = 9;
+    L.sc.add(L.veil);
+    return [kind, L];
+  }));
+  let lobbySize = '';
+  function updateLobbyLogos() {
+    if (onlineEl.hidden || net.view !== 'lobby') return;
+    const cr = lobbyCanvas.getBoundingClientRect();
+    if (!cr.width) return;
+    const key = `${Math.round(cr.width)}x${Math.round(cr.height)}`;
+    if (key !== lobbySize) { lobbySize = key; lRenderer.setSize(cr.width, cr.height, false); }
+    const t = performance.now() / 1000;
+    lRenderer.setViewport(0, 0, cr.width, cr.height);
+    lRenderer.clear();
+    lobbyMain.querySelectorAll('[data-logo]').forEach((slot, i) => {
+      const r = slot.getBoundingClientRect();
+      if (!r.width) return;
+      const kind = slot.dataset.logo, L = lobbyLogos[kind];
+      const picked = !!slot.closest('[aria-pressed="true"]'), taken = !!slot.closest('button:disabled');
+      const size = r.width * LOGO_ROOM;
+      lRenderer.setViewport(r.left + r.width / 2 - cr.left - size / 2, cr.bottom - (r.top + r.height / 2) - size / 2, size, size);
+      lRenderer.clearDepth();
+      const phase = i * 1.7 + 0.4;
+      // a bob, and for your pick a bounce
+      L.logo.position.y = picked ? Math.abs(Math.sin(t * 3.4 + phase)) * 0.13 - 0.03 : Math.sin(t * 1.2 + phase) * 0.03;
+      L.logo.scale.setScalar((picked ? 1.12 : 1) / LOGO_ROOM);
+      if (kind === 'so') L.logo.rotation.set(0, Math.sin(t * (picked ? 2.2 : 0.9) + phase) * 0.55, picked ? Math.sin(t * 6.8 + phase) * 0.06 : 0);
+      else L.logo.rotation.set(Math.sin(t * 0.7 + phase) * 0.25, Math.sin(t * 0.9 + phase) * 0.35, (kind === 'gpt' ? 1 : -1) * t * (picked ? 2.4 : 0.8));
+      L.veil.visible = taken;
+      lRenderer.render(L.sc, lCam);
+    });
   }
 
   // ---------- emotes ----------
@@ -4107,6 +4167,7 @@ button[aria-pressed="true"] { background: var(--ink); color: var(--paper); }
   function netTick(pin, dt) {
     net.frame++;
     updatePops(dt);
+    updateLobbyLogos();
     const m = net.match;
     if (!m || mode.kind !== 'online' || !net.ws) return;
     if (player && !versus && !matchOver) { const b = encodeInput(pin); m.held = b & HELD; m.pend |= b & ~HELD; }
@@ -4189,10 +4250,11 @@ button[aria-pressed="true"] { background: var(--ink); color: var(--paper); }
     document.getElementById('modeLinks').hidden = false;
     const join = location.hash.match(/^#join\/([^/]+)\/([A-Za-z0-9_-]+)$/);
     if (join) { net.pendingJoin = { key: decodeURIComponent(join[1]), invite: join[2] }; keepJoin(net.pendingJoin); openOnline(); }
-    // back from Google, or partway through signing in: the Online screen opens and Clerk's form carries on
-    else if (location.hash.startsWith('#/') || /[?&]__clerk/.test(location.search)) {
-      try { net.pendingJoin = JSON.parse(sessionStorage.getItem('botbattle.join')); } catch { /* storage blocked */ }
-      openOnline();
+    // an invite still waiting (the page came back after signing up), or partway through signing in: the Online
+    // screen opens, Clerk's form carries on if it needs to, and once signed in the invite joins the room
+    else {
+      net.pendingJoin = savedJoin();
+      if (net.pendingJoin || location.hash.startsWith('#/') || /[?&]__clerk/.test(location.search)) openOnline();
     }
   }
   // local testing only (?dev=<name> on localhost): where everyone is, as this browser sees it
