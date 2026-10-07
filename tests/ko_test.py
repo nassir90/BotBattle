@@ -2,16 +2,11 @@
 # a guest can't knock anyone out on its own, and the last knockout ends the match the same way for both.
 import asyncio, json, urllib.request
 from playwright.async_api import async_playwright
-from bb import BASE as B, OUT, check, summary, launch
+from bb import BASE as B, OUT, check, summary, launch, player
 async def main():
     async with async_playwright() as p:
         browser = await launch(p)
-        async def page(user):
-            pg = await (await browser.new_context(viewport={"width": 1000, "height": 700})).new_page()
-            pg.errors = []; pg.on("pageerror", lambda e: pg.errors.append(str(e)))
-            await pg.goto(B + f"?dev={user}"); await pg.click('.mode[data-mode="online"]')
-            await pg.wait_for_selector("#rooms:not([hidden])", timeout=8000)
-            return pg
+        page = lambda user: player(browser, user, viewport=(1000, 700))
         host, guest = await page("hana"), await page("gus")
         await host.fill("#createName", "KO Room"); await host.click("#createForm button[type=submit]")
         await host.wait_for_selector("#lobby:not([hidden])", timeout=8000)

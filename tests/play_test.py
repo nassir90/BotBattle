@@ -62,9 +62,13 @@ async def main():
         await pg.click("#changeBtn")
         check("Change fighter goes back to the seats", await pg.locator("#play").is_visible())
         await pg.click("#playBack"); await pg.click("#boardBtn")
-        await pg.wait_for_selector("#boardTable table.bench", timeout=10000)
+        # on a fresh database there are no finished online matches yet (online_test makes some): then the board says so
+        await pg.wait_for_function("document.querySelector('#boardTable table.bench') || /Nobody/.test(document.getElementById('boardMsg').textContent)", timeout=10000)
         await pg.wait_for_timeout(500); await pg.screenshot(path=f"{OUT}/play-6-leaderboard.png")
-        check("the leaderboard is a benchmark table (players as columns, the leader outlined)", await pg.locator("#boardTable thead th.win").count() == 1)
+        if await pg.locator("#boardTable table.bench").count():
+            check("the leaderboard is a benchmark table (players as columns, the leader outlined)", await pg.locator("#boardTable thead th.win").count() == 1)
+        else:
+            check("an empty leaderboard says nobody has finished an online match yet", "Nobody" in await pg.text_content("#boardMsg"))
         check("no page errors", not errs, errs[:3])
         await b.close()
     summary()

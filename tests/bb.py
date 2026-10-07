@@ -18,6 +18,20 @@ async def frames(pg, n, poll_ms=300):
         seen += len(await pg.evaluate("window.__bbCam(false)"))
 async def bb(pg):
     return await pg.evaluate("window.__bb()")
+async def player(browser, user, extra="", online=True, on_frame=None, viewport=(1100, 760), **state):
+    # a player in a browser of their own, signed in as `user` (?dev=, which stands in for Clerk on the dev server), on
+    # the Online screen's room list unless online=False; `extra` is added to the address (an invite link's #join/...).
+    # Page errors gather in pg.errors, `state` becomes attributes on pg, and on_frame(pg, message) sees each message
+    # from the server
+    pg = await (await browser.new_context(viewport={"width": viewport[0], "height": viewport[1]})).new_page()
+    pg.set_default_timeout(120000); pg.errors = []
+    for k, v in state.items(): setattr(pg, k, v)
+    pg.on("pageerror", lambda e: pg.errors.append(str(e)))
+    if on_frame: pg.on("websocket", lambda ws: ws.on("framereceived", lambda m: on_frame(pg, m)))
+    await pg.goto(BASE + f"?dev={user}{extra}", wait_until="domcontentloaded", timeout=300000)
+    if online:
+        await pg.click('.mode[data-mode="online"]'); await pg.wait_for_selector("#rooms:not([hidden])")
+    return pg
 def api(path, body=None, token=None):
     req = urllib.request.Request(BASE + "api/" + path, data=json.dumps(body).encode() if body else None,
         headers={"content-type": "application/json", **({"authorization": f"Bearer {token}"} if token else {})})

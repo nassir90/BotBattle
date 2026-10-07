@@ -73,7 +73,7 @@ button[aria-pressed="true"] { background: var(--ink); color: var(--paper); }
   border: 2px solid var(--ink); background: var(--paper); padding: 6px 10px 6px 6px; font-size: 11px;
 }
 .move kbd { font: 600 11px/1 var(--mono); border: 1.5px solid var(--ink); padding: 4px 6px; background: var(--paper-2); }
-.move .cool { position: absolute; left: 0; bottom: 0; height: 3px; background: var(--ink); width: 0; }
+.move .cool { position: absolute; left: 0; bottom: 0; height: 3px; background: var(--ink); width: 100%; transform: scaleX(0); transform-origin: left; }
 .move.wait { color: var(--ink-soft); }
 .move.static { color: var(--ink-soft); }
 /* two players on one keyboard: each one's moves on their own side, User A bottom-left and User B bottom-right,
@@ -283,7 +283,7 @@ body.two-players .corner { left: 50%; right: auto; transform: translateX(-50%); 
   }
   .touch .dir { width: 60px; height: 60px; font-size: 20px; }
   .touch .dir.down { grid-column: 1 / -1; width: 100%; height: 44px; font-size: 16px; }
-  .touch button .cool { position: absolute; left: 0; bottom: 0; height: 4px; background: var(--ink); width: 0; }
+  .touch button .cool { position: absolute; left: 0; bottom: 0; height: 4px; background: var(--ink); width: 100%; transform: scaleX(0); transform-origin: left; }
   .touch button[hidden] { display: none; }
   .carousel .card .pedestal { height: clamp(130px, 27vh, 230px); }
   /* a phone shared across a table: the screen in two halves, User A's the right way up at the bottom and User B's
@@ -525,7 +525,6 @@ body.two-players .corner { left: 50%; right: auto; transform: translateX(-50%); 
       <div class="variants" id="variants" role="group" aria-label="Colour"></div>
       <button type="button" id="randomBtn" hidden>Random <kbd>R</kbd></button>
       <div class="ringdots" id="ringdots"></div>
-      <div class="lives" id="livesPick" role="group" aria-label="Lives"><span>Lives</span><button type="button" data-lives="1">1</button><button type="button" data-lives="2">2</button><button type="button" data-lives="3">3</button><button type="button" data-lives="5">5</button></div>
     </div>
   </div>
 </div>
@@ -633,6 +632,10 @@ import ReconnectingWebSocket from 'partysocket/ws';
     r.setPixelRatio(Math.min(devicePixelRatio, 2));
     return r;
   }
+  const whenIdle = fn => (window.requestIdleCallback || setTimeout)(fn);
+  const moreWarmups = [];          // more groups of shaders for warmShaders to compile (the logo panels')
+  // draws a scene into one box of a renderer's canvas (x, y from its bottom left), and nowhere else
+  function drawIn(r3, sc, cam, x, y, w, h) { r3.setViewport(x, y, w, h); r3.setScissor(x, y, w, h); r3.render(sc, cam); }
   // a renderer on a transparent canvas laid over the page (the cards, the versus screen, the logos)
   function makeOverlayRenderer(canvas, autoClear = true) {
     const r = makeRenderer({ canvas, antialias: true, alpha: true });
@@ -690,15 +693,17 @@ import ReconnectingWebSocket from 'partysocket/ws';
   const V = (x = 0, y = 0, z = 0) => new THREE.Vector3(x, y, z);
 
   // ================= Stage: a paper slab outlined on every edge =================
-  // GPU resources made once and used by every fighter and effect. disposeTree frees everything else an object holds
-  // when it leaves for good (a finished effect, a spent shot, a match or a card's demo cleared away): without that,
-  // every match left its fighters' geometry and materials on the GPU, behind the menu's endless CPU matches too.
+  // Geometry made once and used by every fighter and effect. disposeTree frees the rest of an object's geometry (its
+  // GPU buffers) when the object leaves for good (a finished effect, a spent shot, a match or a card's demo cleared
+  // away): without that, every match left its fighters' geometry on the GPU, behind the menu's endless CPU matches too.
+  // Materials are left to the garbage collector instead of disposed: disposing the last material using a shader
+  // deletes the shader, and the next effect like it compiled it again (a stutter each time a ring or a burst appeared).
   const SHARED = new WeakSet();
   const share = (...xs) => { for (const x of xs) SHARED.add(x); };
   function disposeTree(obj) {
     obj.traverse(o => {
       if (o.geometry && !SHARED.has(o.geometry)) o.geometry.dispose();
-      for (const m of [].concat(o.material || [])) if (!SHARED.has(m)) m.dispose();
+      if (o.isInstancedMesh) o.dispose();        // its per-instance buffers (the limb batches)
     });
   }
   const stageMat = new THREE.MeshStandardMaterial({ color: '#ffffff', roughness: 1 });
@@ -920,16 +925,17 @@ import ReconnectingWebSocket from 'partysocket/ws';
   }
 
   const invRot = new THREE.Quaternion(), curPos = V();
+  const _sVel = new THREE.Vector3(), _sAcc = new THREE.Vector3(), _sGrav = new THREE.Vector3();
   function stepSpring(sp, dt) {
     sp.base.getWorldPosition(curPos);
     if (!sp.ready) { sp.prevPos.copy(curPos); sp.ready = true; return; }
-    const vel = curPos.clone().sub(sp.prevPos).divideScalar(dt);
-    const acc = vel.clone().sub(sp.prevVel).divideScalar(dt);
+    const vel = _sVel.copy(curPos).sub(sp.prevPos).divideScalar(dt);
+    const acc = _sAcc.copy(vel).sub(sp.prevVel).divideScalar(dt);
     sp.prevPos.copy(curPos); sp.prevVel.copy(vel);
     acc.clampLength(0, 60);
     sp.base.getWorldQuaternion(invRot).invert();
     acc.applyQuaternion(invRot);
-    const g = V(0, -9.8, 0).applyQuaternion(invRot);
+    const g = _sGrav.set(0, -9.8, 0).applyQuaternion(invRot);
     acc.x -= g.x * 0.15;
     if (sp.base.matrixWorld.determinant() < 0) acc.x = -acc.x;   // the figure is mirrored when facing left
     const SUB = 8, h = dt / SUB;
@@ -943,22 +949,24 @@ import ReconnectingWebSocket from 'partysocket/ws';
     if (sp.override) sp.override(sp, dt);
   }
 
+  const evenly = u => u;
   function placeSpring(sp) {
-    const sq = (1 + sp.squash) * sp.stretch;
+    const sq = (1 + sp.squash) * sp.stretch, nodes = sp.nodes, tangs = sp.tangents;
+    // profile(u) is how much of the total bend has happened by fraction u of the way up (default: evenly)
+    const W = sp.profile || evenly;
     let px = 0, py = 0.02;
-    sp.nodes = [V(px, py, 0)]; sp.tangents = [0];
+    nodes.length = tangs.length = sp.n + 1;       // the nodes are reused, frame to frame (the stack's height changes)
+    (nodes[0] ||= V()).set(px, py, 0); tangs[0] = 0;
     for (let i = 0; i < sp.n; i++) {
       // firstStretch (when set) stretches the tray-to-first-block segment separately, so a whip can lengthen
       // the stack while its first block stays just above the tray
       const len = i === 0 ? (sp.first - 0.02) * (1 + sp.squash) * (sp.firstStretch ?? sp.stretch) : sp.gap * sq;
-      // profile(u) is how much of the total bend has happened by fraction u of the way up (default: evenly)
-      const W = sp.profile || (u => u);
       const mid = sp.theta * W((i + 0.5) / sp.n);
       px += len * Math.sin(mid); py += len * Math.cos(mid);
       const tang = sp.theta * W((i + 1) / sp.n);
       sp.loads[i].position.set(px, py, 0);
       sp.loads[i].rotation.set(0, 0, -tang);
-      sp.nodes.push(V(px, py, 0)); sp.tangents.push(tang);
+      (nodes[i + 1] ||= V()).set(px, py, 0); tangs[i + 1] = tang;
     }
   }
   // A point along the spring: slot k sits on node k+1, fractional slots interpolate,
@@ -984,10 +992,10 @@ import ReconnectingWebSocket from 'partysocket/ws';
   // the shapes of an SVG path drawn on a 24 x 24 box (as both logos are)
   const svgShapes = d => new SVGLoader().parse(`<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="${d}"/></svg>`)
     .paths.flatMap(p => p.toShapes());
-  function logoGeometry(d, size) {
+  function logoGeometry(d, size, curveSegments = 24, bevelSegments = 3) {
     const shapes = svgShapes(d);
     const geo = new THREE.ExtrudeGeometry(shapes, {
-      depth: 1.4, bevelEnabled: true, bevelThickness: 0.25, bevelSize: 0.12, bevelSegments: 3, curveSegments: 24
+      depth: 1.4, bevelEnabled: true, bevelThickness: 0.25, bevelSize: 0.12, bevelSegments, curveSegments
     });
     geo.center();
     const s = size / 24;
@@ -996,6 +1004,9 @@ import ReconnectingWebSocket from 'partysocket/ws';
     return geo;
   }
   const openaiGeo = logoGeometry(OPENAI_PATH, 0.85);
+  // on a fighter's head the logo is a few dozen pixels across: a third of the curve detail looks the same there, and
+  // it's drawn (with its outline) in every pass, its outline rewritten each frame while it grows to inhale
+  const openaiFighterGeo = logoGeometry(OPENAI_PATH, 0.85, 8, 2);
   const claudeGeo = logoGeometry(CLAUDE_PATH, 0.9);
   const openaiMat = new THREE.MeshStandardMaterial({ color: GPT_GREEN, roughness: 0.4, metalness: 0.05 });
 
@@ -1109,21 +1120,47 @@ import ReconnectingWebSocket from 'partysocket/ws';
   const trayBaseGeo = new THREE.BoxGeometry(0.95, TRAY_T, 0.5), traySideGeo = new THREE.BoxGeometry(0.08, 0.34, 0.5);
   const makeDot = (mat = claudeMat) => inked(dotGeo, mat);
   share(stageMat, inkFlat, inkBase, cupBase, cupInside, outlineBase, trayMat, barMat, springMat, claudeMat, starMat, cursorFill, cursorLine,
-    openaiMat, cupOuterGeo, cupInnerGeo, cupOutlineGeo, lipGeo, faceGeo, openaiGeo, claudeGeo, cursorFillGeo, cursorLineGeo, cursorGlowGeo,
+    openaiMat, cupOuterGeo, cupInnerGeo, cupOutlineGeo, lipGeo, faceGeo, openaiGeo, openaiFighterGeo, claudeGeo, cursorFillGeo, cursorLineGeo, cursorGlowGeo,
     rodGeoCentered, rodGeoBase, rodTipGeo, dotGeo, barGeo, starGeo, trayBaseGeo, traySideGeo);
 
   // ================= Jointed limbs (two-bone IK) =================
   const segGeo = new THREE.CylinderGeometry(1, 1, 1, 8).translate(0, 0.5, 0);
   const jointGeo = new THREE.SphereGeometry(1, 10, 8);
   share(segGeo, jointGeo);
+  // A body's limb segments and joints are drawn in two batches (InstancedMesh): two draw calls for all four limbs
+  // instead of twenty, and the same again in the shadow pass. Each segment and joint is still posed as its own object
+  // (never drawn itself); solveLimb copies the pose into the batch as it sets it.
+  const LIMB_SEGS = 8, LIMB_JOINTS = 12;       // four limbs, two segments and three joints each
+  const limbDepth = new THREE.MeshDepthMaterial();   // the batches' own shadow material (three.js shares one otherwise)
+  function limbBatch(parent, mat) {
+    let b = parent.userData.limbs;
+    if (!b) {
+      const make = (geo, n) => {
+        const m = shadowed(new THREE.InstancedMesh(geo, mat, n));
+        m.count = 0; m.frustumCulled = false;   // grows as limbs are made; its bounds would go stale as they move
+        m.customDepthMaterial = limbDepth;
+        parent.add(m);
+        return m;
+      };
+      b = parent.userData.limbs = { seg: make(segGeo, LIMB_SEGS), joint: make(jointGeo, LIMB_JOINTS) };
+    }
+    return b;
+  }
   function makeLimb(parent, mat, L1, L2) {
-    const upper = shadowed(new THREE.Mesh(segGeo, mat)), lower = shadowed(new THREE.Mesh(segGeo, mat));
-    const joints = [0, 1, 2].map(() => {
-      const j = shadowed(new THREE.Mesh(jointGeo, mat));
-      j.scale.setScalar(LIMB_R); parent.add(j); return j;
-    });
-    parent.add(upper, lower);
-    return { upper, lower, joints, L1, L2, a: V(), b: V(), c: V() };
+    const batch = limbBatch(parent, mat), upper = new THREE.Object3D(), lower = new THREE.Object3D();
+    const joints = [0, 1, 2].map(() => { const j = new THREE.Object3D(); j.scale.setScalar(LIMB_R); return j; });
+    const limb = { upper, lower, joints, L1, L2, a: V(), b: V(), c: V(), batch, si: batch.seg.count, ji: batch.joint.count };
+    batch.seg.count += 2; batch.joint.count += 3;
+    syncLimb(limb);
+    return limb;
+  }
+  const _lm = new THREE.Matrix4();
+  const putPose = (mesh, i, o) => mesh.setMatrixAt(i, _lm.compose(o.position, o.quaternion, o.scale));
+  function syncLimb(limb) {
+    const { seg, joint } = limb.batch;
+    putPose(seg, limb.si, limb.upper); putPose(seg, limb.si + 1, limb.lower);
+    for (let k = 0; k < 3; k++) putPose(joint, limb.ji + k, limb.joints[k]);
+    seg.instanceMatrix.needsUpdate = joint.instanceMatrix.needsUpdate = true;
   }
   const _seg = V(), _u = V(), _w2 = V();
   function placeSeg(mesh, p, q) {
@@ -1150,6 +1187,7 @@ import ReconnectingWebSocket from 'partysocket/ws';
     limb.joints[0].position.copy(limb.a);
     limb.joints[1].position.copy(limb.b);
     limb.joints[2].position.copy(limb.c);
+    syncLimb(limb);
     return limb.c;
   }
   const _hint = V();
@@ -1207,7 +1245,6 @@ import ReconnectingWebSocket from 'partysocket/ws';
     if (!kitCache.has(key)) kitCache.set(key, { ...KITS[kind], kind, color: v.ui, logoColor: v.logo, variant: v.id });
     return kitCache.get(key);
   }
-  const KEY_LABEL = { a1: 'J', a2: 'K', a3: 'L', a4: 'I' };
   const CORRECTIONS = [
     'Actually, this is a duplicate. Closed.',
     'Did you even read the docs?',
@@ -1311,7 +1348,10 @@ import ReconnectingWebSocket from 'partysocket/ws';
 
   function buildFighter(kind, x, isPlayer, parent = scene, springList = springs, variant) {
     const kit = kitFor(kind, variant);
-    const mats = { ink: inkBase.clone(), cup: cupBase.clone(), outline: outlineBase.clone() };
+    // the limbs are drawn in batches (instanced), so they get their own copy of the ink: drawing one material both ways
+    // makes three.js look its shader up again at every switch, many times a frame. The copy shares the ink's colours.
+    const mats = { ink: inkBase.clone(), cup: cupBase.clone(), outline: outlineBase.clone(), limbs: inkBase.clone() };
+    mats.limbs.color = mats.ink.color; mats.limbs.emissive = mats.ink.emissive;
     const root = new THREE.Group();
     const vis = new THREE.Group();
     root.add(vis);
@@ -1336,7 +1376,7 @@ import ReconnectingWebSocket from 'partysocket/ws';
       const footMesh = shadowed(new THREE.Mesh(new THREE.BoxGeometry(FOOT_L, LINE_W, LINE_W), mats.ink));
       vis.add(footMesh);
       return {
-        s, limb: makeLimb(vis, mats.ink, LEG_L, LEG_L), mesh: footMesh,
+        s, limb: makeLimb(vis, mats.limbs, LEG_L, LEG_L), mesh: footMesh,
         x: x + f.facing * s * FOOT_SPREAD, y: 0, stepping: false, t: 0, dur: 0.12, fromX: 0, air: false,
       };
     });
@@ -1349,7 +1389,7 @@ import ReconnectingWebSocket from 'partysocket/ws';
       vis.add(g);
       return g;
     };
-    const arm = (rest, L1, L2, bend, hand) => ({ limb: makeLimb(vis, mats.ink, L1, L2), rest: V(...rest), bend, hand, L1, L2 });
+    const arm = (rest, L1, L2, bend, hand) => ({ limb: makeLimb(vis, mats.limbs, L1, L2), rest: V(...rest), bend, hand, L1, L2 });
 
     const head = cupHead(kind === 'so' ? angryFace : happyFace, mats);
     head.position.y = HEAD_Y;
@@ -1415,8 +1455,8 @@ import ReconnectingWebSocket from 'partysocket/ws';
         f.rodTimer = 0;
       } else {
         if (kind === 'gpt') {
-          const m = shadowed(new THREE.Mesh(openaiGeo, logoMat));
-          f.logoShell = adjustableShell(openaiGeo, true);
+          const m = shadowed(new THREE.Mesh(openaiFighterGeo, logoMat));
+          f.logoShell = adjustableShell(openaiFighterGeo, true);
           m.add(f.logoShell);
           logo.add(m);
         } else logo.add(inked(claudeGeo, logoMat));
@@ -2260,11 +2300,7 @@ import ReconnectingWebSocket from 'partysocket/ws';
         dropT(fl.mesh); f.fling = null;
       } else {
         if (len > 1.2) {
-          for (const h of enemiesOf(f)) {
-            if (!fl.hit.has(h) && overlapsBox(h, wp.x, wp.x + fl.dir * len, wp.y - 0.3, wp.y + 0.3)) {
-              fl.hit.add(h); hurt(h, 11, fl.dir * 8, 4, f);
-            }
-          }
+          for (const h of newlyHit(f, fl.hit, wp.x, wp.x + fl.dir * len, wp.y - 0.3, wp.y + 0.3)) hurt(h, 11, fl.dir * 8, 4, f);
         }
         if (p >= 1 || f.dead) { dropT(fl.mesh); f.fling = null; }
       }
@@ -2582,6 +2618,9 @@ import ReconnectingWebSocket from 'partysocket/ws';
 
   // ================= Fighter update =================
   const NO_INPUT = { left: false, right: false, jump: false };
+  // the ink glows (hurt, or taken over): its limbs' copy too, which shares its colour
+  const inkGlow = (f, v) => { f.mats.ink.emissiveIntensity = f.mats.limbs.emissiveIntensity = v; };
+  const COUNTDOWNS = ['stumble', 'pushT', 'strain', 'shoveT', 'kbT', 'bashT', 'jolt', 'invuln', 'parryGrace'];   // seconds left, run down to 0
   const HURT_RED = new THREE.Color('#d6362b'), INK = new THREE.Color('#141414'), _vortex = new THREE.Vector3();
   function updateFighter(f, inp, dt) {
     for (const k of SLOTS) f.cd[k] = Math.max(0, f.cd[k] - dt);
@@ -2596,18 +2635,10 @@ import ReconnectingWebSocket from 'partysocket/ws';
     }
 
     f.prevX = f.x;
-    f.stumble = Math.max(0, (f.stumble || 0) - dt);
-    f.pushT = Math.max(0, (f.pushT || 0) - dt);
-    f.strain = Math.max(0, (f.strain || 0) - dt);
-    f.shoveT = Math.max(0, (f.shoveT || 0) - dt);
-    f.kbT = Math.max(0, (f.kbT || 0) - dt);
-    f.bashT = Math.max(0, (f.bashT || 0) - dt);
-    f.jolt = Math.max(0, (f.jolt || 0) - dt);
+    for (const k of COUNTDOWNS) f[k] = Math.max(0, (f[k] || 0) - dt);
     if (f.pushT <= 0) { f.lean = 0; f.pushing = 0; }
     if (f.stun > 0) { f.stun -= dt; inp = NO_INPUT; }
     if (f.possessing) inp = NO_INPUT;
-    f.invuln = Math.max(0, f.invuln - dt);
-    f.parryGrace = Math.max(0, f.parryGrace - dt);
     f.jumpT += dt;
 
     // guard: forms, shines, loosens; nothing else happens until it has loosened
@@ -2756,17 +2787,19 @@ import ReconnectingWebSocket from 'partysocket/ws';
     const glow = f.possessedBy ? 0.55 + 0.25 * Math.sin(performance.now() / 90) : 0;
     if (f.flash > 0) {
       f.mats.cup.emissive.copy(HURT_RED); f.mats.cup.emissiveIntensity = 0.6;
-      f.mats.ink.emissive.copy(HURT_RED); f.mats.ink.emissiveIntensity = 0.6;
+      f.mats.ink.emissive.copy(HURT_RED); inkGlow(f, 0.6);
     } else if (glow) {        // controlled by ChatGPT: it glows in that ChatGPT's colour, its cursor overhead too
       const c = f.possessedBy.kit.color;
       f.mats.cup.emissive.set(c); f.mats.cup.emissiveIntensity = glow * 0.45;
-      f.mats.ink.emissive.set(c); f.mats.ink.emissiveIntensity = glow;
+      f.mats.ink.emissive.set(c); inkGlow(f, glow);
       f.marker.userData.setColor(c);
     } else {
-      f.mats.cup.emissiveIntensity = 0; f.mats.ink.emissiveIntensity = 0;
+      f.mats.cup.emissiveIntensity = 0; inkGlow(f, 0);
     }
     if (glow) f.mats.outline.color.set(f.possessedBy.kit.color); else f.mats.outline.color.copy(INK);   // (no string parsed each frame)
   }
+  // the enemies in a box (as overlapsBox takes it) that this attack hasn't hit yet, each noted as hit now
+  const newlyHit = (f, hit, x0, x1, y0, y1) => enemiesOf(f).filter(h => !hit.has(h) && overlapsBox(h, x0, x1, y0, y1) && hit.add(h));
   // ================= Shield bash =================
   // Dash with the shield up (double-tap and parry, in either order): the shield leads, and whoever it meets is
   // knocked flying. The dash stops there.
@@ -2817,9 +2850,7 @@ import ReconnectingWebSocket from 'partysocket/ws';
     if (st.t >= S.dur) { f.strike = null; return; }
     if (st.t < S.from || st.t > S.to) return;
     const x0 = f.x + f.facing * 0.2, x1 = f.x + f.facing * S.reach;
-    for (const h of enemiesOf(f)) {
-      if (st.hit.has(h) || !overlapsBox(h, x0, x1, f.y + S.y0, f.y + S.y1)) continue;
-      st.hit.add(h);
+    for (const h of newlyHit(f, st.hit, x0, x1, f.y + S.y0, f.y + S.y1)) {
       const out = hurt(h, S.dmg, f.facing * S.kbx, S.kby, f, { dir: { x: f.facing, y: 0 } });
       burst(V(h.x - f.facing * BOX_W, f.y + (S.y0 + S.y1) / 2, 0), out === 'parry' ? '#ffffff' : f.kit.color);
       if (out === 'hit' && st.low) stumble(h, f.facing, 3, 3);      // swept off its feet
@@ -3045,8 +3076,7 @@ import ReconnectingWebSocket from 'partysocket/ws';
         ft.t += dt;
         const p = Math.min(1, ft.t / ft.dur);
         ft.toX = walking ? f.x + f.vx * (ft.dur - ft.t) + dir * STRIDE / 2 : home;
-        const q = THREE.MathUtils.clamp((p - 0.12) / 0.76, 0, 1);
-        const e = q * q * (3 - 2 * q);
+        const e = smooth(THREE.MathUtils.clamp((p - 0.12) / 0.76, 0, 1));
         ft.x = ft.fromX + (ft.toX - ft.fromX) * e;
         ft.y = Math.sin(Math.PI * p) * (walking ? STEP_H : STEP_H * 0.5);
         if (p >= 1) { ft.stepping = false; ft.y = 0; ft.x = ft.toX; }
@@ -3194,15 +3224,16 @@ import ReconnectingWebSocket from 'partysocket/ws';
   touchB.id = 'touchB'; touchB.classList.add('touch-b'); touchB.hidden = true;
   touchB.querySelectorAll('[id]').forEach(el => el.removeAttribute('id'));
   touchA.after(touchB);
-  // with two players on one phone, each pad's buttons stand for its own player's keys (SCHEMES A and B). User B
-  // sees the arena turned round, so their right is the arena's left: their arrows are swapped
-  const PAD_KEYS = {
-    A: { ArrowLeft: 'KeyA', ArrowRight: 'KeyD', ArrowDown: 'KeyS', Space: 'KeyW', KeyJ: 'KeyF', KeyK: 'KeyG', KeyL: 'KeyH', KeyI: 'KeyT', Backspace: 'KeyQ', ParryUp: 'ParryUpA', KeyH: 'KeyR' },
-    B: { ArrowLeft: 'ArrowRight', ArrowRight: 'ArrowLeft', ArrowDown: 'ArrowDown', Space: 'ArrowUp', KeyJ: 'Comma', KeyK: 'Period', KeyL: 'Slash', KeyI: 'Quote', Backspace: 'ShiftRight', ParryUp: 'ParryUpB', KeyH: 'KeyM' },
+  // with two players on one phone, each pad's buttons stand for its own player's keys: the button's action, in that
+  // player's scheme (SCHEMES A and B). User B sees the arena turned round, so their right is the arena's left
+  const PAD_ACTIONS = { ArrowLeft: 'left', ArrowRight: 'right', ArrowDown: 'down', Space: 'jump', KeyJ: 'a1', KeyK: 'a2', KeyL: 'a3', KeyI: 'a4', Backspace: 'parry', ParryUp: 'up', KeyH: 'strike' };
+  const padKey = (who, key) => {
+    const a = PAD_ACTIONS[key], turned = who === 'B' && { left: 'right', right: 'left' }[a];
+    return SCHEMES[who][turned || a][0];
   };
   document.querySelectorAll('.touch button').forEach(btn => {
     const mine = btn.closest('.touch-b') ? 'B' : 'A';
-    const codeOf = () => mine === 'B' ? PAD_KEYS.B[btn.dataset.key] : player2 ? PAD_KEYS.A[btn.dataset.key] : btn.dataset.key;
+    const codeOf = () => mine === 'B' ? padKey('B', btn.dataset.key) : player2 ? padKey('A', btn.dataset.key) : btn.dataset.key;
     let code = btn.dataset.key;
     const down = e => { e.preventDefault(); code = codeOf(); keys.add(code); pressed.add(code); noteTap(code); btn.setPointerCapture?.(e.pointerId); };
     const upH = e => { e.preventDefault(); keys.delete(code); };
@@ -3357,15 +3388,20 @@ import ReconnectingWebSocket from 'partysocket/ws';
   const hud = document.getElementById('hud');
   const movesEl = document.getElementById('moves');
   const statusEl = document.getElementById('status');
-  let plates = new Map(), platesB = new Map();
   const hudB = document.getElementById('hudB');
+  // the panels change a value at a time, so they're written only when one changes: writing even an unchanged value
+  // makes the browser work out the page's styles again, and writing new text lays the page out again
+  const setText = (el, s) => { if (el.$text !== s) el.textContent = el.$text = s; };
+  const setStyle = (el, prop, v) => { const was = el.$style ??= {}; if (was[prop] !== v) el.style[prop] = was[prop] = v; };
+  const setHidden = (el, v) => { if (el.hidden !== v) el.hidden = v; };
+  // a plate per fighter, and when split a copy of each for User B's half (turned round), with the parts that change
+  let plates = [];
+  const plateParts = (f, el, flipped) => ({ f, el, flipped, sq: el.querySelector('.plate-logo'), fill: el.querySelector('.bar-fill'),
+    lag: el.querySelector('.bar-lag'), hp: el.querySelector('.plate-hp'), stock: el.querySelector('.stock'), badge: el.querySelector('.badge'),
+    ctx: el.querySelector('.ctx i'), lives: '', ctxPct: -1 });
   function buildHud() {
-    hud.innerHTML = '';
-    hud.style.setProperty('--n', fighters.length);
-    plates = new Map();
-    hudB.innerHTML = '';
-    hudB.style.setProperty('--n', fighters.length);
-    platesB = new Map();
+    plates = [];
+    for (const box of [hud, hudB]) { box.innerHTML = ''; box.style.setProperty('--n', fighters.length); }
     for (const f of fighters) {
       const el = document.createElement('div');
       el.className = 'plate';
@@ -3380,31 +3416,29 @@ import ReconnectingWebSocket from 'partysocket/ws';
           <div class="bar"><div class="bar-lag"></div><div class="bar-fill"></div></div>
         </div>`;
       hud.appendChild(el);
-      plates.set(f, el);
-      if (split) { const copy = el.cloneNode(true); hudB.appendChild(copy); platesB.set(f, copy); }
+      plates.push(plateParts(f, el, false));
+      if (split) { const copy = el.cloneNode(true); hudB.appendChild(copy); plates.push(plateParts(f, copy, true)); }
     }
     updateHud();
   }
   function updateHud() {
-    for (const [f, el] of [...plates, ...platesB]) {
-      el.querySelector('.bar-fill').style.transform = `scaleX(${f.hp / 100})`;
-      el.querySelector('.bar-lag').style.transform = `scaleX(${f.hp / 100})`;
-      el.querySelector('.plate-hp').textContent = String(Math.ceil(f.hp));
-      el.classList.toggle('out', !!f.out);
+    for (const p of plates) {
+      const f = p.f, hp = `scaleX(${f.hp / 100})`;
+      setStyle(p.fill, 'transform', hp); setStyle(p.lag, 'transform', hp);
+      setText(p.hp, String(Math.ceil(f.hp)));
+      p.el.classList.toggle('out', !!f.out);
       // lives as x3, x2, x1 (training has no limit)
       const lives = Number.isFinite(f.stocks) ? `x${f.stocks}` : 'x\u221e';
-      el.querySelector('.stock').textContent = lives;
-      el.querySelector('.badge').textContent = lives;
-      el.querySelector('.stock').setAttribute('aria-label', Number.isFinite(f.stocks) ? `${f.stocks} lives left` : 'Unlimited lives');
+      if (lives === p.lives) continue;
+      p.lives = p.stock.textContent = p.badge.textContent = lives;
+      p.stock.setAttribute('aria-label', Number.isFinite(f.stocks) ? `${f.stocks} lives left` : 'Unlimited lives');
     }
   }
   function updatePlatesLive() {
-    for (const [f, el] of [...plates, ...platesB]) {
-      const ctx = el.querySelector('.ctx i');
-      if (ctx) {
-        ctx.style.transform = `scaleX(${f.context / 100})`;
-        ctx.parentElement.title = `Context ${Math.floor(f.context)}%`;
-      }
+    for (const p of plates) if (p.ctx) {
+      setStyle(p.ctx, 'transform', `scaleX(${p.f.context / 100})`);
+      const pct = Math.floor(p.f.context);
+      if (pct !== p.ctxPct) p.ctx.parentElement.title = `Context ${p.ctxPct = pct}%`;
     }
   }
 
@@ -3421,12 +3455,13 @@ import ReconnectingWebSocket from 'partysocket/ws';
     B: { a1: ',', a2: '.', a3: '/', a4: "'", strike: 'M', jump: '\u2191', dash: '\u2190\u2190 \u2192\u2192', crouch: '\u2193', parry: 'R\u21E7', over: '\u2191+R\u21E7' },
   };
   const movesBEl = document.getElementById('movesB');
-  let movesForB = null;
+  let movesForB = null, movesParts = [], movesPartsB = [];     // each list's chips, with the parts that change
   const bodyB = () => player2 ? player2.possessing || player2 : null;
   function fillMoves(el, body, keyFor, label) {
     el.innerHTML = '';
     el.hidden = !body;
-    if (!body) return;
+    const parts = [];
+    if (!body) return parts;
     el.style.setProperty('--so', body.kit.color);     // the block pips in the fighter's own colour
     if (label) { const t = document.createElement('div'); t.className = 'move static who-moves'; t.innerHTML = `<span>${label}</span>`; el.appendChild(t); }
     for (const s of SLOTS) {
@@ -3435,18 +3470,21 @@ import ReconnectingWebSocket from 'partysocket/ws';
       const m = document.createElement('div');
       m.className = 'move'; m.dataset.slot = s;
       m.innerHTML = `<kbd>${keyFor[s]}</kbd><span></span><i class="cool"></i>`;
-      m.querySelector('span').textContent = ab.name;
+      const name = m.querySelector('span'), part = { m, s, cool: m.querySelector('.cool'), count: null, pips: null };
+      name.textContent = ab.name;
       if ((body.rods && (s === 'a1' || s === 'a2')) || (body.kind === 'gpt' && s === 'a4')) {
-        const cnt = document.createElement('span');
-        cnt.className = 'count';
-        m.querySelector('span').appendChild(cnt);
+        part.count = document.createElement('span');
+        part.count.className = 'count';
+        name.appendChild(part.count);
       }
       if (body.kind === 'so' && s === 'a1') {
         const pips = document.createElement('span');
         pips.className = 'pips';
         pips.innerHTML = '<i></i><i></i><i></i><i></i><i></i>';
-        m.querySelector('span').appendChild(pips);
+        name.appendChild(pips);
+        part.pips = [...pips.children];
       }
+      parts.push(part);
       el.appendChild(m);
     }
     const extra = [[keyFor.strike, 'Punch'], [keyFor.crouch + '+' + keyFor.strike, 'Low kick'], [keyFor.jump, body.kit.jumps > 1 ? 'Double jump' : 'Jump'], [keyFor.dash, 'Dash'], [keyFor.crouch, 'Crouch'], [keyFor.parry, 'Parry'], [keyFor.over, 'Overhead parry']];
@@ -3456,38 +3494,42 @@ import ReconnectingWebSocket from 'partysocket/ws';
       m.innerHTML = `<kbd>${k}</kbd><span>${text}</span>`;
       el.appendChild(m);
     }
+    return parts;
   }
   function refreshMoves() {
     const body = controlledBody();
     movesFor = body; movesForB = bodyB();
     statusEl.hidden = !(player && player.possessing);
     if (player && player.possessing) statusEl.textContent = `Controlling ${player.possessing.kit.name}`;
-    fillMoves(movesEl, body, KEYS_FOR[player2 ? 'A' : 'all'], player2 ? 'User A' : '');
-    fillMoves(movesBEl, movesForB, KEYS_FOR.B, 'User B');
-    labelPad(touchA, body);
-    labelPad(touchB, movesForB);
+    movesParts = fillMoves(movesEl, body, KEYS_FOR[player2 ? 'A' : 'all'], player2 ? 'User A' : '');
+    movesPartsB = fillMoves(movesBEl, movesForB, KEYS_FOR.B, 'User B');
+    labelPad(padA, body);
+    labelPad(padB, movesForB);
   }
+  // the touch pads' ability buttons, and the punch button, which says Kick while crouched
+  const padParts = pad => ({ strike: pad.querySelector('.strike'),
+    slots: [...pad.querySelectorAll('button[data-slot]')].map(b => ({ b, s: b.dataset.slot, label: b.querySelector('span'), cool: b.querySelector('.cool') })) });
+  const padA = padParts(touchA), padB = padParts(touchB);
   function labelPad(pad, body) {
     if (!body) return;
-    pad.querySelectorAll('button[data-slot]').forEach(b => {
-      const ab = body.kit.abilities[b.dataset.slot];
+    for (const { b, s, label } of pad.slots) {
+      const ab = body.kit.abilities[s];
       b.hidden = !ab;
-      if (ab) b.querySelector('span').textContent = ab.short;
-    });
+      if (ab) label.textContent = ab.short;
+    }
   }
   function coolPad(pad, body) {
     if (!body) return;
-    pad.querySelectorAll('button[data-slot]').forEach(b => {
-      const ab = body.kit.abilities[b.dataset.slot];
-      if (ab) b.querySelector('.cool').style.width = (body.cd[b.dataset.slot] / ab.cd * 100) + '%';
-    });
-    const st = pad.querySelector('.strike'), word = body.crouch > 0.5 ? 'Kick' : 'Punch';     // crouched, it kicks
-    if (st && st.textContent !== word) st.textContent = word;
+    for (const { s, cool } of pad.slots) {
+      const ab = body.kit.abilities[s];
+      if (ab) setStyle(cool, 'transform', `scaleX(${(ab.cd ? body.cd[s] / ab.cd : 0).toFixed(3)})`);
+    }
+    if (pad.strike) setText(pad.strike, body.crouch > 0.5 ? 'Kick' : 'Punch');     // crouched, it kicks
   }
-  function tickMoves(el, body) {
+  function tickMoves(parts, body) {
     if (!body) return;
-    el.querySelectorAll('.move[data-slot]').forEach(m => {
-      const s = m.dataset.slot, ab = body.kit.abilities[s];
+    for (const { m, s, cool, count, pips } of parts) {
+      const ab = body.kit.abilities[s];
       const frac = ab.cd ? body.cd[s] / ab.cd : 0;
       let wait = frac > 0;
       if (body.kind === 'so' && s === 'a3' && body.bars < 5) wait = true;
@@ -3495,27 +3537,26 @@ import ReconnectingWebSocket from 'partysocket/ws';
       if (body.rods && (s === 'a1' || s === 'a2')) {
         const left = rodsLeft(body);
         if (left < 1) wait = true;
-        m.querySelector('.count').textContent = ` ${left}/${body.rods.length}`;
+        setText(count, ` ${left}/${body.rods.length}`);
       }
       if (body.kind === 'gpt' && s === 'a4') {
         if (body.context < 50) wait = true;
-        m.querySelector('.count').textContent = ` ${Math.floor(body.context)}%`;
+        setText(count, ` ${Math.floor(body.context)}%`);
       }
       m.classList.toggle('wait', wait);
-      m.querySelector('.cool').style.width = (frac * 100) + '%';
-      m.querySelectorAll('.pips i').forEach((pip, i) => pip.classList.toggle('on', i < Math.floor(body.bars)));
-    });
+      setStyle(cool, 'transform', `scaleX(${frac.toFixed(3)})`);
+      if (pips) pips.forEach((pip, i) => pip.classList.toggle('on', i < Math.floor(body.bars)));
+    }
   }
   function updateMoves() {
     updatePlatesLive();
     const body = controlledBody();
     if (body !== movesFor || bodyB() !== movesForB) refreshMoves();
-    tickMoves(movesEl, body);
-    tickMoves(movesBEl, bodyB());
-    coolPad(touchA, body);
-    if (split) coolPad(touchB, bodyB());
+    tickMoves(movesParts, body);
+    tickMoves(movesPartsB, bodyB());
+    coolPad(padA, body);
+    if (split) coolPad(padB, bodyB());
   }
-
 
   // ================= Modes and match flow =================
   let player = null, player2 = null;      // User A (you), and User B when a friend plays on the same keyboard
@@ -3530,8 +3571,18 @@ import ReconnectingWebSocket from 'partysocket/ws';
   const cornerEl = document.getElementById('corner');
   const onlineEl = document.getElementById('online');
   const boardEl = document.getElementById('board');
+  const playEl = document.getElementById('play');
+  const trainStatEl = document.getElementById('trainStat');
   const emoteTray = document.getElementById('emoteTray');
-  const inMatch = () => menuEl.hidden && selectEl.hidden && onlineEl.hidden && boardEl.hidden && document.getElementById('play').hidden;
+  // the full-screen panels, shown one at a time (none in a match, which has the corner's Menu button instead; the
+  // results come up over a finished match, so they're not one of them)
+  const SCREENS = [menuEl, selectEl, onlineEl, boardEl, playEl];
+  function showScreen(el) {
+    for (const s of SCREENS) s.hidden = s !== el;
+    resultEl.hidden = true;
+    cornerEl.hidden = !!el;
+  }
+  const inMatch = () => SCREENS.every(s => s.hidden);
 
   // who plays a fighter, as the plates, versus panels and results say it
   function tagOf(f) {
@@ -3558,11 +3609,8 @@ import ReconnectingWebSocket from 'partysocket/ws';
   function startMatch(m) {
     mode = m;
     clearMatch();
-    const order = ['so', 'gpt', 'claude'];
     let placement;
-    if (m.kind === 'ffa') { const o = order.filter(k => k !== m.pick); placement = [[m.pick, -6, true], [o[0], 0.5], [o[1], 6]]; }
-    else if (m.kind === 'duel') placement = [[m.pick, -4, true], [m.opponent, 4]];
-    else if (m.kind === 'training') { const o = order.filter(k => k !== m.pick); placement = [[m.pick, -4, true], [o[0], 1], [o[1], 5]]; }
+    if (m.kind === 'training') { const o = ORDER.filter(k => k !== m.pick); placement = [[m.pick, -4, true], [o[0], 1], [o[1], 5]]; }
     else if (m.kind === 'play') {        // the seats, left to right, "?" resolved
       const list = resolveSeats(m.seats), xs = { 2: [-4, 4], 3: [-6, 0.5, 6], 4: [-7.5, -2.5, 2.5, 7.5] }[list.length];
       placement = list.map((st, i) => [st.kind, xs[i], st.ctrl === 'A', null, st]);
@@ -3681,7 +3729,7 @@ import ReconnectingWebSocket from 'partysocket/ws';
         if (f.dead && f.deadT > 1.6) respawn(f);
         else if (f.dummy && !f.dead && f.hp < 100 && f.lastHitT > 1.5) { f.hp = Math.min(100, f.hp + dt * 120); updateHud(); }
       }
-      document.getElementById('trainStat').textContent = `Damage dealt: ${Math.round(trainDamage)}`;
+      setText(trainStatEl, `Damage dealt: ${Math.round(trainDamage)}`);
       return;
     }
     if (mode.kind === 'online') {
@@ -3718,13 +3766,11 @@ import ReconnectingWebSocket from 'partysocket/ws';
   let pending = null;   // the mode being set up
   function openMenu() {
     leaveRoom();
-    resultEl.hidden = true; selectEl.hidden = true; onlineEl.hidden = true; boardEl.hidden = true; menuEl.hidden = false; cornerEl.hidden = true;
-    document.getElementById('play').hidden = true;
+    showScreen(menuEl);
     if (mode.kind !== 'watch') startMatch({ kind: 'watch' });
   }
   document.querySelectorAll('.mode').forEach(b => b.addEventListener('click', () => {
     const kind = b.dataset.mode;
-    if (kind === 'watch') { menuEl.hidden = true; cornerEl.hidden = false; startMatch({ kind: 'watch' }); return; }
     if (kind === 'online') { openOnline(); return; }
     if (kind === 'play') { openPlay(); return; }
     pending = { kind, step: 'pick' };
@@ -3764,7 +3810,7 @@ import ReconnectingWebSocket from 'partysocket/ws';
     const slot = document.createElement('div');
     slot.className = 'slot';
     const list = SLOTS.filter(s => kit.abilities[s]).map(s =>
-      `<li data-slot="${s}"><kbd>${KEY_LABEL[s]}</kbd><span><strong>${kit.abilities[s].name}.</strong> ${kit.abilities[s].desc}</span></li>`).join('');
+      `<li data-slot="${s}"><kbd>${KEYS_FOR.all[s]}</kbd><span><strong>${kit.abilities[s].name}.</strong> ${kit.abilities[s].desc}</span></li>`).join('');
     const passive = kit.passive ? `<li><kbd>W</kbd><span>${kit.passive}</span></li>` : '';
     slot.innerHTML = `<div class="card" role="group" aria-label="${kit.name}" style="--c:${kit.color}"><div class="pedestal"></div><h2>${kit.name}</h2><span>${kit.blurb}</span><ul>${list}${passive}</ul></div>`;
     // clicking a card only selects it (with a jiggle to feel it); Enter (or the Play button) goes ahead
@@ -3810,7 +3856,6 @@ import ReconnectingWebSocket from 'partysocket/ws';
   function rotateTo(i) { carIndex = (i + 3) % 3; layoutCarousel(); demoT = 0; demoStep = -1; }
   function choose() {
     const kind = ORDER[carIndex], variant = carVariant[kind];
-    selectEl.hidden = true;
     if (pending.kind === 'seat') {
       // the colour picked, unless another seat already shows this fighter in it: then the next free one
       const i = pending.seat, others = seats.filter((st, j) => j !== i), shown = seatColours(others);
@@ -3818,32 +3863,22 @@ import ReconnectingWebSocket from 'partysocket/ws';
       const ids = VARIANTS[kind].map(v => v.id), free = used.includes(variant) ? ids.find(id => !used.includes(id)) || variant : variant;
       seats[i] = { ...seats[i], kind, variant: free }; keepSeats(); openPlay(); return;
     }
-    cornerEl.hidden = false;
+    showScreen(null);
     startMatch({ kind: pending.kind, pick: kind, variant, lives: livesSetting });
   }
   // how many lives a match starts with (remembered on this device)
   let livesSetting = 3;
   try { livesSetting = Number(localStorage.getItem('botbattle.lives')) || 3; } catch (e) { /* storage blocked */ }
-  const livesEl = document.getElementById('livesPick');
-  function showLives() { livesEl.querySelectorAll('button').forEach(b => b.setAttribute('aria-pressed', String(Number(b.dataset.lives) === livesSetting))); }
-  livesEl.querySelectorAll('button').forEach(b => b.addEventListener('click', e => {
-    e.stopPropagation();
-    livesSetting = Number(b.dataset.lives);
-    try { localStorage.setItem('botbattle.lives', String(livesSetting)); } catch (err) { /* storage blocked */ }
-    showLives();
-  }));
-  showLives();
+  // a lives picker's buttons, the one in use pressed
+  const pressLives = (el, n) => el.querySelectorAll('button').forEach(b => b.setAttribute('aria-pressed', String(Number(b.dataset.lives) === n)));
   document.getElementById('prevBtn').addEventListener('click', e => { e.stopPropagation(); rotateTo(carIndex - 1); });
   document.getElementById('nextBtn').addEventListener('click', e => { e.stopPropagation(); rotateTo(carIndex + 1); });
   pickBtn.addEventListener('click', choose);
-  // Duel: let chance pick the opponent. The carousel swings to it and it jiggles, then the match starts.
-  let randomT = 0;
   // a seat left to chance: "?" on the Play screen, a fighter picked when the match starts
   function randomSeat() {
     if (!pending || pending.kind !== 'seat') return;
     seats[pending.seat] = { ...seats[pending.seat], kind: null, variant: undefined };
     keepSeats();
-    selectEl.hidden = true;
     openPlay();
   }
   randomBtn.addEventListener('click', randomSeat);
@@ -3872,10 +3907,9 @@ import ReconnectingWebSocket from 'partysocket/ws';
   });
 
   function showSelect() {
-    menuEl.hidden = true; resultEl.hidden = true; selectEl.hidden = false;
+    showScreen(selectEl);
     document.getElementById('selectTitle').textContent = pending.kind === 'seat'
       ? `Pick a fighter \u00b7 ${seatName(pending.seat)}` : 'Pick your fighter \u00b7 Training';
-    livesEl.hidden = true;            // lives are set on the Play screen
     demoT = 0; demoStep = -1;
     resizePreview();
     layoutCarousel();
@@ -3892,11 +3926,21 @@ import ReconnectingWebSocket from 'partysocket/ws';
   const pRenderer = makeOverlayRenderer(previewCanvas);
   const pCam = new THREE.OrthographicCamera(-1, 1, 1, -1, 0.1, 100);
   const P_TILT = 0.32;                     // looking down a little, so the logos show
+  // a little world of its own: a scene lit like the cards', and the lists the game's update code works on
+  const emptyWorld = () => ({ fighters: [], projectiles: [], effects: [], transient: new Set(), springs: [] });
+  const makeWorld = () => { const scene = new THREE.Scene(); addLights(scene, 0.8, 0.75, [3, 8, 6]); return { scene, ...emptyWorld() }; };
+  // an orthographic camera tilted down (P_TILT) at a box w x h pixels, ppu pixels to a unit: the ground line `ground`
+  // pixels up from the box's foot, and the fighter tx units right of its middle
+  function fitTilted(cam, w, h, ppu, ground, tx = 0) {
+    cam.left = -w / 2 / ppu; cam.right = w / 2 / ppu; cam.top = h / 2 / ppu; cam.bottom = -h / 2 / ppu;
+    cam.updateProjectionMatrix();
+    const ty = (h / 2 - ground) / ppu / Math.cos(P_TILT);
+    cam.position.set(tx, ty + Math.sin(P_TILT) * 30, Math.cos(P_TILT) * 30);
+    cam.lookAt(tx, ty, 0);
+  }
   const worlds = ORDER.map((kind, i) => {
-    const sc = new THREE.Scene();
-    addLights(sc, 0.8, 0.75, [3, 8, 6]);
-    const w = { scene: sc, fighters: [], projectiles: [], effects: [], transient: new Set(), springs: [], slot: slots[i] };
-    w.fighters.push(buildFighter(kind, 0, false, sc, w.springs));
+    const w = { ...makeWorld(), slot: slots[i] };
+    w.fighters.push(buildFighter(kind, 0, false, w.scene, w.springs));
     w.fighters[0].facing = 1;
     return w;
   });
@@ -3982,25 +4026,16 @@ import ReconnectingWebSocket from 'partysocket/ws';
       updateFighter(f, inp, dt);
       updateProjectiles(dt);
       updateEffects(dt);
-      scene.updateMatrixWorld();
-      for (const sp of springs) { stepSpring(sp, Math.max(dt, 1 / 240)); placeSpring(sp); }
-      if (f.kind === 'so') renderMagazine(f);
-      poseGuard(f);
+      poseWorld(Math.max(dt, 1 / 240));
       leaveWorld(w);
       // draw it into the card's window: the fighter stands a little left of centre so its moves have room
       const ped = sl.slot.querySelector('.pedestal').getBoundingClientRect();
       const scale = ped.width / cw;
       const x = ped.left - cr.left, y = cr.bottom - ped.bottom, pw = ped.width, ph = ped.height;
       ppu = Math.min(56, (ph / scale - 40) / 4.1, cw / 6.2) * scale;
-      const groundUp = 16 * scale, anchor = 0.36;
-      pCam.left = -pw / 2 / ppu; pCam.right = pw / 2 / ppu; pCam.top = ph / 2 / ppu; pCam.bottom = -ph / 2 / ppu;
-      pCam.updateProjectionMatrix();
-      const ty = (ph / 2 - groundUp) / ppu / Math.cos(P_TILT), tx = (0.5 - anchor) * pw / ppu;
-      pCam.position.set(tx, ty + Math.sin(P_TILT) * 30, Math.cos(P_TILT) * 30);
-      pCam.lookAt(tx, ty, 0);
-      pRenderer.setViewport(x, y, pw, ph);
-      pRenderer.setScissor(x, y, pw, ph);
-      pRenderer.render(w.scene, pCam);
+      const anchor = 0.36;
+      fitTilted(pCam, pw, ph, ppu, 16 * scale, (0.5 - anchor) * pw / ppu);
+      drawIn(pRenderer, w.scene, pCam, x, y, pw, ph);
     });
   }
 
@@ -4018,14 +4053,9 @@ import ReconnectingWebSocket from 'partysocket/ws';
   // a cue for the sound of something happening; the game itself is silent, and recordings listen here
   function cue() {}
   function vsWorld(slot, kind, variant) {
-    let w = vsWorlds[slot];
-    if (!w) {
-      const sc = new THREE.Scene();
-      addLights(sc, 0.8, 0.75, [3, 8, 6]);
-      w = vsWorlds[slot] = { scene: sc, fighters: [], projectiles: [], effects: [], transient: new Set(), springs: [] };
-    }
+    const w = vsWorlds[slot] ||= makeWorld();
     clearWorld(w.scene, w);
-    Object.assign(w, { fighters: [], projectiles: [], effects: [], transient: new Set(), springs: [] });
+    Object.assign(w, emptyWorld());
     w.fighters.push(buildFighter(kind, 0, false, w.scene, w.springs, variant));
     return w;
   }
@@ -4119,23 +4149,12 @@ import ReconnectingWebSocket from 'partysocket/ws';
       updateFighter(f, NO_INPUT, dt);
       if (wasAir && f.onGround && v.t < 1) cue('land', f.kind);
       f.root.rotation.y = f.vsTurn || 0;          // the face (on the front of the cup) turned toward the others
-      scene.updateMatrixWorld();
-      for (const sp of springs) { stepSpring(sp, Math.max(dt, 1 / 240)); placeSpring(sp); }
-      if (f.kind === 'so') renderMagazine(f);
-      poseGuard(f);
+      poseWorld(Math.max(dt, 1 / 240));
       leaveWorld(p.w);
       // the fighter stands on its panel's floor line, as big as the panel allows
       const r = p.el.getBoundingClientRect();
-      const ppu = Math.min(r.height * VS_FLOOR * 0.62 / 4.2, r.width / 2.8);
-      vsCam.left = -r.width / 2 / ppu; vsCam.right = r.width / 2 / ppu; vsCam.top = r.height / 2 / ppu; vsCam.bottom = -r.height / 2 / ppu;
-      vsCam.updateProjectionMatrix();
-      const ty = (r.height / 2 - r.height * (1 - VS_FLOOR)) / ppu / Math.cos(P_TILT);
-      vsCam.position.set(0, ty + Math.sin(P_TILT) * 30, Math.cos(P_TILT) * 30);
-      vsCam.lookAt(0, ty, 0);
-      const x = r.left, y = H - r.bottom;
-      vsRenderer.setViewport(x, y, r.width, r.height);
-      vsRenderer.setScissor(x, y, r.width, r.height);
-      vsRenderer.render(p.w.scene, vsCam);
+      fitTilted(vsCam, r.width, r.height, Math.min(r.height * VS_FLOOR * 0.62 / 4.2, r.width / 2.8), r.height * (1 - VS_FLOOR));
+      drawIn(vsRenderer, p.w.scene, vsCam, r.left, H - r.bottom, r.width, r.height);
     }
   }
 
@@ -4231,8 +4250,7 @@ import ReconnectingWebSocket from 'partysocket/ws';
     document.getElementById('onlineTitle').textContent = view === 'lobby' && net.room ? net.room.name : 'Online';
   }
   function openOnline(message, err = false) {
-    menuEl.hidden = true; selectEl.hidden = true; resultEl.hidden = true; boardEl.hidden = true; cornerEl.hidden = true;
-    onlineEl.hidden = false;
+    showScreen(onlineEl);
     showOnline(message, err);
   }
   async function showOnline(message, err = false) {
@@ -4513,7 +4531,8 @@ import ReconnectingWebSocket from 'partysocket/ws';
     const allReady = L.players.length >= 2 && L.players.every(p => p.kind && p.ready);
     start.hidden = !host || net.room.casual; start.disabled = !allReady || L.playing;     // casual matches start by themselves
     const lives = document.getElementById('lobbyLives');
-    lives.querySelectorAll('button').forEach(b => { b.disabled = !host || L.playing; b.setAttribute('aria-pressed', String(Number(b.dataset.lives) === L.lives)); });
+    lives.querySelectorAll('button').forEach(b => { b.disabled = !host || L.playing; });
+    pressLives(lives, L.lives);
     document.getElementById('lobbyNote').textContent =
       L.playing ? 'A match is on.' :
       net.room.casual && L.players.length < 2 ? 'Looking for another player… You’ll be matched with the next person who asks for a casual match.' :
@@ -4547,6 +4566,7 @@ import ReconnectingWebSocket from 'partysocket/ws';
       }
       return scenes.get(key);
     };
+    moreWarmups.push(() => r3.compile(sceneFor('so').sc, logoCam));     // its shaders, before the panel first opens
     let size = '';
     return () => {
       const cr = canvas.getBoundingClientRect();
@@ -4612,8 +4632,7 @@ import ReconnectingWebSocket from 'partysocket/ws';
   function beginOnline(m) {
     net.match = { mid: m.mid, host: m.host, held: 0, pend: 0, lastSent: -1, sendT: 0, snapT: 0, ev: [] };
     net.remote = new Map(m.players.map(p => [p.id, { held: 0, pend: 0, frame: -1, inp: NO_INPUT }]));
-    onlineEl.hidden = true; menuEl.hidden = true; selectEl.hidden = true; resultEl.hidden = true; boardEl.hidden = true;
-    cornerEl.hidden = false;
+    showScreen(null);
     toggleTray(false);
     startMatch({ kind: 'online', players: m.players, lives: m.lives });
   }
@@ -4699,7 +4718,6 @@ import ReconnectingWebSocket from 'partysocket/ws';
     endMatch(title, sub);
   }
   document.getElementById('roomBtn').addEventListener('click', () => {
-    resultEl.hidden = true;
     net.match = null;
     startMatch({ kind: 'watch' });
     if (net.ws) openOnline(); else openMenu();
@@ -4707,9 +4725,9 @@ import ReconnectingWebSocket from 'partysocket/ws';
 
   // ---------- the leaderboard ----------
   document.getElementById('boardBtn').addEventListener('click', openBoard);
-  document.getElementById('boardBack').addEventListener('click', () => { boardEl.hidden = true; menuEl.hidden = false; });
+  document.getElementById('boardBack').addEventListener('click', () => showScreen(menuEl));
   async function openBoard() {
-    menuEl.hidden = true; boardEl.hidden = false;
+    showScreen(boardEl);
     const msg = document.getElementById('boardMsg'), table = document.getElementById('boardTable');
     msg.textContent = 'Loading…'; table.innerHTML = '';
     try {
@@ -4757,7 +4775,22 @@ import ReconnectingWebSocket from 'partysocket/ws';
     // one fighter, frame by frame: speed, facing, walking backwards, the guard, the lean
     window.__bbTrack = (i, on) => { if (on) { trackLog = { i, rows: [] }; return null; } const r = trackLog && trackLog.rows; trackLog = null; return r; };
     window.__bbNet = { drop: () => net.ws && net.ws.reconnect(3000, 'test drop'), cut: () => net.ws && net.ws.close(3000, 'test cut') };
+    // per frame, milliseconds: simulation, springs and poses, camera, the page (cards, versus, logos, moves), the scene, HUD logos
+    window.__bbPerf = on => { if (on) { perfLog = []; return null; } const r = perfLog; perfLog = null; return r; };
     window.__bbMem = () => ({ ...renderer.info.memory, programs: renderer.info.programs.length });   // GPU objects the main renderer holds
+    // the last frame's drawing: draw calls and triangles (the shadow pass's too: info resets once a frame), and what the
+    // scene holds, per fighter
+    window.__bbDraw = () => {
+      let meshes = 0, shadowCasters = 0;
+      scene.traverseVisible(o => { if (o.isMesh || o.isLine || o.isPoints || o.isSprite) { meshes++; if (o.castShadow) shadowCasters++; } });
+      const per = fighters.map(f => { let n = 0; f.root.traverseVisible(o => { if (o.isMesh) n++; }); return n; });
+      // what each fighter's meshes are: geometry type, material, outline or not, triangles
+      const parts = fighters.map(f => { const c = {}; f.root.traverseVisible(o => { if (!o.isMesh) return;
+        const g = o.geometry, tri = g.index ? g.index.count / 3 : g.attributes.position.count / 3;
+        const k = `${g.type.replace('Geometry', '')}/${o.material.type.replace('Material', '')}${o.material.side === THREE.BackSide ? '/shell' : ''}${o.castShadow ? '/cast' : ''}`;
+        c[k] = c[k] || [0, 0]; c[k][0]++; c[k][1] += Math.round(tri); }); return [f.kind, c]; });
+      return { calls: renderer.info.render.calls, triangles: renderer.info.render.triangles, meshes, shadowCasters, perFighter: per, parts };
+    };
     window.__bbCam = on => { if (on) { camLog = []; return null; } const r = camLog; camLog = null; return r; };   // the camera, frame by frame
     // hands and heads in the versus gestures: steps one fighter's gesture through and reports how deep any part of
     // an arm (upper arm, forearm, fist, Stack Overflow's finger) goes into its own cup, in body units
@@ -4840,7 +4873,6 @@ import ReconnectingWebSocket from 'partysocket/ws';
   // USER A is you (the keyboard, or the touch buttons), USER B a friend on the same keyboard, CPU the computer.
   // Two seats make a duel, three a free-for-all; all CPU is a match to watch. A seat's fighter is picked on the
   // fighter cards (with its colour); "?" picks one at random when the match starts.
-  const playEl = document.getElementById('play');
   const seatsEl = document.getElementById('seats');
   const CTRL_LABEL = { A: 'User A', B: 'User B', cpu: 'CPU' };
   let seats = [{ kind: null, ctrl: 'A' }, { kind: null, ctrl: 'cpu' }, { kind: null, ctrl: 'cpu' }];
@@ -4884,17 +4916,16 @@ import ReconnectingWebSocket from 'partysocket/ws';
       seatsEl.appendChild(add);
     }
     document.getElementById('playKeys').hidden = !seats.some(st => st.ctrl === 'B');
-    playLivesEl.querySelectorAll('button').forEach(b => b.setAttribute('aria-pressed', String(Number(b.dataset.lives) === livesSetting)));
+    pressLives(playLivesEl, livesSetting);
   }
   const playLivesEl = document.getElementById('playLives');
   playLivesEl.querySelectorAll('button').forEach(b => b.addEventListener('click', () => {
     livesSetting = Number(b.dataset.lives);
     try { localStorage.setItem('botbattle.lives', String(livesSetting)); } catch (err) { /* storage blocked */ }
-    renderSeats(); showLives();
+    renderSeats();
   }));
   function openPlay() {
-    menuEl.hidden = true; selectEl.hidden = true; resultEl.hidden = true; cornerEl.hidden = true;
-    playEl.hidden = false;
+    showScreen(playEl);
     renderSeats();
     document.getElementById('fightBtn').focus({ preventScroll: true });
   }
@@ -4902,7 +4933,6 @@ import ReconnectingWebSocket from 'partysocket/ws';
     pending = { kind: 'seat', seat: i, step: 'pick' };
     const st = seats[i];
     if (st.kind) { carIndex = ORDER.indexOf(st.kind); carVariant[st.kind] = st.variant || VARIANTS[st.kind][0].id; setPreviewVariant(st.kind); }
-    playEl.hidden = true;
     showSelect();
   }
   // the seats as fighters: "?" becomes a fighter nobody has yet if there is one, and two of the same fighter
@@ -4933,7 +4963,7 @@ import ReconnectingWebSocket from 'partysocket/ws';
     return out;
   }
   document.getElementById('fightBtn').addEventListener('click', () => {
-    playEl.hidden = true; cornerEl.hidden = false;
+    showScreen(null);
     startMatch({ kind: 'play', seats: seats.map(st => ({ ...st })), lives: livesSetting });
   });
   document.getElementById('playBack').addEventListener('click', openMenu);
@@ -4941,13 +4971,13 @@ import ReconnectingWebSocket from 'partysocket/ws';
   function updateSeatLogos() { if (!playEl.hidden) drawSeatLogos(); }
 
   document.getElementById('backBtn').addEventListener('click', () => {
-    if (pending && pending.kind === 'seat') { selectEl.hidden = true; openPlay(); return; }
+    if (pending && pending.kind === 'seat') { openPlay(); return; }
     openMenu();
   });
   document.getElementById('rematchBtn').addEventListener('click', () => { resultEl.hidden = true; startMatch(mode); });
   document.getElementById('changeBtn').addEventListener('click', () => {
     const was = mode.kind;
-    startMatch({ kind: 'watch' }); cornerEl.hidden = true;
+    startMatch({ kind: 'watch' });
     if (was === 'play') { openPlay(); return; }
     pending = { kind: was, step: 'pick' };
     showSelect();
@@ -4985,6 +5015,7 @@ import ReconnectingWebSocket from 'partysocket/ws';
   resize();
 
   let trackLog = null;                    // dev: __bbTrack
+  let perfLog = null;                     // dev: __bbPerf
   let camSnap = true, camLog = null, camLookY = null, camZv = 0;      // camLog: the camera, frame by frame, for local testing (?dev=)
   const fitCam = new THREE.PerspectiveCamera(), _fit = V();
   function updateCamera(dt) {
@@ -5228,10 +5259,18 @@ import ReconnectingWebSocket from 'partysocket/ws';
     sc.add(logo);
     return { sc, logo };
   }
-  const HUD_LOGOS = new Map();
+  // The plates' logos are drawn by the arena's renderer but without its fog and lights, so they get their own copies of
+  // the materials they share with the fighters: drawing one material both ways makes three.js look its shader up at
+  // every switch.
+  const HUD_LOGOS = new Map(), hudMats = new Map();
+  const hudMat = m => { if (!hudMats.has(m)) hudMats.set(m, m.clone()); return hudMats.get(m); };
   const hudLogo = kit => {
     const key = kit.kind + ':' + kit.variant;
-    if (!HUD_LOGOS.has(key)) HUD_LOGOS.set(key, logoScene(kit.kind, HUD_PAPER, kit.logoColor));
+    if (!HUD_LOGOS.has(key)) {
+      const L = logoScene(kit.kind, HUD_PAPER, kit.logoColor);
+      L.logo.traverse(o => { if (o.material) o.material = hudMat(o.material); });
+      HUD_LOGOS.set(key, L);
+    }
     return HUD_LOGOS.get(key);
   };
 
@@ -5246,8 +5285,8 @@ import ReconnectingWebSocket from 'partysocket/ws';
   const bCam = new THREE.OrthographicCamera(-0.62, 0.62, 0.62, -0.62, 0.1, 10);
   bCam.position.z = 5;
   const brands = [...brandsEl.querySelectorAll('a')].map((a, i) => {
-    const kind = a.querySelector('.logo3d').dataset.kind;
-    const b = { a, kind, ...logoScene(kind, null), hover: 0, grow: 1, jig: 0, phase: i * 2.1 + 0.4 };
+    const logo3d = a.querySelector('.logo3d'), kind = logo3d.dataset.kind;
+    const b = { a, logo3d, kind, ...logoScene(kind, null), hover: 0, grow: 1, jig: 0, phase: i * 2.1 + 0.4, dx: 0, dy: 0 };
     a.addEventListener('pointerenter', () => { b.hover = 1; });
     a.addEventListener('pointerleave', () => { b.hover = 0; });
     a.addEventListener('focus', () => { b.hover = 1; });
@@ -5258,27 +5297,30 @@ import ReconnectingWebSocket from 'partysocket/ws';
   let brandSize = '';
   function updateBrands(dt) {
     if (menuEl.hidden) return;
+    // everything is measured before anything moves, so the page is laid out once a frame, not once per logo
     const cr = brandCanvas.getBoundingClientRect();
     if (!cr.width) return;
+    const box = brandsEl.getBoundingClientRect(), radius = Math.min(box.width, box.height) * 0.31;
+    for (const b of brands) { b.rect = b.logo3d.getBoundingClientRect(); b.half = b.a.offsetWidth / 2; }
     const key = `${Math.round(cr.width)}x${Math.round(cr.height)}`;
     if (key !== brandSize) { brandSize = key; bRenderer.setSize(cr.width, cr.height, false); }
     const t = performance.now() / 1000;
     bRenderer.setViewport(0, 0, cr.width, cr.height);
     bRenderer.clear();
-    const box = brandsEl.getBoundingClientRect(), radius = Math.min(box.width, box.height) * 0.31;
     brands.forEach((b, i) => {
       // the three sit at the corners of a triangle that slowly turns, each bobbing a little on its own
-      const ang = t * 0.3 + i * Math.PI * 2 / 3 - Math.PI / 2, half = b.a.offsetWidth / 2;
+      const ang = t * 0.3 + i * Math.PI * 2 / 3 - Math.PI / 2;
       // a click makes it hop
       const hop = b.jig > 0 ? Math.sin(Math.PI * (1 - b.jig)) * 22 : 0;
-      const dx = box.width / 2 + Math.cos(ang) * radius - half;
-      const dy = box.height / 2 + Math.sin(ang) * radius - half + Math.sin(t * 0.8 + b.phase * 1.7) * 5 - hop;
-      b.a.style.transform = `translate(${dx.toFixed(1)}px, ${dy.toFixed(1)}px)`;
+      const dx = +(box.width / 2 + Math.cos(ang) * radius - b.half).toFixed(1);
+      const dy = +(box.height / 2 + Math.sin(ang) * radius - b.half + Math.sin(t * 0.8 + b.phase * 1.7) * 5 - hop).toFixed(1);
+      // where its logo will be: where it was measured, moved as far as the link moves now
+      const r = b.rect, left = r.left + dx - b.dx, top = r.top + dy - b.dy;
+      b.a.style.transform = `translate(${dx}px, ${dy}px)`; b.dx = dx; b.dy = dy;
       b.grow += ((b.hover ? 1.45 : 1) - b.grow) * Math.min(1, dt * 12);
       b.jig = Math.max(0, b.jig - dt * 2.6);
-      const r = b.a.querySelector('.logo3d').getBoundingClientRect();
       // the drawing box is bigger than the slot so a swollen logo has room
-      const size = r.width * 2.4, x = r.left + r.width / 2 - cr.left - size / 2, y = cr.bottom - (r.top + r.height / 2) - size / 2;
+      const size = r.width * 2.4, x = left + r.width / 2 - cr.left - size / 2, y = cr.bottom - (top + r.height / 2) - size / 2;
       bRenderer.setViewport(x, y, size, size);
       bRenderer.clearDepth();
       b.logo.scale.setScalar(b.grow / 2.4);
@@ -5289,17 +5331,15 @@ import ReconnectingWebSocket from 'partysocket/ws';
   }
   const emptyHud = new THREE.Scene(); emptyHud.background = HUD_PAPER;
   function renderHudLogos(dt) {
-    if (!plates.size) return;
+    if (!plates.length || hud.hidden) return;
     const H = stage.clientHeight, t = performance.now() / 1000;
     renderer.setScissorTest(true);
-    const flipped = new Set(platesB.values());
-    for (const [f, el] of [...plates, ...platesB]) {
+    for (const { f, sq, flipped } of plates) {
       // drawn inside the square's border, whichever sides it has
-      const sq = el.querySelector('.plate-logo'), r = sq.getBoundingClientRect();
+      const r = sq.getBoundingClientRect();
       if (r.width < 4) continue;
       const w = sq.clientWidth, h = sq.clientHeight, x = r.left + sq.clientLeft, y = H - (r.top + sq.clientTop + h);
-      renderer.setViewport(x, y, w, h); renderer.setScissor(x, y, w, h);
-      if (f.out) { renderer.render(emptyHud, hudCam); continue; }
+      if (f.out) { drawIn(renderer, emptyHud, hudCam, x, y, w, h); continue; }
       const { sc, logo } = hudLogo(f.kit);
       f.hudKick = Math.max(0, (f.hudKick || 0) - dt * 2.5);
       const shake = Math.sin(t * 45) * 0.3 * f.hudKick;
@@ -5307,13 +5347,48 @@ import ReconnectingWebSocket from 'partysocket/ws';
       if (f.kind === 'so') logo.rotation.set(0, Math.sin(t * 0.9 + f.id) * 0.5, shake);
       else logo.rotation.set(Math.sin(t * 0.7 + f.id) * 0.25, Math.sin(t * 0.9 + f.id) * 0.35, f.spinDir * t * 0.8 + shake);
       logo.scale.setScalar(1 + 0.15 * f.hudKick);
-      if (flipped.has(el)) logo.rotation.z += Math.PI;     // User B's plates are turned round, so their logos are too
-      renderer.render(sc, hudCam);
+      if (flipped) logo.rotation.z += Math.PI;     // User B's plates are turned round, so their logos are too
+      drawIn(renderer, sc, hudCam, x, y, w, h);
     }
     renderer.setScissorTest(false);
     renderer.setViewport(0, 0, stage.clientWidth, H);
   }
 
+  // ================= Shaders, compiled up front =================
+  // Shaders are compiled the first time something drawn needs them, and that frame waits: a stutter, longer on a
+  // phone. The effects first appear mid-fight, and the cards, the versus screen and the plates when they open, so
+  // they're all compiled while the menu shows: a group at a time, from once the page has settled (a page opened from
+  // an invite gets into its room first). Where the browser compiles in parallel (KHR_parallel_shader_compile, most
+  // with a GPU), nothing waits on them until they're drawn; elsewhere each group holds up a frame on the menu instead
+  // of one in a fight.
+  function warmShaders() {
+    const dots = new THREE.BufferGeometry();       // the inhale's vortex: points coloured one by one
+    dots.setAttribute('position', new THREE.Float32BufferAttribute(new Float32Array(3), 3));
+    dots.setAttribute('color', new THREE.Float32BufferAttribute(new Float32Array(3), 3));
+    const box = new THREE.BoxGeometry();
+    const effects = new THREE.Group().add(makeCursor(), makeBeamMesh(),
+      new THREE.Mesh(box, new THREE.MeshBasicMaterial({ transparent: true })),                  // rings, bursts, the slab
+      new THREE.LineSegments(new THREE.EdgesGeometry(box), new THREE.LineBasicMaterial()),        // the slab's edges
+      new THREE.Points(dots, new THREE.PointsMaterial({ vertexColors: true, transparent: true })));
+    const steps = [
+      () => renderer.compile(scene, camera),     // the arena, its hidden parts too (the guard's glint, the markers)
+      () => { renderer.compile(effects, camera, scene); disposeTree(effects); },
+      () => { for (const f of fighters) renderer.compile(hudLogo(f.kit).sc, hudCam); },     // the plates' logos
+      ...worlds.map(w => () => pRenderer.compile(w.scene, pCam)),            // the cards
+      ...worlds.map(w => () => vsRenderer.compile(w.scene, vsCam)),          // the versus screen (its worlds are built alike)
+      ...moreWarmups,
+    ];
+    const next = () => { const step = steps.shift(); if (step) { step(); setTimeout(() => whenIdle(next), 120); } };
+    setTimeout(() => whenIdle(next), 1500);
+  }
+  // after the bodies have moved, in whichever world is in: the springs follow them, then Stack Overflow's magazine and
+  // the shields are posed
+  function poseWorld(springDt) {
+    scene.updateMatrixWorld();
+    for (const sp of springs) { stepSpring(sp, springDt); placeSpring(sp); }
+    for (const f of fighters) if (f.kind === 'so') renderMagazine(f);
+    for (const f of fighters) poseGuard(f);
+  }
   // ================= Main loop =================
   const timer = new THREE.Timer();          // (THREE.Clock is deprecated; both read performance.now())
   let lastDt = 1 / 60;
@@ -5329,11 +5404,9 @@ import ReconnectingWebSocket from 'partysocket/ws';
     if (!split) { renderer.render(scene, camera); return; }
     const w = stage.clientWidth, h = stage.clientHeight, half = Math.floor(h / 2);
     renderer.setScissorTest(true);
-    renderer.setViewport(0, 0, w, half); renderer.setScissor(0, 0, w, half);
-    renderer.render(scene, camera);
+    drawIn(renderer, scene, camera, 0, 0, w, half);
     camB.copy(camera); camB.rotateZ(Math.PI); camB.updateMatrixWorld();
-    renderer.setViewport(0, half, w, h - half); renderer.setScissor(0, half, w, h - half);
-    renderer.render(scene, camB);
+    drawIn(renderer, scene, camB, 0, half, w, h - half);
     renderer.setScissorTest(false);
     renderer.setViewport(0, 0, w, h);
   }
@@ -5345,6 +5418,7 @@ import ReconnectingWebSocket from 'partysocket/ws';
       return;
     }
     lastDt = dt;
+    const pt = perfLog && [performance.now()];      // dev: how long each part of the frame takes (__bbPerf)
     const pin = player ? playerInput(player2 ? 'A' : 'all') : NO_INPUT;
     const pinB = player2 ? playerInput('B', bodyB()) : NO_INPUT;
     pressed.clear();
@@ -5364,18 +5438,17 @@ import ReconnectingWebSocket from 'partysocket/ws';
     separateFighters(dt);
     updateProjectiles(dt);
     updateEffects(dt);
-
-    scene.updateMatrixWorld();
-    for (const sp of springs) { stepSpring(sp, dt); placeSpring(sp); }
-    for (const f of fighters) if (f.kind === 'so') renderMagazine(f);
-    for (const f of fighters) poseGuard(f);
+    if (pt) pt.push(performance.now());
+    poseWorld(dt);
+    if (pt) pt.push(performance.now());
 
     updateCamera(dt);
+    if (pt) pt.push(performance.now());
     updatePreview(dt);
     updateVersus(dt);
     updateBrands(dt);
-    hud.hidden = !inMatch() || !resultEl.hidden;     // the plates sit where the menu's logos float, and the results' title
-    hudB.hidden = hud.hidden || !split;
+    const hudOff = !inMatch() || !resultEl.hidden;     // the plates sit where the menu's logos float, and the results' title
+    setHidden(hud, hudOff); setHidden(hudB, hudOff || !split);
     updateBubble(dt);
     updateMoves();
     checkResult(dt);
@@ -5384,12 +5457,16 @@ import ReconnectingWebSocket from 'partysocket/ws';
       trackLog.rows.push({ dt, x: f.x, y: f.y, vx: f.vx, facing: f.facing, back: backing(f), ground: f.onGround, dash: f.passT > 0,
         guard: f.guard ? { t: f.guard.t, held: !!f.guard.held, bash: !!f.guard.bash } : null, lean: f.vis.rotation.z, crouch: f.crouch || 0 });
     }
+    if (pt) pt.push(performance.now());
     renderScene();
+    if (pt) pt.push(performance.now());
     renderHudLogos(dt);
+    if (pt) { pt.push(performance.now()); perfLog.push(pt.slice(1).map((t, i) => +(t - pt[i]).toFixed(3))); }
   }
 
   startMatch({ kind: 'watch' });   // CPUs brawl behind the main menu
   tick();
+  warmShaders();
 })();
 </script>
 

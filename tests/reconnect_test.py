@@ -4,19 +4,12 @@
 # drop, not a leave); cut() closes it for good.
 import asyncio, json, time
 from playwright.async_api import async_playwright
-from bb import BASE as B, check, summary, launch
+from bb import BASE as B, check, summary, launch, player
 async def main():
     async with async_playwright() as p:
         browser = await launch(p)
-        async def page(user):
-            ctx = await browser.new_context(viewport={"width": 1100, "height": 760})
-            pg = await ctx.new_page(); pg.set_default_timeout(120000)
-            pg.errors = []; pg.snaps = []
-            pg.on("pageerror", lambda e: pg.errors.append(str(e)))
-            pg.on("websocket", lambda ws: ws.on("framereceived", lambda m: pg.snaps.append(time.time()) if '"t":"snap"' in m else None))
-            await pg.goto(B + f"?dev={user}", wait_until="domcontentloaded", timeout=300000)
-            await pg.click('.mode[data-mode="online"]'); await pg.wait_for_selector("#rooms:not([hidden])")
-            return pg
+        # when each of the host's state messages arrives, to see them stop and start again
+        page = lambda user: player(browser, user, snaps=[], on_frame=lambda pg, m: pg.snaps.append(time.time()) if '"t":"snap"' in m else None)
         alice = await page("rcalice")
         await alice.fill("#createName", "Reconnect Room"); await alice.click("#createForm button[type=submit]")
         await alice.wait_for_selector("#lobby:not([hidden])")

@@ -3,20 +3,12 @@
 # controls (the punch, a held guard) reach the other player: the server used to pass on only the first 13 bits.
 import asyncio, json
 from playwright.async_api import async_playwright
-from bb import BASE as B, check, summary, launch
+from bb import BASE as B, check, summary, launch, player
 async def main():
     async with async_playwright() as p:
         browser = await launch(p)
-        async def page(user):
-            ctx = await browser.new_context(viewport={"width": 1100, "height": 760})
-            pg = await ctx.new_page(); pg.set_default_timeout(120000)
-            pg.errors = []; pg.ins = []
-            pg.on("pageerror", lambda e: pg.errors.append(str(e)))
-            pg.on("websocket", lambda ws: ws.on("framereceived", lambda m: pg.ins.append(json.loads(m)["b"]) if '"t":"in"' in m else None))
-            await pg.goto(B + f"?dev={user}", wait_until="domcontentloaded", timeout=300000)
-            await pg.click('.mode[data-mode="online"]')
-            await pg.wait_for_selector("#rooms:not([hidden])")
-            return pg
+        # each player's incoming controls (the bits), to check the newer ones get through
+        page = lambda user: player(browser, user, ins=[], on_frame=lambda pg, m: pg.ins.append(json.loads(m)["b"]) if '"t":"in"' in m else None)
         async def casual(pg):
             await pg.click("#casualBtn")
             await pg.wait_for_selector("#lobby:not([hidden])")

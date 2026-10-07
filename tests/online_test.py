@@ -2,23 +2,14 @@
 # link, pick, ready, play a match, emote, leave, and check the leaderboard.
 import asyncio, json
 from playwright.async_api import async_playwright
-from bb import BASE as B, OUT, check, summary, launch, api
+from bb import BASE as B, OUT, check, summary, launch, api, player
 async def main():
     async with async_playwright() as p:
         browser = await launch(p)
-        async def page(user, extra=""):
-            ctx = await browser.new_context(viewport={"width": 1100, "height": 760})
-            pg = await ctx.new_page()
-            pg.errors = []; pg.snaps = 0; pg.ins = 0
-            pg.on("pageerror", lambda e: pg.errors.append(str(e)))
-            def on_ws(ws):
-                def frame(payload):
-                    if '"t":"snap"' in payload: pg.snaps += 1
-                    if '"t":"in"' in payload: pg.ins += 1
-                ws.on("framereceived", frame)
-            pg.on("websocket", on_ws)
-            await pg.goto(B + f"?dev={user}{extra}", wait_until="domcontentloaded", timeout=90000)
-            return pg
+        def count(pg, m):            # the host's state, and everyone's controls, as they arrive
+            if '"t":"snap"' in m: pg.snaps += 1
+            if '"t":"in"' in m: pg.ins += 1
+        page = lambda user, extra="": player(browser, user, extra, online=False, on_frame=count, snaps=0, ins=0)
         alice = await page("alice")
         await alice.click('.mode[data-mode="online"]')
         await alice.wait_for_selector("#rooms:not([hidden])", timeout=8000)
