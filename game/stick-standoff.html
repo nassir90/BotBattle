@@ -358,7 +358,7 @@ body.two-players .corner { left: 50%; right: auto; transform: translateX(-50%); 
 .variants { display: flex; gap: 6px; align-items: center; }
 .variants button { width: 30px; height: 30px; padding: 0; background: var(--sw); box-shadow: 2px 2px 0 var(--ink); }
 .variants button[aria-pressed="true"] { outline: 3px solid var(--ink); outline-offset: 2px; }
-@media (max-width: 640px) { .seat { flex-basis: 40%; min-height: 230px; } .seat-logo, .seat-q { width: 72px; height: 72px; font-size: 64px; line-height: 72px; } }
+@media (max-width: 640px) { .seat { flex: 0 0 calc(50% - 9px); box-sizing: border-box; max-width: none; min-height: 230px; }   /* half a row each: one alone on a row doesn't grow */ .seat-logo, .seat-q { width: 72px; height: 72px; font-size: 64px; line-height: 72px; } }
 
 /* online: sign in, rooms, the lobby, the leaderboard */
 .mode-links { display: flex; gap: 10px; flex-wrap: wrap; }
@@ -1507,8 +1507,11 @@ import ReconnectingWebSocket from 'partysocket/ws';
   // stuck. A hit from anywhere else lands as normal and breaks the pose.
   // Holding the button keeps the shield up after the shine: hits from that side are blocked (no damage, a little
   // push back), but only the shine parries.
-  const GUARD_IN = 4 / 60, GUARD_SHINE = 34 / 60, GUARD_OUT = 8 / 60, GUARD_END = GUARD_IN + GUARD_SHINE + GUARD_OUT;
+  const GUARD_IN = 4 / 60, GUARD_SHINE = 34 / 60, GUARD_OUT = 5 / 60, GUARD_END = GUARD_IN + GUARD_SHINE + GUARD_OUT;
   const GUARD_HELD = GUARD_IN + GUARD_SHINE;     // where a held guard waits
+  // letting go of the button cuts the shine short, once it has shone this long (so a quick tap still parries); a CPU,
+  // which doesn't report the button held, keeps the whole shine
+  const MIN_SHINE = 12 / 60;
   const KB_MAX = 10;
   const smooth = x => x * x * (3 - 2 * x);
   const shining = f => !!f.guard && f.guard.t >= GUARD_IN && f.guard.t < GUARD_IN + GUARD_SHINE;
@@ -2604,6 +2607,8 @@ import ReconnectingWebSocket from 'partysocket/ws';
     f.guardCd = Math.max(0, f.guardCd - dt);
     if (f.guard) {
       f.guard.t += dt;
+      // let go: the shield comes down as soon as it has had its moment
+      if (inp.guard === false && !f.guard.held && f.guard.t > GUARD_IN + MIN_SHINE && f.guard.t < GUARD_HELD) f.guard.t = GUARD_HELD;
       // still holding the button once the shine is over: the shield stays up
       if (inp.guard && f.guard.t >= GUARD_HELD && (f.guard.held || f.guard.t - dt < GUARD_HELD)) { f.guard.t = GUARD_HELD; f.guard.held = true; }
       else if (f.guard.held && f.guard.t > GUARD_HELD) f.guard.held = false;
