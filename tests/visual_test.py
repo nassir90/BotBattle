@@ -2,13 +2,10 @@
 #  - logo outlines: no ink blobs inside the OpenAI and Claude logos (dark pixels inside, not on the rim)
 #  - versus gestures: no part of an arm goes into its own head, in any frame
 #  - rounded phone corners: no control pokes outside a 55px-radius screen corner, upright or on its side
-import asyncio, os
+import asyncio
 from playwright.async_api import async_playwright
-B = os.environ.get("BOTBATTLE_URL", "http://localhost:5173/games/botbattle/")   # the local dev server (npm run dev)
+from bb import BASE as B, check, summary, launch
 R = 55
-results = []
-def check(name, ok, detail=""):
-    results.append(bool(ok)); print(("PASS " if ok else "FAIL ") + name, detail)
 CORNERS = """R => {
   const W = innerWidth, H = innerHeight;
   const out = (x, y) => { const cx = Math.min(Math.max(x, R), W - R), cy = Math.min(Math.max(y, R), H - R);
@@ -26,7 +23,7 @@ CORNERS = """R => {
 }"""
 async def main():
     async with async_playwright() as p:
-        b = await p.chromium.launch(args=["--use-gl=angle", "--use-angle=swiftshader", "--enable-unsafe-swiftshader"])
+        b = await launch(p)
         pg = await b.new_page()
         await pg.goto(B + "?dev=probe", wait_until="domcontentloaded", timeout=90000)
         await pg.wait_for_function("!!window.__bbLogoProbe", timeout=30000)
@@ -48,5 +45,5 @@ async def main():
             check(f"phone {name}: no control cut by a {R}px rounded corner", r["worst"] == 0, r)
             await ctx.close()
         await b.close()
-    print(f"\n{sum(results)}/{len(results)} passed")
+    summary()
 asyncio.run(main())

@@ -1,12 +1,9 @@
 # Camera smoothness: a duel (User A against the CPU), User A jumping from the start, the camera recorded frame by
 # frame. Jitter shows as the camera reversing direction from one frame to the next, or jumping in one frame.
 #   counts: reversals of the camera's movement (back and forth within a few frames), and single-frame jumps
-import asyncio, json, os, math
+import asyncio, json
 from playwright.async_api import async_playwright
-B = os.environ.get("BOTBATTLE_URL", "http://localhost:5173/games/botbattle/")
-results = []
-def check(name, ok, detail=""):
-    results.append(bool(ok)); print(("PASS " if ok else "FAIL ") + name, detail)
+from bb import BASE as B, check, summary, launch
 def jitter(log):
     # per axis: zig-zags (the movement changes direction and back again within 3 frames, while moving more than a
     # hair: what reads as jitter) and snaps (a frame much faster than the frames either side of it: a jump cut)
@@ -22,7 +19,7 @@ def jitter(log):
     return out
 async def main():
     async with async_playwright() as p:
-        b = await p.chromium.launch(args=["--use-gl=angle", "--use-angle=swiftshader", "--enable-unsafe-swiftshader"])
+        b = await launch(p)
         ctx = await b.new_context(viewport={"width": 1280, "height": 720})
         await ctx.add_init_script("localStorage.setItem('botbattle.seats', JSON.stringify([{kind:'so',ctrl:'A'},{kind:'gpt',ctrl:'cpu'}]))")
         pg = await ctx.new_page()
@@ -44,5 +41,5 @@ async def main():
         check("the camera doesn't jitter (no zig-zags)", zig == 0, zig)
         check("the camera doesn't snap (no frame much faster than its neighbours)", snaps == 0, snaps)
         await b.close()
-    print(f"\n{sum(results)}/{len(results)} passed")
+    summary()
 asyncio.run(main())

@@ -1,15 +1,11 @@
 # Play mode on the real page: the seats (fighter, colour, who plays it), adding and removing seats, two players on
 # one keyboard, the versus screen, the result, and the leaderboard's benchmark table.
-import asyncio, os
+import asyncio
 from playwright.async_api import async_playwright
-B = os.environ.get("BOTBATTLE_URL", "http://localhost:5173/games/botbattle/")   # the local dev server (npm run dev)
-OUT = os.environ.get("BOTBATTLE_SHOTS", "/tmp")
-results = []
-def check(name, ok, detail=""):
-    results.append(bool(ok)); print(("PASS " if ok else "FAIL ") + name, detail)
+from bb import BASE as B, OUT, check, summary, launch
 async def main():
     async with async_playwright() as p:
-        b = await p.chromium.launch(args=["--use-gl=angle", "--use-angle=swiftshader", "--enable-unsafe-swiftshader"])
+        b = await launch(p)
         pg = await b.new_page(viewport={"width": 1280, "height": 800}); errs = []; pg.on("pageerror", lambda e: errs.append(str(e))); pg.set_default_timeout(120000)
         await pg.goto(B + "?dev=tester", wait_until="domcontentloaded", timeout=90000); await pg.wait_for_timeout(1500)
         modes = await pg.eval_on_selector_all(".mode:not([hidden]) h2", "els => els.map(e => e.textContent)")
@@ -71,5 +67,5 @@ async def main():
         check("the leaderboard is a benchmark table (players as columns, the leader outlined)", await pg.locator("#boardTable thead th.win").count() == 1)
         check("no page errors", not errs, errs[:3])
         await b.close()
-    print(f"\n{sum(results)}/{len(results)} passed")
+    summary()
 asyncio.run(main())

@@ -1,21 +1,11 @@
 # Two (and three) players through the real page on the local dev server: make a room, join by password, by invite
 # link, pick, ready, play a match, emote, leave, and check the leaderboard.
-import asyncio, json, os, sys, urllib.request
+import asyncio, json
 from playwright.async_api import async_playwright
-B = os.environ.get("BOTBATTLE_URL", "http://localhost:5173/games/botbattle/")   # the local dev server (npm run dev)
-OUT = os.environ.get("BOTBATTLE_SHOTS", "/tmp")
-def api(path, body=None, token=None):
-    req = urllib.request.Request(B + "api/" + path, data=json.dumps(body).encode() if body else None,
-        headers={"content-type": "application/json", **({"authorization": f"Bearer {token}"} if token else {})})
-    try: return json.loads(urllib.request.urlopen(req).read())
-    except urllib.error.HTTPError as e: return json.loads(e.read())
-results = []
-def check(name, ok, detail=""):
-    results.append((name, bool(ok))); print(("PASS " if ok else "FAIL ") + name, detail)
-
+from bb import BASE as B, OUT, check, summary, launch, api
 async def main():
     async with async_playwright() as p:
-        browser = await p.chromium.launch(args=["--use-gl=angle", "--use-angle=swiftshader", "--enable-unsafe-swiftshader"])
+        browser = await launch(p)
         async def page(user, extra=""):
             ctx = await browser.new_context(viewport={"width": 1100, "height": 760})
             pg = await ctx.new_page()
@@ -140,5 +130,5 @@ async def main():
         check("the leaderboard screen lists players", await alice.locator("#boardTable tbody tr").count() >= 2)
         check("no page errors", not alice.errors, alice.errors[:3])
         await browser.close()
-    print(f"\n{sum(ok for _, ok in results)}/{len(results)} passed")
+    summary()
 asyncio.run(main())

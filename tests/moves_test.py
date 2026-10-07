@@ -3,19 +3,11 @@
 # holding the parry button to keep the shield up. Waits are counted in game frames.
 import asyncio, os
 from playwright.async_api import async_playwright
-B = os.environ.get("BOTBATTLE_URL", "http://localhost:5173/games/botbattle/")
-results = []
-def check(name, ok, detail=""):
-    results.append(bool(ok)); print(("PASS " if ok else "FAIL ") + name, detail)
-async def frames(pg, n):
-    seen = 0
-    while seen < n:
-        await pg.evaluate("window.__bbCam(true)"); await pg.wait_for_timeout(200)
-        seen += len(await pg.evaluate("window.__bbCam(false)"))
+from bb import BASE as B, check, summary, launch, frames
 async def track(pg, on): return await pg.evaluate(f"window.__bbTrack(0, {'true' if on else 'false'})")
 async def main():
     async with async_playwright() as p:
-        b = await p.chromium.launch(args=["--use-gl=angle", "--use-angle=swiftshader", "--enable-unsafe-swiftshader"])
+        b = await launch(p)
         pg = await b.new_page(viewport={"width": 1280, "height": 720}); errs = []; pg.on("pageerror", lambda e: errs.append(str(e)))
         pg.set_default_timeout(180000)
         await pg.goto(B + "?dev=moves", wait_until="domcontentloaded", timeout=300000); await pg.wait_for_timeout(1500)
@@ -135,5 +127,5 @@ async def main():
         check("the dash slows smoothly into the walk (under 40 units/s²)", drop < 40, round(drop, 1))
         check("no page errors", not errs, errs[:3])
         await b.close()
-    print(f"\n{sum(results)}/{len(results)} passed")
+    summary()
 asyncio.run(main())

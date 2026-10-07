@@ -1,15 +1,12 @@
 # Casual matches on the local dev server: two players asking for one land in the same room, a third gets a room of
 # their own, and the match starts by itself once both are ready (no host button). Also checks that the newer
 # controls (the punch, a held guard) reach the other player: the server used to pass on only the first 13 bits.
-import asyncio, json, os
+import asyncio, json
 from playwright.async_api import async_playwright
-B = os.environ.get("BOTBATTLE_URL", "http://localhost:5173/games/botbattle/")
-results = []
-def check(name, ok, detail=""):
-    results.append(bool(ok)); print(("PASS " if ok else "FAIL ") + name, detail)
+from bb import BASE as B, check, summary, launch
 async def main():
     async with async_playwright() as p:
-        browser = await p.chromium.launch(args=["--use-gl=angle", "--use-angle=swiftshader", "--enable-unsafe-swiftshader"])
+        browser = await launch(p)
         async def page(user):
             ctx = await browser.new_context(viewport={"width": 1100, "height": 760})
             pg = await ctx.new_page(); pg.set_default_timeout(120000)
@@ -48,5 +45,5 @@ async def main():
         check("a held guard reaches the other player (bit 16384)", any(b & 16384 for b in ben.ins))
         check("no page errors", not (ann.errors or ben.errors or cal.errors), (ann.errors + ben.errors + cal.errors)[:3])
         await browser.close()
-    print(f"\n{sum(results)}/{len(results)} passed")
+    summary()
 asyncio.run(main())

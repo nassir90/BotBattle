@@ -610,18 +610,46 @@ body.two-players .corner { left: 50%; right: auto; transform: translateX(-50%); 
 </div>
 <div class="fight-call" id="fightCall" hidden>Fight!</div>
 
-<script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
-<script src="https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/loaders/SVGLoader.js"></script>
-<script>
+<script type="importmap">
+{ "imports": { "three": "https://cdn.jsdelivr.net/npm/three@0.186.1/build/three.module.js",
+               "three/addons/": "https://cdn.jsdelivr.net/npm/three@0.186.1/examples/jsm/" } }
+</script>
+<script type="module">
+import * as THREE from 'three';
+import { SVGLoader } from 'three/addons/loaders/SVGLoader.js';
 (() => {
+  // The look is tuned for three's old defaults: colours used as written (no sRGB conversion on the way in or out),
+  // and lights a factor of π brighter than today's physical units. makeRenderer and addLights keep it that way.
+  THREE.ColorManagement.enabled = false;
+  const LIGHT = Math.PI;
+  function makeRenderer(opts) {
+    const r = new THREE.WebGLRenderer(opts);
+    r.outputColorSpace = THREE.LinearSRGBColorSpace;
+    r.setPixelRatio(Math.min(devicePixelRatio, 2));
+    return r;
+  }
+  // a renderer on a transparent canvas laid over the page (the cards, the versus screen, the logos)
+  function makeOverlayRenderer(canvas, autoClear = true) {
+    const r = makeRenderer({ canvas, antialias: true, alpha: true });
+    r.setClearColor(0x000000, 0);
+    r.autoClear = autoClear;
+    return r;
+  }
+  // the paper's light: a soft sky and ground, and one sun
+  function addLights(sc, hemi, sunI, [x, y, z]) {
+    sc.add(new THREE.HemisphereLight('#ffffff', '#d8d2c4', hemi * LIGHT));
+    const sun = new THREE.DirectionalLight('#ffffff', sunI * LIGHT);
+    sun.position.set(x, y, z);
+    sc.add(sun);
+    return sun;
+  }
   const stage = document.getElementById('stage');
   const fxLayer = document.getElementById('fx');
 
   // ================= Renderer, scene, camera =================
-  const renderer = new THREE.WebGLRenderer({ antialias: true });
-  renderer.setPixelRatio(Math.min(devicePixelRatio, 2));
+  const renderer = makeRenderer({ antialias: true });
   renderer.shadowMap.enabled = true;
-  renderer.shadowMap.type = THREE.PCFSoftShadowMap;
+  renderer.shadowMap.type = THREE.PCFShadowMap;
   stage.appendChild(renderer.domElement);
 
   let scene = new THREE.Scene();      // swapped for a card's own little scene while its preview runs
@@ -632,9 +660,7 @@ body.two-players .corner { left: 50%; right: auto; transform: translateX(-50%); 
   camera.position.set(0, 4.5, 18);
   const camLook = new THREE.Vector3(0, 1.8, 0);
 
-  scene.add(new THREE.HemisphereLight('#ffffff', '#d8d2c4', 0.75));
-  const sun = new THREE.DirectionalLight('#ffffff', 0.85);
-  sun.position.set(4, 10, 6);
+  const sun = addLights(scene, 0.75, 0.85, [4, 10, 6]);
   sun.castShadow = true;
   sun.shadow.mapSize.set(2048, 2048);
   Object.assign(sun.shadow.camera, { left: -12, right: 12, top: 9, bottom: -6 });
@@ -659,6 +685,17 @@ body.two-players .corner { left: 50%; right: auto; transform: translateX(-50%); 
   const V = (x = 0, y = 0, z = 0) => new THREE.Vector3(x, y, z);
 
   // ================= Stage: a paper slab outlined on every edge =================
+  // GPU resources made once and used by every fighter and effect. disposeTree frees everything else an object holds
+  // when it leaves for good (a finished effect, a spent shot, a match or a card's demo cleared away): without that,
+  // every match left its fighters' geometry and materials on the GPU, behind the menu's endless CPU matches too.
+  const SHARED = new WeakSet();
+  const share = (...xs) => { for (const x of xs) SHARED.add(x); };
+  function disposeTree(obj) {
+    obj.traverse(o => {
+      if (o.geometry && !SHARED.has(o.geometry)) o.geometry.dispose();
+      for (const m of [].concat(o.material || [])) if (!SHARED.has(m)) m.dispose();
+    });
+  }
   const stageMat = new THREE.MeshStandardMaterial({ color: '#ffffff', roughness: 1 });
   const inkFlat = new THREE.MeshBasicMaterial({ color: '#141414' });
   const floor = new THREE.Mesh(new THREE.BoxGeometry(STAGE_HALF * 2, STAGE_H, STAGE_D), stageMat);
@@ -718,13 +755,13 @@ body.two-players .corner { left: 50%; right: auto; transform: translateX(-50%); 
     return { pos, base, dirs };
   }
   function inkShellGeo(geo, t, flat = false) {
-    const key = geo.uuid + ':' + t + (flat ? ':flat' : '');
-    if (shellCache.has(key)) return shellCache.get(key);
+    const key = geo.uuid + ':' + t + (flat ? ':flat' : ''), keep = SHARED.has(geo);
+    if (keep && shellCache.has(key)) return shellCache.get(key);
     const g = geo.index ? geo.toNonIndexed() : geo.clone();
     const { pos, base, dirs } = shellDirections(g, flat);
     for (let i = 0; i < pos.array.length; i++) pos.array[i] = base[i] + dirs[i] * t;
     pos.needsUpdate = true;
-    shellCache.set(key, g);
+    if (keep) { shellCache.set(key, g); share(g); }   // a shared piece's shell is shared too
     return g;
   }
   const LOGO_LINE = LINE_W;           // logo pieces use the same line as the bodies
@@ -939,10 +976,11 @@ body.two-players .corner { left: 50%; right: auto; transform: translateX(-50%); 
   const OPENAI_PATH = 'M22.2819 9.8211a5.9847 5.9847 0 0 0-.5157-4.9108 6.0462 6.0462 0 0 0-6.5098-2.9A6.0651 6.0651 0 0 0 4.9807 4.1818a5.9847 5.9847 0 0 0-3.9977 2.9 6.0462 6.0462 0 0 0 .7427 7.0966 5.98 5.98 0 0 0 .511 4.9107 6.051 6.051 0 0 0 6.5146 2.9001A5.9847 5.9847 0 0 0 13.2599 24a6.0557 6.0557 0 0 0 5.7718-4.2058 5.9894 5.9894 0 0 0 3.9977-2.9001 6.0557 6.0557 0 0 0-.7475-7.0729zm-9.022 12.6081a4.4755 4.4755 0 0 1-2.8764-1.0408l.1419-.0804 4.7783-2.7582a.7948.7948 0 0 0 .3927-.6813v-6.7369l2.02 1.1686a.071.071 0 0 1 .038.052v5.5826a4.504 4.504 0 0 1-4.4945 4.4944zm-9.6607-4.1254a4.4708 4.4708 0 0 1-.5346-3.0137l.142.0852 4.783 2.7582a.7712.7712 0 0 0 .7806 0l5.8428-3.3685v2.3324a.0804.0804 0 0 1-.0332.0615L9.74 19.9502a4.4992 4.4992 0 0 1-6.1408-1.6464zM2.3408 7.8956a4.485 4.485 0 0 1 2.3655-1.9728V11.6a.7664.7664 0 0 0 .3879.6765l5.8144 3.3543-2.0201 1.1685a.0757.0757 0 0 1-.071 0l-4.8303-2.7865A4.504 4.504 0 0 1 2.3408 7.872zm16.5963 3.8558L13.1038 8.364 15.1192 7.2a.0757.0757 0 0 1 .071 0l4.8303 2.7913a4.4944 4.4944 0 0 1-.6765 8.1042v-5.6772a.79.79 0 0 0-.407-.667zm2.0107-3.0231l-.142-.0852-4.7735-2.7818a.7759.7759 0 0 0-.7854 0L9.409 9.2297V6.8974a.0662.0662 0 0 1 .0284-.0615l4.8303-2.7866a4.4992 4.4992 0 0 1 6.6802 4.66zM8.3065 12.863l-2.02-1.1638a.0804.0804 0 0 1-.038-.0567V6.0742a4.4992 4.4992 0 0 1 7.3757-3.4537l-.142.0805L8.704 5.459a.7948.7948 0 0 0-.3927.6813zm1.0976-2.3654l2.602-1.4998 2.6069 1.4998v2.9994l-2.5974 1.4997-2.6067-1.4997Z';
   const CLAUDE_PATH = 'M4.7144 15.9555l4.7174-2.6471.079-.2307-.079-.1275h-.2307l-.7893-.0486-2.6956-.0729-2.3375-.0971-2.2646-.1214-.5707-.1215-.5343-.7042.0546-.3522.4797-.3218.686.0608 1.5179.1032 2.2767.1578 1.6514.0972 2.4468.255h.3886l.0546-.1579-.1336-.0971-.1032-.0972L6.973 9.8356l-2.55-1.6879-1.3356-.9714-.7225-.4918-.3643-.4614-.1578-1.0078.6557-.7225.8803.0607.2246.0607.8925.686 1.9064 1.4754 2.4893 1.8336.3643.3035.1457-.1032.0182-.0728-.164-.2733-1.3539-2.4467-1.445-2.4893-.6435-1.032-.17-.6194c-.0607-.255-.1032-.4674-.1032-.7285L6.287.1335 6.6997 0l.9957.1336.419.3642.6192 1.4147 1.0018 2.2282 1.5543 3.0296.4553.8985.2429.8318.091.255h.1579v-.1457l.1275-1.706.2368-2.0947.2307-2.6957.0789-.7589.3764-.9107.7468-.4918.5828.2793.4797.686-.0668.4433-.2853 1.8517-.5586 2.9021-.3643 1.9429h.2125l.2429-.2429.9835-1.3053 1.6514-2.0643.7286-.8196.85-.9046.5464-.4311h1.0321l.7589 1.1293-.34 1.1657-1.0625 1.3478-.8804 1.1414-1.2628 1.7-.7893 1.36.0729.1093.1882-.0183 2.8535-.607 1.5421-.2794 1.8396-.3157.8318.3886.091.3946-.3278.8075-1.967.4857-2.3072.4614-3.4364.8136-.0425.0304.0486.0607 1.5482.1457.6618.0364h1.621l3.0175.2247.7892.522.4736.6376-.079.4857-1.2142.6193-1.6393-.3886-3.825-.9107-1.3113-.3279h-.1822v.1093l1.0929 1.0686 2.0035 1.8092 2.5075 2.3314.1275.5768-.3218.4554-.34-.0486-2.2039-1.6575-.85-.7468-1.9246-1.621h-.1275v.17l.4432.6496 2.3436 3.5214.1214 1.0807-.17.3521-.6071.2125-.6679-.1214-1.3721-1.9246L14.38 17.959l-1.1414-1.9428-.1397.079-.674 7.2552-.3156.3703-.7286.2793-.6071-.4614-.3218-.7468.3218-1.4753.3886-1.9246.3157-1.53.2853-1.9004.17-.6314-.0121-.0425-.1397.0182-1.4328 1.9672-2.1796 2.9446-1.7243 1.8456-.4128.164-.7164-.3704.0667-.6618.4008-.5889 2.386-3.0357 1.4389-1.882.929-1.0868-.0062-.1579h-.0546l-6.3385 4.1164-1.1293.1457-.4857-.4554.0608-.7467.2307-.2429 1.9064-1.3114Z';
 
+  // the shapes of an SVG path drawn on a 24 x 24 box (as both logos are)
+  const svgShapes = d => new SVGLoader().parse(`<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="${d}"/></svg>`)
+    .paths.flatMap(p => p.toShapes());
   function logoGeometry(d, size) {
-    const data = new THREE.SVGLoader().parse(`<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="${d}"/></svg>`);
-    const shapes = [];
-    data.paths.forEach(p => shapes.push(...THREE.SVGLoader.createShapes(p)));
+    const shapes = svgShapes(d);
     const geo = new THREE.ExtrudeGeometry(shapes, {
       depth: 1.4, bevelEnabled: true, bevelThickness: 0.25, bevelSize: 0.12, bevelSegments: 3, curveSegments: 24
     });
@@ -960,8 +998,7 @@ body.two-players .corner { left: 50%; right: auto; transform: translateX(-50%); 
   // so single rods can leave the logo and grow back
   const claudeRays = (() => {
     const size = 0.9, s = size / 24;
-    const data = new THREE.SVGLoader().parse(`<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="${CLAUDE_PATH}"/></svg>`);
-    const shape = THREE.SVGLoader.createShapes(data.paths[0])[0];
+    const shape = svgShapes(CLAUDE_PATH)[0];
     const pts = shape.getPoints(4);
     if (pts.length > 1 && pts[0].distanceTo(pts[pts.length - 1]) < 1e-6) pts.pop();
     const c = new THREE.Box2().setFromPoints(pts).getCenter(new THREE.Vector2());
@@ -1000,18 +1037,7 @@ body.two-players .corner { left: 50%; right: auto; transform: translateX(-50%); 
   const CURSOR_PTS = [[0, 0], [0, -16.5], [3.9, -12.8], [6.5, -18.8], [9.1, -17.7], [6.5, -11.8], [11.7, -11.8]];
   const CURSOR_C = [4.6, -10.4];
   const CURSOR_UNIT = 0.04;
-  function offsetPolygon(pts, d) {
-    let area = 0;
-    pts.forEach(([x1, y1], i) => { const [x2, y2] = pts[(i + 1) % pts.length]; area += x1 * y2 - x2 * y1; });
-    const sgn = area > 0 ? 1 : -1;
-    return pts.map((p, i) => {
-      const a = pts[(i - 1 + pts.length) % pts.length], b = pts[(i + 1) % pts.length];
-      const n = (q, r) => { const dx = r[0] - q[0], dy = r[1] - q[1], l = Math.hypot(dx, dy); return [sgn * dy / l, -sgn * dx / l]; };
-      const n1 = n(a, p), n2 = n(p, b);
-      const k = d / (1 + n1[0] * n2[0] + n1[1] * n2[1]);
-      return [p[0] + (n1[0] + n2[0]) * k, p[1] + (n1[1] + n2[1]) * k];
-    });
-  }
+  const offsetPolygon = (pts, d) => offsetPolygonEdges(pts, () => d, Infinity);     // the same distance on every edge
   function cursorGeometry(pts, depth) {
     const sh = new THREE.Shape();
     pts.forEach(([x, y], i) => i ? sh.lineTo(x, y) : sh.moveTo(x, y));
@@ -1077,10 +1103,14 @@ body.two-players .corner { left: 50%; right: auto; transform: translateX(-50%); 
   const makeBlock = (mat = barMat) => inked(barGeo, mat);
   const trayBaseGeo = new THREE.BoxGeometry(0.95, TRAY_T, 0.5), traySideGeo = new THREE.BoxGeometry(0.08, 0.34, 0.5);
   const makeDot = (mat = claudeMat) => inked(dotGeo, mat);
+  share(stageMat, inkFlat, inkBase, cupBase, cupInside, outlineBase, trayMat, barMat, springMat, claudeMat, starMat, cursorFill, cursorLine,
+    openaiMat, cupOuterGeo, cupInnerGeo, cupOutlineGeo, lipGeo, faceGeo, openaiGeo, claudeGeo, cursorFillGeo, cursorLineGeo, cursorGlowGeo,
+    rodGeoCentered, rodGeoBase, rodTipGeo, dotGeo, barGeo, starGeo, trayBaseGeo, traySideGeo);
 
   // ================= Jointed limbs (two-bone IK) =================
   const segGeo = new THREE.CylinderGeometry(1, 1, 1, 8).translate(0, 0.5, 0);
   const jointGeo = new THREE.SphereGeometry(1, 10, 8);
+  share(segGeo, jointGeo);
   function makeLimb(parent, mat, L1, L2) {
     const upper = shadowed(new THREE.Mesh(segGeo, mat)), lower = shadowed(new THREE.Mesh(segGeo, mat));
     const joints = [0, 1, 2].map(() => {
@@ -1265,6 +1295,7 @@ body.two-players .corner { left: 50%; right: auto; transform: translateX(-50%); 
     return t;
   }
   const gripGeo = new THREE.TorusGeometry(0.055, LIMB_R, 6, 16, Math.PI * 1.4);
+  share(gripGeo);
 
   // ================= Building a fighter =================
   let fighters = [], projectiles = [], effects = [], transient = new Set();
@@ -1758,7 +1789,7 @@ body.two-players .corner { left: 50%; right: auto; transform: translateX(-50%); 
     }
     projectiles = projectiles.filter(p => {
       if (p.life > 0) return true;
-      scene.remove(p.mesh);
+      scene.remove(p.mesh); disposeTree(p.mesh);
       return false;
     });
   }
@@ -2008,12 +2039,12 @@ body.two-players .corner { left: 50%; right: auto; transform: translateX(-50%); 
     const wave = d => INHALE_WAVE * (d / INHALE_LEN) * Math.sin(d * 1.25 - ih.t * 8);
     const slope = d => (wave(d + 0.05) - wave(d - 0.05)) / 0.1;
     const arr = ih.points.geometry.attributes.position.array;
-    ih.parts.forEach((p, i) => {
+    ih.parts.forEach((p, i) => {      // (one scratch vector for every particle: this runs 160 times a frame)
       p.u -= dt * (0.55 + (1 - p.u) * 1.7) * p.s;
       p.a += dt * (5 + 14 * (1 - p.u));
       if (p.u <= 0.02) { p.u = 1; p.a = Math.random() * Math.PI * 2; }
       const d = p.u * INHALE_LEN, r = 0.15 + p.u * 2.3;
-      const q = m.clone().addScaledVector(ax, d).addScaledVector(side, Math.cos(p.a) * r + wave(d)).addScaledVector(depth, Math.sin(p.a) * r);
+      const q = _vortex.copy(m).addScaledVector(ax, d).addScaledVector(side, Math.cos(p.a) * r + wave(d)).addScaledVector(depth, Math.sin(p.a) * r);
       arr[i * 3] = q.x; arr[i * 3 + 1] = q.y; arr[i * 3 + 2] = q.z;
     });
     ih.points.geometry.attributes.position.needsUpdate = true;
@@ -2543,6 +2574,7 @@ body.two-players .corner { left: 50%; right: auto; transform: translateX(-50%); 
 
   // ================= Fighter update =================
   const NO_INPUT = { left: false, right: false, jump: false };
+  const HURT_RED = new THREE.Color('#d6362b'), INK = new THREE.Color('#141414'), _vortex = new THREE.Vector3();
   function updateFighter(f, inp, dt) {
     for (const k of SLOTS) f.cd[k] = Math.max(0, f.cd[k] - dt);
     f.flash = Math.max(0, f.flash - dt);
@@ -2711,8 +2743,8 @@ body.two-players .corner { left: 50%; right: auto; transform: translateX(-50%); 
 
     const glow = f.possessedBy ? 0.55 + 0.25 * Math.sin(performance.now() / 90) : 0;
     if (f.flash > 0) {
-      f.mats.cup.emissive.set('#d6362b'); f.mats.cup.emissiveIntensity = 0.6;
-      f.mats.ink.emissive.set('#d6362b'); f.mats.ink.emissiveIntensity = 0.6;
+      f.mats.cup.emissive.copy(HURT_RED); f.mats.cup.emissiveIntensity = 0.6;
+      f.mats.ink.emissive.copy(HURT_RED); f.mats.ink.emissiveIntensity = 0.6;
     } else if (glow) {        // controlled by ChatGPT: it glows in that ChatGPT's colour, its cursor overhead too
       const c = f.possessedBy.kit.color;
       f.mats.cup.emissive.set(c); f.mats.cup.emissiveIntensity = glow * 0.45;
@@ -2721,7 +2753,7 @@ body.two-players .corner { left: 50%; right: auto; transform: translateX(-50%); 
     } else {
       f.mats.cup.emissiveIntensity = 0; f.mats.ink.emissiveIntensity = 0;
     }
-    f.mats.outline.color.set(glow ? f.possessedBy.kit.color : '#141414');
+    if (glow) f.mats.outline.color.set(f.possessedBy.kit.color); else f.mats.outline.color.copy(INK);   // (no string parsed each frame)
   }
   // ================= Shield bash =================
   // Dash with the shield up (double-tap and parry, in either order): the shield leads, and whoever it meets is
@@ -3122,9 +3154,6 @@ body.two-players .corner { left: 50%; right: auto; transform: translateX(-50%); 
 
   // ================= Input =================
   const keys = new Set(), pressed = new Set();
-  const GAME_KEYS = new Set(['KeyA', 'KeyD', 'KeyW', 'KeyS', 'ArrowLeft', 'ArrowRight', 'ArrowUp', 'ArrowDown', 'Space', 'Backspace',
-    'KeyF', 'KeyG', 'KeyH', 'KeyT', 'KeyQ', 'Comma', 'Period', 'Slash', 'Quote', 'ShiftRight', 'Numpad0', 'Numpad1', 'Numpad2', 'Numpad3', 'Numpad4',
-    'KeyJ', 'KeyK', 'KeyL', 'KeyI', 'Digit1', 'Digit2', 'Digit3', 'Digit4', 'KeyR', 'KeyM', 'Numpad5']);
   // a second press of the same direction within a moment is a double tap: the dash
   const lastTap = {};
   function noteTap(code) {
@@ -3182,6 +3211,8 @@ body.two-players .corner { left: 50%; right: auto; transform: translateX(-50%); 
     B: { left: ['ArrowLeft'], right: ['ArrowRight'], jump: ['ArrowUp'], down: ['ArrowDown'], parry: ['ShiftRight', 'Numpad0', 'ParryUpB'], up: ['ParryUpB'], strike: ['KeyM', 'Numpad5'],
       a1: ['Comma', 'Numpad1'], a2: ['Period', 'Numpad2'], a3: ['Slash', 'Numpad3'], a4: ['Quote', 'Numpad4'], dashL: ['DashLB'], dashR: ['DashRB'] },
   };
+  // every key some player uses (the keys the page takes over from the browser)
+  const GAME_KEYS = new Set(Object.values(SCHEMES).flatMap(sc => Object.values(sc).flat()));
   function playerInput(scheme = 'all', body = controlledBody()) {
     const S = SCHEMES[scheme], k = c => S[c].some(x => keys.has(x)), p = c => S[c].some(x => pressed.has(x));
     return {
@@ -3497,17 +3528,21 @@ body.two-players .corner { left: 50%; right: auto; transform: translateX(-50%); 
     if (f.isPlayer2) return 'User B';
     return f.dummy ? 'Dummy' : 'CPU';
   }
+  // takes everything a world (the match's, or a card's or panel's) has on its scene off it, and frees it
+  function clearWorld(sc, w) {
+    for (const o of [...w.fighters.map(f => f.root), ...w.projectiles.map(p => p.mesh), ...w.effects.map(e => e.mesh), ...w.transient]) {
+      sc.remove(o); disposeTree(o);
+    }
+  }
   function clearMatch() {
-    for (const f of fighters) scene.remove(f.root);
-    for (const p of projectiles) scene.remove(p.mesh);
-    for (const e of effects) scene.remove(e.mesh);
-    for (const m of transient) scene.remove(m);
+    clearWorld(scene, { fighters, projectiles, effects, transient });
     transient.clear();
     fighters = []; projectiles = []; effects = []; springs = [];
     if (bubble) { bubble.el.remove(); bubble.flyers.forEach(w => w.el.remove()); bubble = null; }
     fxLayer.querySelectorAll('.dmg').forEach(el => el.remove());
     hitstop = 0;
   }
+  const livesText = n => n === 1 ? '1 life' : `${n} lives`;
   function startMatch(m) {
     mode = m;
     clearMatch();
@@ -3559,7 +3594,7 @@ body.two-players .corner { left: 50%; right: auto; transform: translateX(-50%); 
     const i = fighters.indexOf(f);
     if (isHost()) net.match.ev.push(['respawn', i]);
     if (drop && f.rag) { const h = f.rag.pts.hip; if (h.y > -3) { burst(V(h.x, h.y + 0.6, 0), f.kit.color); ring(V(h.x, h.y + 0.6, 0), '#141414', 0.9); } }
-    scene.remove(f.root);
+    scene.remove(f.root); disposeTree(f.root);
     springs = springs.filter(sp => sp !== f.spring);
     const nf = buildFighter(f.kind, f.spawnX, f.isPlayer, scene, springs, f.kit.variant);
     nf.dummy = f.dummy; nf.stocks = f.stocks; nf.stats = f.stats; nf.netId = f.netId; nf.netName = f.netName; nf.isPlayer2 = f.isPlayer2;
@@ -3567,7 +3602,7 @@ body.two-players .corner { left: 50%; right: auto; transform: translateX(-50%); 
       nf.y = 4; nf.onGround = false; nf.invuln = 2;
       nf.feet.forEach(ft => { ft.y = nf.y; ft.air = true; });
       nf.root.position.set(nf.x, nf.y, 0);
-      floatText(nf.x, 4 + BOX_H * 0.8, `${f.stocks} ${f.stocks === 1 ? 'life' : 'lives'} left`, 'info');
+      floatText(nf.x, 4 + BOX_H * 0.8, `${livesText(f.stocks)} left`, 'info');
     }
     fighters[i] = nf;
     if (f.isPlayer) player = nf;
@@ -3649,7 +3684,7 @@ body.two-players .corner { left: 50%; right: auto; transform: translateX(-50%); 
       if (living.length <= 1) {
         const w = living[0];
         endMatch(w ? `${w.kit.name} wins` : 'Nobody wins',
-          w ? `${tagOf(w)}, with ${w.stocks === 1 ? '1 life' : `${w.stocks} lives`} left.` : 'Everyone went down together.');
+          w ? `${tagOf(w)}, with ${livesText(w.stocks)} left.` : 'Everyone went down together.');
       }
       return;
     }
@@ -3662,7 +3697,7 @@ body.two-players .corner { left: 50%; right: auto; transform: translateX(-50%); 
       const how = player.rag && player.rag.pts.hip.y < -2 ? 'Your last life went off the edge of the stage.' : by ? `${by} took your last life.` : 'You lost your last life.';
       endMatch('Out of lives', how);
     } else if (living.length === 1) {
-      const w = living[0], left = w.stocks === 1 ? '1 life' : `${w.stocks} lives`;
+      const w = living[0], left = livesText(w.stocks);
       endMatch('You win', `${w.kit.name} is the last one standing, with ${left} left.`);
     }
   }
@@ -3705,10 +3740,7 @@ body.two-players .corner { left: 50%; right: auto; transform: translateX(-50%); 
   function setPreviewVariant(kind) {
     const w = worlds[ORDER.indexOf(kind)], old = w.fighters[0];
     if (old && old.kit.variant === carVariant[kind]) return;
-    for (const f of w.fighters) w.scene.remove(f.root);
-    for (const pr of w.projectiles) w.scene.remove(pr.mesh);
-    for (const e of w.effects) w.scene.remove(e.mesh);
-    for (const m of w.transient) w.scene.remove(m);
+    clearWorld(w.scene, w);
     Object.assign(w, { fighters: [], projectiles: [], effects: [], transient: new Set(), springs: [] });
     const f = buildFighter(kind, 0, false, w.scene, w.springs, carVariant[kind]);
     f.facing = 1;
@@ -3839,15 +3871,12 @@ body.two-players .corner { left: 50%; right: auto; transform: translateX(-50%); 
   // window only, so nothing spills over the card. The middle card's fighter works through its moves in turn,
   // and the move it is showing is highlighted in the card's list.
   const previewCanvas = document.getElementById('previewCanvas');
-  const pRenderer = new THREE.WebGLRenderer({ canvas: previewCanvas, antialias: true, alpha: true });
-  pRenderer.setPixelRatio(Math.min(devicePixelRatio, 2));
-  pRenderer.setClearColor(0x000000, 0);
+  const pRenderer = makeOverlayRenderer(previewCanvas);
   const pCam = new THREE.OrthographicCamera(-1, 1, 1, -1, 0.1, 100);
   const P_TILT = 0.32;                     // looking down a little, so the logos show
   const worlds = ORDER.map((kind, i) => {
     const sc = new THREE.Scene();
-    sc.add(new THREE.HemisphereLight('#ffffff', '#d8d2c4', 0.8));
-    const l = new THREE.DirectionalLight('#ffffff', 0.75); l.position.set(3, 8, 6); sc.add(l);
+    addLights(sc, 0.8, 0.75, [3, 8, 6]);
     const w = { scene: sc, fighters: [], projectiles: [], effects: [], transient: new Set(), springs: [], slot: slots[i] };
     w.fighters.push(buildFighter(kind, 0, false, sc, w.springs));
     w.fighters[0].facing = 1;
@@ -3962,9 +3991,7 @@ body.two-players .corner { left: 50%; right: auto; transform: translateX(-50%); 
   // Nobody in the match moves until it is over; Enter, Space or a tap skips it.
   const versusEl = document.getElementById('versus');
   const fightCallEl = document.getElementById('fightCall');
-  const vsRenderer = new THREE.WebGLRenderer({ canvas: document.getElementById('vsCanvas'), antialias: true, alpha: true });
-  vsRenderer.setPixelRatio(Math.min(devicePixelRatio, 2));
-  vsRenderer.setClearColor(0x000000, 0);
+  const vsRenderer = makeOverlayRenderer(document.getElementById('vsCanvas'));
   const vsCam = new THREE.OrthographicCamera(-1, 1, 1, -1, 0.1, 100);
   const VS_LEN = 3.6, VS_FADE = 0.45, GESTURE_AT = 0.55, GESTURE_GAP = 0.55, GESTURE_LEN = 1.5, VS_FLOOR = 0.74;
   const VS_LINES = { so: 'Closed as duplicate.', gpt: 'Great question!', claude: "You're absolutely right!" };
@@ -3976,14 +4003,10 @@ body.two-players .corner { left: 50%; right: auto; transform: translateX(-50%); 
     let w = vsWorlds[slot];
     if (!w) {
       const sc = new THREE.Scene();
-      sc.add(new THREE.HemisphereLight('#ffffff', '#d8d2c4', 0.8));
-      const l = new THREE.DirectionalLight('#ffffff', 0.75); l.position.set(3, 8, 6); sc.add(l);
+      addLights(sc, 0.8, 0.75, [3, 8, 6]);
       w = vsWorlds[slot] = { scene: sc, fighters: [], projectiles: [], effects: [], transient: new Set(), springs: [] };
     }
-    for (const f of w.fighters) w.scene.remove(f.root);
-    for (const p of w.projectiles) w.scene.remove(p.mesh);
-    for (const e of w.effects) w.scene.remove(e.mesh);
-    for (const m of w.transient) w.scene.remove(m);
+    clearWorld(w.scene, w);
     Object.assign(w, { fighters: [], projectiles: [], effects: [], transient: new Set(), springs: [] });
     w.fighters.push(buildFighter(kind, 0, false, w.scene, w.springs, variant));
     return w;
@@ -4246,33 +4269,32 @@ body.two-players .corner { left: 50%; right: auto; transform: translateX(-50%); 
   }
   document.getElementById('onlineBack').addEventListener('click', () => { net.pendingJoin = null; keepJoin(null); openMenu(); });
 
+  // a signed-in request to the server: the reply's body, or null after saying what went wrong (or showing sign-in)
+  async function apiPost(path, body, doing) {
+    const acc = await account().catch(() => null);
+    if (!acc) { showOnline(); return null; }
+    say(doing);
+    try {
+      const res = await fetch(`${API_BASE}/${path}`, {
+        method: 'POST', headers: { 'content-type': 'application/json', authorization: `Bearer ${await acc.token()}` },
+        body: JSON.stringify(body || {}),
+      });
+      const out = await res.json().catch(() => ({ error: 'The server sent something odd. Try again.' }));
+      if (!res.ok) { say(out.error || 'That didn’t work. Try again.', true); return null; }
+      return out;
+    } catch { say('Couldn’t reach the server. Check your connection and try again.', true); return null; }
+  }
   document.getElementById('createForm').addEventListener('submit', async e => {
     e.preventDefault();
-    const acc = await account().catch(() => null);
-    if (!acc) { showOnline(); return; }
-    say('Making the room…');
-    try {
-      const res = await fetch(`${API_BASE}/rooms`, {
-        method: 'POST', headers: { 'content-type': 'application/json', authorization: `Bearer ${await acc.token()}` },
-        body: JSON.stringify({ name: document.getElementById('createName').value, password: document.getElementById('createPass').value }),
-      });
-      const body = await res.json().catch(() => ({ error: 'The server sent something odd. Try again.' }));
-      if (!res.ok) { say(body.error || 'That didn’t work. Try again.', true); return; }
-      document.getElementById('createPass').value = '';
-      connect(body.key, { invite: body.invite });
-    } catch { say('Couldn’t reach the server. Check your connection and try again.', true); }
+    const made = await apiPost('rooms', { name: document.getElementById('createName').value, password: document.getElementById('createPass').value }, 'Making the room…');
+    if (!made) return;
+    document.getElementById('createPass').value = '';
+    connect(made.key, { invite: made.invite });
   });
   document.getElementById('casualBtn').addEventListener('click', async e => {
     e.currentTarget.blur();
-    const acc = await account().catch(() => null);
-    if (!acc) { showOnline(); return; }
-    say('Finding a match…');
-    try {
-      const res = await fetch(`${API_BASE}/casual`, { method: 'POST', headers: { authorization: `Bearer ${await acc.token()}` } });
-      const body = await res.json().catch(() => ({ error: 'The server sent something odd. Try again.' }));
-      if (!res.ok) { say(body.error || 'That didn’t work. Try again.', true); return; }
-      connect(body.key, {});
-    } catch { say('Couldn’t reach the server. Check your connection and try again.', true); }
+    const room = await apiPost('casual', null, 'Finding a match…');
+    if (room) connect(room.key, {});
   });
   document.getElementById('joinForm').addEventListener('submit', e => {
     e.preventDefault();
@@ -4453,10 +4475,7 @@ body.two-players .corner { left: 50%; right: auto; transform: translateX(-50%); 
     const canvas = document.createElement('canvas');
     canvas.className = 'logo-layer';
     host.appendChild(canvas);
-    const r3 = new THREE.WebGLRenderer({ canvas, antialias: true, alpha: true });
-    r3.setPixelRatio(Math.min(devicePixelRatio, 2));
-    r3.setClearColor(0x000000, 0);
-    r3.autoClear = false;
+    const r3 = makeOverlayRenderer(canvas, false);
     const scenes = new Map();
     const sceneFor = (kind, variant) => {
       const key = kind + ':' + (variant || '');
@@ -4614,7 +4633,7 @@ body.two-players .corner { left: 50%; right: auto; transform: translateX(-50%); 
   function finishOnline(w) {
     const m = net.match;
     const title = w ? `${w.netName} wins` : 'Nobody wins';
-    const sub = w ? `With ${w.stocks === 1 ? '1 life' : `${w.stocks} lives`} left.` : 'Everyone went down together.';
+    const sub = w ? `With ${livesText(w.stocks)} left.` : 'Everyone went down together.';
     m.ev.push(['end', title, sub]);
     sendNet({ t: 'snap', f: fighters.map(snapOf), ev: m.ev.splice(0) });
     sendNet({ t: 'result', mid: m.mid, winner: w ? w.netId : null,
@@ -4636,7 +4655,7 @@ body.two-players .corner { left: 50%; right: auto; transform: translateX(-50%); 
     const msg = document.getElementById('boardMsg'), table = document.getElementById('boardTable');
     msg.textContent = 'Loading…'; table.innerHTML = '';
     try {
-      const { players } = await fetch(`${API_BASE}/leaderboard`).then(r => r.json());
+      const { players } = await fetch(`${API_BASE}/leaderboard`).then(r => r.ok ? r.json() : Promise.reject(new Error(r.status)));
       if (!players.length) { msg.textContent = 'Nobody has finished an online match yet. Win one and you’re first.'; return; }
       // laid out like the results table (and a model announcement's benchmarks): the top players are the columns,
       // the leader's outlined, and the best score in each row is tinted
@@ -4679,6 +4698,7 @@ body.two-players .corner { left: 50%; right: auto; transform: translateX(-50%); 
     window.__bbKO = i => { const f = fighters[i]; if (f && !f.dead) { f.hp = 0; die(f); } };   // knocks a fighter out, as this browser
     // one fighter, frame by frame: speed, facing, walking backwards, the guard, the lean
     window.__bbTrack = (i, on) => { if (on) { trackLog = { i, rows: [] }; return null; } const r = trackLog && trackLog.rows; trackLog = null; return r; };
+    window.__bbMem = () => ({ ...renderer.info.memory, programs: renderer.info.programs.length });   // GPU objects the main renderer holds
     window.__bbCam = on => { if (on) { camLog = []; return null; } const r = camLog; camLog = null; return r; };   // the camera, frame by frame
     // hands and heads in the versus gestures: steps one fighter's gesture through and reports how deep any part of
     // an arm (upper arm, forearm, fist, Stack Overflow's finger) goes into its own cup, in body units
@@ -4730,7 +4750,7 @@ body.two-players .corner { left: 50%; right: auto; transform: translateX(-50%); 
     // the logos' ink outlines: renders a logo with and without its outline and counts dark pixels that land inside
     // the logo (not on its rim). Returns { inside, rim, png } per call.
     window.__bbLogoProbe = (kind, rx, ry, size = 512) => {
-      const r = window.__probeR || (window.__probeR = new THREE.WebGLRenderer({ antialias: false, preserveDrawingBuffer: true }));
+      const r = window.__probeR || (window.__probeR = makeRenderer({ antialias: false, preserveDrawingBuffer: true }));
       r.setPixelRatio(1); r.setSize(size, size, false);
       const L = logoScene(kind, new THREE.Color('#ffffff'));
       L.logo.rotation.set(rx, ry, 0);
@@ -4971,7 +4991,7 @@ body.two-players .corner { left: 50%; right: auto; transform: translateX(-50%); 
     effects = effects.filter(e => {
       e.life -= dt; e.update(e, dt);
       if (e.life > 0) return true;
-      scene.remove(e.mesh); return false;
+      scene.remove(e.mesh); disposeTree(e.mesh); return false;
     });
   }
   // Bodies are solid to each other, and they push. Running into someone from open space bowls them over into a
@@ -5135,8 +5155,7 @@ body.two-players .corner { left: 50%; right: auto; transform: translateX(-50%); 
   function logoScene(kind, background, color) {
     const sc = new THREE.Scene();
     if (background) sc.background = background;
-    sc.add(new THREE.HemisphereLight('#ffffff', '#d8d2c4', 0.85));
-    const l = new THREE.DirectionalLight('#ffffff', 0.7); l.position.set(2, 3, 5); sc.add(l);
+    addLights(sc, 0.85, 0.7, [2, 3, 5]);
     const logo = makeLogoModel(kind, color);
     sc.add(logo);
     return { sc, logo };
@@ -5153,12 +5172,9 @@ body.two-players .corner { left: 50%; right: auto; transform: translateX(-50%); 
   // links. Hovering a link swells its logo; clicking one sets it jiggling (the link still opens the site).
   const brandsEl = document.getElementById('brands');
   const brandCanvas = document.getElementById('brandCanvas');
-  const bRenderer = new THREE.WebGLRenderer({ canvas: brandCanvas, antialias: true, alpha: true });
-  bRenderer.setPixelRatio(Math.min(devicePixelRatio, 2));
-  bRenderer.setClearColor(0x000000, 0);
   // the logos' drawing boxes overlap, so the canvas is cleared once a frame and each logo is drawn over it
   // without clearing (a per-logo clear wiped the right half of the logo drawn before it)
-  bRenderer.autoClear = false;
+  const bRenderer = makeOverlayRenderer(brandCanvas, false);
   const bCam = new THREE.OrthographicCamera(-0.62, 0.62, 0.62, -0.62, 0.1, 10);
   bCam.position.z = 5;
   const brands = [...brandsEl.querySelectorAll('a')].map((a, i) => {
@@ -5231,10 +5247,11 @@ body.two-players .corner { left: 50%; right: auto; transform: translateX(-50%); 
   }
 
   // ================= Main loop =================
-  const clock = new THREE.Clock();
+  const timer = new THREE.Timer();          // (THREE.Clock is deprecated; both read performance.now())
   let lastDt = 1 / 60;
   function tick() {
-    frame(Math.min(clock.getDelta(), 1 / 30));
+    timer.update();
+    frame(Math.min(timer.getDelta(), 1 / 30));
     requestAnimationFrame(tick);
   }
   // the scene, or when split, twice: User A's half at the bottom the right way up, and User B's at the top with

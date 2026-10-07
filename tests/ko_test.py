@@ -1,15 +1,11 @@
 # Knockouts online: the host's knockouts reach the guest, the knocked-out fighter comes back on both screens,
 # a guest can't knock anyone out on its own, and the last knockout ends the match the same way for both.
-import asyncio, json, os, urllib.request
+import asyncio, json, urllib.request
 from playwright.async_api import async_playwright
-B = os.environ.get("BOTBATTLE_URL", "http://localhost:5173/games/botbattle/")   # the local dev server (npm run dev)
-OUT = os.environ.get("BOTBATTLE_SHOTS", "/tmp")
-results = []
-def check(name, ok, detail=""):
-    results.append(bool(ok)); print(("PASS " if ok else "FAIL ") + name, detail)
+from bb import BASE as B, OUT, check, summary, launch
 async def main():
     async with async_playwright() as p:
-        browser = await p.chromium.launch(args=["--use-gl=angle", "--use-angle=swiftshader", "--enable-unsafe-swiftshader"])
+        browser = await launch(p)
         async def page(user):
             pg = await (await browser.new_context(viewport={"width": 1000, "height": 700})).new_page()
             pg.errors = []; pg.on("pageerror", lambda e: pg.errors.append(str(e)))
@@ -56,5 +52,5 @@ async def main():
         check("hana's win is on the leaderboard", rows.get("hana", {}).get("wins", 0) >= 1 and rows.get("gus", {}).get("matches", 0) >= 1, json.dumps(rows.get("hana")))
         check("no page errors", not host.errors and not guest.errors, (host.errors + guest.errors)[:3])
         await browser.close()
-    print(f"\n{sum(results)}/{len(results)} passed")
+    summary()
 asyncio.run(main())

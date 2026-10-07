@@ -1,17 +1,8 @@
 # Walking while crouched, and the punch / low kick button: H alone (training), R for User A and M for User B with
 # two on one keyboard. Waits are counted in game frames, so a busy machine doesn't cut them short.
-import asyncio, os
+import asyncio
 from playwright.async_api import async_playwright
-B = os.environ.get("BOTBATTLE_URL", "http://localhost:5173/games/botbattle/")
-results = []
-def check(name, ok, detail=""):
-    results.append(bool(ok)); print(("PASS " if ok else "FAIL ") + name, detail)
-async def frames(pg, n):
-    seen = 0
-    while seen < n:
-        await pg.evaluate("window.__bbCam(true)"); await pg.wait_for_timeout(300)
-        seen += len(await pg.evaluate("window.__bbCam(false)"))
-async def bb(pg): return await pg.evaluate("window.__bb()")
+from bb import BASE as B, check, summary, launch, frames, bb
 async def walk_up(pg, me, them, right, left, down):
     # crouch-walk fighter `me` up to `them`: slow enough not to ram them (running into someone shoves them away),
     # and holding the key down (tapping it would be a double tap: a dash past them). Then stand up.
@@ -27,7 +18,7 @@ async def walk_up(pg, me, them, right, left, down):
         await pg.keyboard.up(key); await pg.keyboard.up(down); await frames(pg, 20)
 async def main():
     async with async_playwright() as p:
-        b = await p.chromium.launch(args=["--use-gl=angle", "--use-angle=swiftshader", "--enable-unsafe-swiftshader"])
+        b = await launch(p)
         # alone, in training: H
         pg = await b.new_page(viewport={"width": 1280, "height": 720}); errs = []; pg.on("pageerror", lambda e: errs.append(str(e)))
         pg.set_default_timeout(180000)
@@ -88,5 +79,5 @@ async def main():
         check("M is User B's punch", round(f2[0]["hp"] - f3[0]["hp"], 1) == 4, (f2[0]["hp"], f3[0]["hp"]))
         check("no page errors (two players)", not errs, errs[:3])
         await b.close()
-    print(f"\n{sum(results)}/{len(results)} passed")
+    summary()
 asyncio.run(main())

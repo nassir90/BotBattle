@@ -1,31 +1,19 @@
 # Two players on one phone: the screen split across the middle, User A's half the right way up at the bottom and
 # User B's turned round at the top, each with their own pad that moves only their own fighter.
-import asyncio, os
+import asyncio
 from playwright.async_api import async_playwright
-B = os.environ.get("BOTBATTLE_URL", "http://localhost:5173/games/botbattle/")
-OUT = os.environ.get("BOTBATTLE_SHOTS", "/tmp")
-results = []
-def check(name, ok, detail=""):
-    results.append(bool(ok)); print(("PASS " if ok else "FAIL ") + name, detail)
-async def hold(pg, cdp, sel, key, frames=15):
-    # a real finger on the button (through the DevTools protocol), held for a number of game frames (not seconds,
-    # so a busy machine doesn't shorten the walk)
+from bb import BASE as B, OUT, check, summary, launch, frames
+async def hold(pg, cdp, sel, key, n=15):
+    # a real finger on the button (through the DevTools protocol), held for n game frames
     r = await pg.evaluate("s => { const r = document.querySelector(s).getBoundingClientRect(); return [r.left + r.width / 2, r.top + r.height / 2]; }",
                           f'{sel} button[data-key="{key}"]')
     await cdp.send("Input.dispatchTouchEvent", {"type": "touchStart", "touchPoints": [{"x": r[0], "y": r[1], "id": 1}]})
-    seen = 0
-    while seen < frames:
-        await pg.evaluate("window.__bbCam(true)"); await pg.wait_for_timeout(400)
-        seen += len(await pg.evaluate("window.__bbCam(false)"))
+    await frames(pg, n, 400)
     await cdp.send("Input.dispatchTouchEvent", {"type": "touchEnd", "touchPoints": []})
-async def settle(pg, frames=60):
-    seen = 0
-    while seen < frames:
-        await pg.evaluate("window.__bbCam(true)"); await pg.wait_for_timeout(400)
-        seen += len(await pg.evaluate("window.__bbCam(false)"))
+async def settle(pg, n=60): await frames(pg, n, 400)
 async def main():
     async with async_playwright() as p:
-        b = await p.chromium.launch(args=["--use-gl=angle", "--use-angle=swiftshader", "--enable-unsafe-swiftshader"])
+        b = await launch(p)
         for w, h in [(390, 844), (844, 390)]:          # held upright, then on its side
             print(f"-- {w}x{h}")
             ctx = await b.new_context(viewport={"width": w, "height": h}, device_scale_factor=2, is_mobile=True, has_touch=True)
@@ -79,5 +67,5 @@ async def main():
             await ctx.close()
 
         await b.close()
-    print(f"\n{sum(results)}/{len(results)} passed")
+    summary()
 asyncio.run(main())

@@ -9,7 +9,7 @@
 // waiting in, or a new one to wait in. They hold two players, and the match starts once both are ready.
 // Players sign in with Clerk; their session tokens are checked against Clerk's public signing keys.
 import { DurableObject } from "cloudflare:workers";
-import { createRemoteJWKSet, jwtVerify } from "jose";
+import { base64url, createRemoteJWKSet, jwtVerify } from "jose";
 import { RegExpMatcher, englishDataset, englishRecommendedTransformers } from "obscenity";
 
 type Env = { ROOMS: DurableObjectNamespace<Room>; CASUAL: DurableObjectNamespace<Casual>; DB: D1Database };
@@ -53,9 +53,10 @@ export class Casual extends DurableObject<Env> {
 	async find(user: string): Promise<{ key: string; name: string }> {
 		this.open ??= (await this.ctx.storage.get<Open[]>("open")) ?? [];
 		const keep = () => this.ctx.storage.put("open", this.open);
-		for (const r of [...this.open]) {
-			const s = await this.env.ROOMS.get(this.env.ROOMS.idFromName(r.key)).status();
-			const now = Date.now();
+		// every room's state at once, then the choice in one go (nothing else can run in between)
+		const rooms = [...this.open], states = await Promise.all(rooms.map(r => roomStub(this.env, r.key).status()));
+		for (const [i, r] of rooms.entries()) {
+			const s = states[i], now = Date.now();
 			for (const [id, until] of Object.entries(r.promised)) if (until < now || s.players.includes(id)) delete r.promised[id];
 			const coming = Object.keys(r.promised).length;
 			if (!s.exists || s.playing || now - r.created > CASUAL_AGE_MS || (!s.players.length && !coming)) {
@@ -73,7 +74,7 @@ export class Casual extends DurableObject<Env> {
 		for (;;) {
 			const name = `Casual ${words[Math.floor(Math.random() * words.length)]} ${Math.floor(Math.random() * 90 + 10)}`;   // 16 at most, like any room name
 			const key = name.toLowerCase();
-			const made = await this.env.ROOMS.get(this.env.ROOMS.idFromName(key)).create(name, key, "", true);
+			const made = await roomStub(this.env, key).create(name, key, "", true);
 			if ("error" in made) continue;                  // that name's in use: another
 			this.open.push({ key, name, created: Date.now(), promised: { [user]: Date.now() + PROMISE_MS } });
 			await keep();
@@ -101,8 +102,16 @@ async function hashPassword(password: string, salt: Uint8Array) {
 	const bits = await crypto.subtle.deriveBits({ name: "PBKDF2", hash: "SHA-256", salt, iterations: 100000 }, key, 256);
 	return b64(new Uint8Array(bits));
 }
-const b64 = (bytes: Uint8Array) => btoa(String.fromCharCode(...bytes)).replace(/\+/g, "-").replace(/\//g, "_").replace(/=+$/, "");
-const unb64 = (s: string) => Uint8Array.from(atob(s.replace(/-/g, "+").replace(/_/g, "/")), c => c.charCodeAt(0));
+const b64 = base64url.encode, unb64 = base64url.decode;      // (jose's, already here for the sign-in tokens)
+// a password against a room's stored hash, in constant time
+async function passwordMatches(password: unknown, info: Info) {
+	if (typeof password !== "string" || !info.hash) return false;
+	const a = unb64(await hashPassword(password, unb64(info.salt))), b = unb64(info.hash);
+	return a.length === b.length && crypto.subtle.timingSafeEqual(a, b);
+}
+// the signed-in player making a request (their bearer token), or null
+const userFrom = (request: Request, url: URL) => signedIn(request.headers.get("authorization")?.replace(/^Bearer /, ""), isLocal(url));
+const roomStub = (env: Env, key: string) => env.ROOMS.get(env.ROOMS.idFromName(key));
 const randomToken = (n: number) => b64(crypto.getRandomValues(new Uint8Array(n)));
 
 // the leaderboard: one row per player, added to after every finished online match
@@ -122,21 +131,18 @@ export default {
 		const path = url.pathname.slice(API.length);
 
 		if (path === "/rooms" && request.method === "POST") {
-			const auth = request.headers.get("authorization")?.replace(/^Bearer /, "");
-			const user = await signedIn(auth, isLocal(url));
+			const user = await userFrom(request, url);
 			if (!user) return json({ error: "Sign in to create a room." }, 401);
 			const body = (await request.json().catch(() => ({}))) as { name?: string; password?: string };
 			const checked = roomName(body.name);
 			if ("error" in checked) return json(checked, 400);
 			const password = String(body.password ?? "");
 			if (password.length > 64) return json({ error: "Keep the password under 64 characters." }, 400);
-			const room = env.ROOMS.get(env.ROOMS.idFromName(checked.key));
-			const made = await room.create(checked.name, checked.key, password);
+			const made = await roomStub(env, checked.key).create(checked.name, checked.key, password);
 			return "error" in made ? json(made, 409) : json(made);
 		}
 		if (path === "/casual" && request.method === "POST") {
-			const auth = request.headers.get("authorization")?.replace(/^Bearer /, "");
-			const user = await signedIn(auth, isLocal(url));
+			const user = await userFrom(request, url);
 			if (!user) return json({ error: "Sign in to play a casual match." }, 401);
 			return json(await env.CASUAL.get(env.CASUAL.idFromName("casual")).find(user));
 		}
@@ -145,7 +151,7 @@ export default {
 			if (request.headers.get("upgrade") !== "websocket") return new Response("Expected a WebSocket", { status: 426 });
 			const key = decodeURIComponent(ws[1]).trim().replace(/\s+/g, " ").toLowerCase();
 			if (!/^[a-z0-9 ]{3,16}$/.test(key)) return new Response("No such room", { status: 404 });
-			return env.ROOMS.get(env.ROOMS.idFromName(key)).fetch(request);
+			return roomStub(env, key).fetch(request);
 		}
 		if (path === "/leaderboard" && request.method === "GET") {
 			await table(env.DB);
@@ -224,7 +230,7 @@ export class Room extends DurableObject<Env> {
 		if (!info) return fail("There's no room with that name.");
 		const invited = typeof msg.invite === "string" && msg.invite === info.invite;
 		if (info.hash && !invited) {
-			if (typeof msg.password !== "string" || (await hashPassword(msg.password, unb64(info.salt))) !== info.hash) return fail("Wrong password.");
+			if (!(await passwordMatches(msg.password, info))) return fail("Wrong password.");
 		}
 		const again = this.players.find(p => p.id === id);
 		if (again) { this.players = this.players.filter(p => p !== again); try { again.ws.close(4002, "joined elsewhere"); } catch { /* gone */ } }

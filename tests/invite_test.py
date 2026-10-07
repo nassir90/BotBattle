@@ -1,18 +1,11 @@
 # An invite survives signing up: opened while signed out, the page shows the sign-in form; when the page comes back
 # signed in, even with nothing in the address (as after some sign-up steps), it joins the room straight away.
-import asyncio, json, os, urllib.request
+import asyncio
 from playwright.async_api import async_playwright
-B = os.environ.get("BOTBATTLE_URL", "http://localhost:5173/games/botbattle/")   # the local dev server (npm run dev)
-OUT = os.environ.get("BOTBATTLE_SHOTS", "/tmp")
-results = []
-def check(name, ok, detail=""):
-    results.append(bool(ok)); print(("PASS " if ok else "FAIL ") + name, detail)
-def api(path, body, token):
-    req = urllib.request.Request(B + "api/" + path, data=json.dumps(body).encode(), headers={"content-type": "application/json", "authorization": f"Bearer {token}"})
-    return json.loads(urllib.request.urlopen(req).read())
+from bb import BASE as B, OUT, check, summary, launch, api
 async def main():
     async with async_playwright() as p:
-        browser = await p.chromium.launch(args=["--use-gl=angle", "--use-angle=swiftshader", "--enable-unsafe-swiftshader"])
+        browser = await launch(p)
         host = await (await browser.new_context(viewport={"width": 1100, "height": 760})).new_page()
         await host.goto(B + "?dev=hostess", wait_until="domcontentloaded", timeout=300000); await host.click('.mode[data-mode="online"]')
         await host.wait_for_selector("#rooms:not([hidden])", timeout=8000)
@@ -45,5 +38,5 @@ async def main():
         check("the lobby draws its logo canvas", painted)
         check("no page errors", not errors, errors[:3])
         await browser.close()
-    print(f"\n{sum(results)}/{len(results)} passed")
+    summary()
 asyncio.run(main())

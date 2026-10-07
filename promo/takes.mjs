@@ -94,7 +94,7 @@ const INJECT_PHONE = [
       { replace: '@media (pointer: coarse) and (orientation: landscape) and (max-height: 540px) {', code: '@media (orientation: landscape) and (max-height: 540px) {' },
     ];
 // CPU matches show the health plates (they sit at the top, clear of the text)
-const CSS_MATCH = `.moves, .touch, .corner, .trainbar, .status, .vs-skip { display: none !important; }`;
+const CSS_MATCH = `.moves, .touch, .corner, .trainbar, .status { display: none !important; }`;
 
 export default {
   app: '../public/games/botbattle',
