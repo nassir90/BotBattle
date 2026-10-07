@@ -1507,7 +1507,7 @@ import ReconnectingWebSocket from 'partysocket/ws';
   // stuck. A hit from anywhere else lands as normal and breaks the pose.
   // Holding the button keeps the shield up after the shine: hits from that side are blocked (no damage, a little
   // push back), but only the shine parries.
-  const GUARD_IN = 4 / 60, GUARD_SHINE = 34 / 60, GUARD_OUT = 18 / 60, GUARD_END = GUARD_IN + GUARD_SHINE + GUARD_OUT;
+  const GUARD_IN = 4 / 60, GUARD_SHINE = 34 / 60, GUARD_OUT = 8 / 60, GUARD_END = GUARD_IN + GUARD_SHINE + GUARD_OUT;
   const GUARD_HELD = GUARD_IN + GUARD_SHINE;     // where a held guard waits
   const KB_MAX = 10;
   const smooth = x => x * x * (3 - 2 * x);
@@ -2607,7 +2607,9 @@ import ReconnectingWebSocket from 'partysocket/ws';
       // still holding the button once the shine is over: the shield stays up
       if (inp.guard && f.guard.t >= GUARD_HELD && (f.guard.held || f.guard.t - dt < GUARD_HELD)) { f.guard.t = GUARD_HELD; f.guard.held = true; }
       else if (f.guard.held && f.guard.t > GUARD_HELD) f.guard.held = false;
-      if (f.guard.t >= GUARD_END) { f.guard = null; f.guardCd = 0.08; }
+      // lowering: moving, jumping or attacking drops it at once
+      const acting = inp.left || inp.right || inp.jump || inp.strike || inp.dash || SLOTS.some(sl => inp[sl]);
+      if (f.guard.t >= GUARD_END || (f.guard.t > GUARD_HELD && !f.guard.held && acting)) { f.guard = null; f.guardCd = 0.04; }
     }
     if (inp.parry && !f.guard && !f.ledge && f.guardCd <= 0 && f.busy <= 0) startGuard(f, inp);
 
@@ -3797,7 +3799,13 @@ import ReconnectingWebSocket from 'partysocket/ws';
   function choose() {
     const kind = ORDER[carIndex], variant = carVariant[kind];
     selectEl.hidden = true;
-    if (pending.kind === 'seat') { seats[pending.seat] = { ...seats[pending.seat], kind, variant }; keepSeats(); openPlay(); return; }
+    if (pending.kind === 'seat') {
+      // the colour picked, unless another seat already shows this fighter in it: then the next free one
+      const i = pending.seat, others = seats.filter((st, j) => j !== i), shown = seatColours(others);
+      const used = others.map((st, j) => st.kind === kind ? shown[j] : null).filter(Boolean);
+      const ids = VARIANTS[kind].map(v => v.id), free = used.includes(variant) ? ids.find(id => !used.includes(id)) || variant : variant;
+      seats[i] = { ...seats[i], kind, variant: free }; keepSeats(); openPlay(); return;
+    }
     cornerEl.hidden = false;
     startMatch({ kind: pending.kind, pick: kind, variant, lives: livesSetting });
   }
@@ -4833,8 +4841,9 @@ import ReconnectingWebSocket from 'partysocket/ws';
   const seatName = i => seats[i].ctrl === 'cpu' ? `CPU (seat ${i + 1})` : CTRL_LABEL[seats[i].ctrl];
   function renderSeats() {
     seatsEl.querySelectorAll('.seat, .seat-add').forEach(el => el.remove());
+    const colours = seatColours(seats);          // as the match will have them
     seats.forEach((st, i) => {
-      const kit = st.kind ? kitFor(st.kind, st.variant) : null;
+      const kit = st.kind ? kitFor(st.kind, colours[i]) : null;
       const el = document.createElement('div');
       el.className = 'seat';
       if (kit) el.style.setProperty('--c', kit.color);
@@ -4886,21 +4895,29 @@ import ReconnectingWebSocket from 'partysocket/ws';
   }
   // the seats as fighters: "?" becomes a fighter nobody has yet if there is one, and two of the same fighter
   // get different colours while there are colours left
+  // The colours seats actually get: two of the same fighter never share one. Seats with a chosen fighter keep
+  // their colour, in order, unless an earlier seat has it already (then the next free one). The Play screen, the
+  // picker and the match (local or online, on any device) all go through this.
+  function seatColours(list) {
+    const taken = {};
+    return list.map(st => {
+      if (!st.kind) return undefined;
+      const ids = VARIANTS[st.kind].map(v => v.id), used = taken[st.kind] ||= [];
+      const v = st.variant && !used.includes(st.variant) ? st.variant : ids.find(id => !used.includes(id)) || st.variant || ids[0];
+      used.push(v);
+      return v;
+    });
+  }
   function resolveSeats(list) {
-    const out = [];
-    for (const st of list) {
-      let kind = st.kind;
-      if (!kind) {
-        const unused = ORDER.filter(k => !out.some(o => o.kind === k) && !list.some(o => o.kind === k));
-        const pool = unused.length ? unused : ORDER;
-        kind = pool[Math.floor(Math.random() * pool.length)];
-      }
-      let variant = st.kind ? st.variant : undefined;
-      const taken = out.filter(o => o.kind === kind).map(o => o.variant);
-      const ids = VARIANTS[kind].map(v => v.id);
-      if (!variant || taken.includes(variant)) variant = ids.find(v => !taken.includes(v)) || variant || ids[0];
-      out.push({ kind, variant, ctrl: st.ctrl });
-    }
+    const colours = seatColours(list), out = list.map((st, i) => st.kind ? { kind: st.kind, variant: colours[i], ctrl: st.ctrl } : null);
+    // then the random seats ("?"): a fighter nobody has if there is one, in a colour still free
+    list.forEach((st, i) => {
+      if (st.kind) return;
+      const unused = ORDER.filter(k => !out.some(o => o && o.kind === k));
+      const pool = unused.length ? unused : ORDER, kind = pool[Math.floor(Math.random() * pool.length)];
+      const used = out.filter(o => o && o.kind === kind).map(o => o.variant), ids = VARIANTS[kind].map(v => v.id);
+      out[i] = { kind, variant: ids.find(id => !used.includes(id)) || ids[0], ctrl: st.ctrl };
+    });
     return out;
   }
   document.getElementById('fightBtn').addEventListener('click', () => {

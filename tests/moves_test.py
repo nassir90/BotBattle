@@ -90,6 +90,18 @@ async def main():
         held_for = sum(r["dt"] for r in mid if r["guard"])
         check("holding Backspace keeps the shield up (well past the 0.93 s a tap lasts)", held_for > 1.5 and mid[-1]["guard"] and mid[-1]["guard"]["held"], round(held_for, 2))
         check("letting go lowers it", after[-1]["guard"] is None)
+        # a tap: up and down again quicker than before (4 + 34 + 8 frames, was 4 + 26 + 18)
+        await home(); await track(pg, True)
+        await kb.press("Backspace"); await frames(pg, 70)
+        rows = await track(pg, False)
+        up = sum(r["dt"] for r in rows if r["guard"])
+        check("a tapped shield is up for about 0.77 s", 0.65 < up < 0.85, round(up, 3))
+        # moving while it's being lowered drops it at once
+        await home(); await track(pg, True)
+        await kb.press("Backspace"); await kb.down("KeyD"); await frames(pg, 60); await kb.up("KeyD")   # held all along: it counts once lowering starts
+        rows = await track(pg, False)
+        up = sum(r["dt"] for r in rows if r["guard"])
+        check("moving while it's being lowered drops it at once (before the 46 frames are up)", up < 44 / 60, round(up * 60, 1))
         await home(); await track(pg, True)
         await kb.down("Backspace"); await frames(pg, 10); await kb.down("KeyS"); await frames(pg, 30)
         rows = await track(pg, False); await kb.up("KeyS"); await kb.up("Backspace"); await frames(pg, 30)
