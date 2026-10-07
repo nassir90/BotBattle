@@ -28,15 +28,20 @@ Stack Overflow, ChatGPT and Claude settle it on a sheet of paper. It's a 3D stic
 |---|---|---|
 | ![Same keyboard on a laptop](docs/screenshots/video-same-keyboard.jpg) | ![Split screen on a phone](docs/screenshots/video-same-screen.jpg) | ![Two phones online](docs/screenshots/video-online.jpg) |
 
+| Bot Battle is now on Roblox |
+|---|
+| ![The Roblox version on a laptop](docs/screenshots/video-on-roblox.jpg) |
+
 The videos themselves aren't kept in git (they're build output, ignored in `.gitignore`); `make.py` writes them to `promo/out/`.
 
-All thirteen are made in [`promo/`](promo/) with TapaTab (recording) and ShadowKit (compositing, narration, music): `takes.mjs` stages each scene, and `videos/<id>/edl.js` is each video's edit list. They were all re-recorded on the current game.
+All fourteen are made in [`promo/`](promo/) with TapaTab (recording) and ShadowKit (compositing, narration, music): `takes.mjs` stages each scene, and `videos/<id>/edl.js` is each video's edit list. They were all re-recorded on the current game.
 
-- All thirteen are narrated (Gemini text-to-speech, voice Laomedeia, one take per video; ShadowKit's `voice.py`). The showcase, the inhale devlog and "play it anywhere" use the soft storyteller direction; the other ten use "clear, warm, friendly, unhurried". Those ten play one take straight through (two, side by side, for the online one), and [`promo/narration.py`](promo/narration.py) holds their scripts with the moment each line belongs to (from the takes' logged events: knockouts, beams, parries…); it writes each `script.json`, and from the voice's timings, the edit list that says each line just before what it describes.
+- All fourteen are narrated (Gemini text-to-speech, voice Laomedeia, one take per video; ShadowKit's `voice.py`). The showcase, the inhale devlog and "play it anywhere" use the soft storyteller direction; the other ten use "clear, warm, friendly, unhurried". Those ten play one take straight through (two, side by side, for the online one), and [`promo/narration.py`](promo/narration.py) holds their scripts with the moment each line belongs to (from the takes' logged events: knockouts, beams, parries…); it writes each `script.json`, and from the voice's timings, the edit list that says each line just before what it describes.
 - The three duels (every pairing) and the free-for-all are whole CPU-against-CPU matches (`cpuMatch` in `takes.mjs`), from the versus screen to the results table. The game is silent, so the takes log what happens in it (hits, parries, knockouts, every move, shot, punch, kick and bash) and `promo/fightcut.py` turns that log into a sound track and the edit list. Stack Overflow beat ChatGPT, Stack Overflow beat Claude, Claude beat ChatGPT, and Stack Overflow won the free-for-all; the narration follows each match as it goes.
 - The practice videos go through each fighter's moves on the training dummies, each named above its head with its key as it's used, ending with the moves everyone has (punch, low kick, the shield held up, the shield bash). `fightcut.py <take> <id> --sound-only <seconds>` makes their sound tracks, and the multiplayer videos'.
 - "Play it anywhere" shows the same build on a phone held upright (19.5:9, with 55px rounded screen corners), a laptop, and a phone on its side, each a 3D device (ShadowKit's `device` layer) with the recording on its screen.
 - Multiplayer: User A and User B sharing a laptop's keyboard (each one's keys in the game's move lists), sharing a phone in split screen (User B's half turned round), and two phones matched in a casual match through the real server (the local dev server; two takes recorded together, each its own player).
+- "Bot Battle is now on Roblox" shows the [Roblox port](https://github.com/nassir90/BotBattleBlox), filmed in Roblox Studio's play test as it runs: `promo/roblox/wincap.swift` records the Studio window, the port's Studio-only hook (`BotBattleDev`) starts the matches and fires the moves, and `promo/roblox/totake.py` cuts the viewport out and makes it a take ShadowKit can composite, shown on a 3D laptop. The leaderboard can't load inside Studio, so it's only mentioned.
 - Every take logs, per frame, any fighter outside the picture; in the current recordings that's 0 frames.
 
 ## Modes

@@ -1,0 +1,66 @@
+{
+ "duration": 57.88,
+ "lines": [
+  {
+   "line": "Bot Battle is now on Roblox, and it plays the same way as in the browser.",
+   "start": 0.0,
+   "end": 5.892
+  },
+  {
+   "line": "The menu, the three fighters and the paper they fight on all came across, with the CPUs still brawling behind the menu.",
+   "start": 6.672,
+   "end": 15.752
+  },
+  {
+   "line": "Every match opens on the versus screen, each fighter with its line.",
+   "start": 16.663,
+   "end": 21.221
+  },
+  {
+   "line": "The game's code was ported from the web version, and the fighters are its own models, so every move works the same, from the inhale to the compaction slab.",
+   "start": 22.056,
+   "end": 32.803
+  },
+  {
+   "line": "Play takes two to four fighters, each one you, a friend on the same keyboard, or the computer.",
+   "start": 33.453,
+   "end": 40.199
+  },
+  {
+   "line": "Online, you can make a room, join a room by its name, or find a casual match with other players in your server.",
+   "start": 40.831,
+   "end": 48.288
+  },
+  {
+   "line": "Online wins go on a leaderboard shared by every server, and it plays with a keyboard, a gamepad or a phone's buttons.",
+   "start": 49.024,
+   "end": 57.6
+  }
+ ],
+ "heard": [
+  "Bot Battle is now on Roblox.",
+  "And it plays the same way as in the browser.",
+  "The menu, the three fighters, and the paper they fight on,",
+  "All came across.",
+  "with the CPUs still brawling behind the menu.",
+  "Every match opens on the versus screen.",
+  "Each fighter with its line.",
+  "The game's code was ported from the web version.",
+  "And the fighters are its own models.",
+  "So every move works the same.",
+  "From the inhale to the compaction slab.",
+  "Play takes two to four fighters.",
+  "Each one, you?",
+  "A friend on the same keyboard.",
+  "or the computer.",
+  "Online?",
+  "You can make a room.",
+  "Join a room by its name.",
+  "or find a casual match with other players in your server.",
+  "Online wins go on a leaderboard shared by",
+  "Every server.",
+  "and it plays with a keyboard.",
+  "A game pad.",
+  "or a phone's buttons."
+ ]
+}
