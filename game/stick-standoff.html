@@ -385,6 +385,8 @@ body.two-players .corner { left: 50%; right: auto; transform: translateX(-50%); 
 .roomform input { font: 500 15px var(--mono); color: var(--ink); background: var(--paper); border: 2px solid var(--ink); padding: 8px 10px; min-width: 0; }
 .roomform input:focus { outline: 3px solid color-mix(in srgb, var(--gpt) 50%, transparent); outline-offset: 1px; }
 .roomform button { justify-self: start; }
+.netbanner { position: fixed; top: max(env(safe-area-inset-top, 0px), 10px); left: 50%; transform: translateX(-50%); z-index: 60;
+  padding: 8px 14px; background: var(--ink); color: var(--paper); font: 600 12px var(--mono); box-shadow: 3px 3px 0 color-mix(in srgb, var(--ink) 40%, transparent); }
 .roomform.casual p { margin: 0; font-size: 13px; color: var(--ink-soft); }
 .lobby.casual .invite { display: none; }
 .lobby { display: grid; grid-template-columns: minmax(0, 1fr) auto; gap: 20px; align-items: start; }
@@ -521,6 +523,7 @@ body.two-players .corner { left: 50%; right: auto; transform: translateX(-50%); 
   </div>
 </div>
 
+<div class="netbanner" id="netBanner" role="status" hidden>Connection lost. Reconnecting…</div>
 <div class="overlay" id="online" hidden>
   <div class="panel online">
     <div class="toprow"><button type="button" id="onlineBack">&larr; Modes</button><span class="who" id="who"></span></div>
@@ -605,11 +608,13 @@ body.two-players .corner { left: 50%; right: auto; transform: translateX(-50%); 
 
 <script type="importmap">
 { "imports": { "three": "https://cdn.jsdelivr.net/npm/three@0.186.1/build/three.module.js",
-               "three/addons/": "https://cdn.jsdelivr.net/npm/three@0.186.1/examples/jsm/" } }
+               "three/addons/": "https://cdn.jsdelivr.net/npm/three@0.186.1/examples/jsm/",
+               "partysocket/ws": "https://cdn.jsdelivr.net/npm/partysocket@1.3.0/dist/ws.js" } }
 </script>
 <script type="module">
 import * as THREE from 'three';
 import { SVGLoader } from 'three/addons/loaders/SVGLoader.js';
+import ReconnectingWebSocket from 'partysocket/ws';
 (() => {
   // The look is tuned for three's old defaults: colours used as written (no sRGB conversion on the way in or out),
   // and lights a factor of π brighter than today's physical units. makeRenderer and addLights keep it that way.
@@ -4133,7 +4138,7 @@ import { SVGLoader } from 'three/addons/loaders/SVGLoader.js';
   const IN = { left: 1, right: 2, down: 4, up: 8, fire: 16, jump: 32, parry: 64, dashL: 128, dashR: 256, a1: 512, a2: 1024, a3: 2048, a4: 4096, strike: 8192, guard: 16384 };
   const HELD = 31 | 16384;          // the bits that are held down (moving, firing, the guard), not pressed once
   const esc = s => String(s).replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' })[c]);
-  const net = { ws: null, me: null, room: null, lobby: null, match: null, remote: new Map(), frame: 0, error: null, ping: 0, pendingJoin: null, view: null };
+  const net = { ws: null, me: null, room: null, lobby: null, match: null, remote: new Map(), frame: 0, error: null, ping: 0, giveUp: 0, pendingJoin: null, view: null };
   let netSays = false;               // set while a knockout the host reported is played out on a guest
   function isHost() { return mode.kind === 'online' && !!net.match && net.match.host === net.me; }
   function guestOnline() { return mode.kind === 'online' && !!net.match && net.match.host !== net.me; }
@@ -4299,18 +4304,47 @@ import { SVGLoader } from 'three/addons/loaders/SVGLoader.js';
   });
 
   // ---------- a room ----------
+  // A room's connection reconnects by itself (partysocket) when it drops: a flaky network, the phone switching
+  // networks, or a deploy restarting the server. Every connection signs in again with a fresh token, and the room
+  // keeps the seat (and the place in a match) for 30 s; the page tries for a little longer, then gives up.
+  const RECONNECT_FOR = 35000;
+  // 4100: this page left on purpose; 4000 and up from the room: refused (wrong password, full, signed in elsewhere).
+  // Anything else, 1000 included (partysocket reports a failed attempt as 1000), is a drop worth retrying.
+  const LEFT = 4100, gone = code => code >= 4000;
+  function reconnecting(on) {
+    document.getElementById('netBanner').hidden = !on;
+    if (on && net.view === 'lobby' && !onlineEl.hidden) say('Connection lost. Reconnecting…', true);
+    if (!on) { clearTimeout(net.giveUp); net.giveUp = 0; if (net.view === 'lobby') say(''); }
+  }
   async function connect(key, auth) {
     const acc = await account().catch(() => null);
     if (!acc) { showOnline(); return; }
     leaveRoom();
     say('Joining…');
-    const token = await acc.token();
-    const ws = new WebSocket(`${location.protocol === 'https:' ? 'wss' : 'ws'}://${location.host}${API_BASE}/rooms/${encodeURIComponent(key)}/ws`);
+    const ws = new ReconnectingWebSocket(`${location.protocol === 'https:' ? 'wss' : 'ws'}://${location.host}${API_BASE}/rooms/${encodeURIComponent(key)}/ws`, [], {
+      minReconnectionDelay: 400, maxReconnectionDelay: 4000, connectionTimeout: 6000,
+      maxEnqueuedMessages: 0,                       // nothing sent while it's down is worth sending late
+      shouldReconnectOnClose: e => !gone(e.code),
+    });
     net.ws = ws; net.error = null;
-    ws.onopen = () => ws.send(JSON.stringify({ t: 'hello', token, name: acc.name, ...auth }));
+    ws.onopen = async () => {
+      const token = await acc.token().catch(() => null);
+      if (net.ws === ws) ws.send(JSON.stringify({ t: 'hello', token, name: acc.name, ...auth }));
+    };
     ws.onmessage = e => { let m; try { m = JSON.parse(e.data); } catch { return; } onNet(m); };
-    ws.onclose = () => {
+    ws.onclose = e => {
       if (net.ws !== ws) return;          // a room this page already left
+      if (!gone(e.code)) {                // dropped: carry on, and give up only if it stays down
+        reconnecting(true);
+        net.giveUp ||= setTimeout(() => {
+          if (net.ws !== ws) return;
+          net.error = 'The connection to the room was lost.';
+          ws.close(LEFT);
+          ws.onclose({ code: LEFT });
+        }, RECONNECT_FOR);
+        return;
+      }
+      reconnecting(false);
       const why = net.error;
       net.ws = null; net.room = null; net.lobby = null;
       clearInterval(net.ping);
@@ -4324,20 +4358,31 @@ import { SVGLoader } from 'three/addons/loaders/SVGLoader.js';
   }
   function leaveRoom() {
     const ws = net.ws;
+    reconnecting(false);
     net.ws = null; net.room = null; net.lobby = null; net.match = null;
     clearInterval(net.ping);
-    if (ws) ws.close(1000);
+    if (ws) ws.close(LEFT);
   }
   function onNet(m) {
     switch (m.t) {
       case 'error': net.error = m.error; return;
-      case 'welcome':
+      case 'welcome': {
+        const back = !!net.room && net.room.key === m.key;
+        reconnecting(false);
         net.me = m.id; net.room = { name: m.room, key: m.key, invite: m.invite, casual: !!m.casual };
+        if (back && mode.kind === 'online' && net.match) return;      // reconnected mid-match: carry on
         document.getElementById('lobby').classList.toggle('casual', net.room.casual);
         if (location.hash) history.replaceState(null, '', location.pathname + location.search);
         showView('lobby'); say('');
         drawInvite();
         return;
+      }
+      case 'away': case 'back': {        // another player's connection dropped, or came back
+        const f = mode.kind === 'online' && fighters.find(q => q.netId === m.id), r = net.remote.get(m.id);
+        if (r && m.t === 'away') { r.held = 0; r.pend = 0; }          // no keys stuck down while they're gone
+        if (f) floatText(f.x, f.y + BOX_H + 1, m.t === 'away' ? `${f.netName} is reconnecting…` : `${f.netName} is back`, 'info');
+        return;
+      }
       case 'lobby': net.lobby = m; if (net.view === 'lobby') renderLobby(); return;
       case 'start': beginOnline(m); return;
       case 'in': { const r = net.remote.get(m.id); if (r) { r.held = m.b & HELD; r.pend |= m.b & ~HELD; } return; }
@@ -4424,7 +4469,7 @@ import { SVGLoader } from 'three/addons/loaders/SVGLoader.js';
       const tags = [kit ? kit.name : 'picking a fighter', p.id === net.me ? 'you' : '', p.id === L.host ? 'host' : ''].filter(Boolean).join(' · ');
       return `<li data-id="${esc(p.id)}"><span class="sw"${p.kind ? ` data-logo="${p.kind}" data-variant="${esc(p.variant || '')}"` : ''} aria-hidden="true"></span>
         <span class="nm">${esc(p.name)}<small>${tags}</small></span>
-        <span class="st${p.ready ? ' ok' : ''}">${L.playing ? 'playing' : p.ready ? 'ready' : 'not ready'}</span></li>`;
+        <span class="st${p.ready && !p.away ? ' ok' : ''}">${p.away ? 'reconnecting' : L.playing ? 'playing' : p.ready ? 'ready' : 'not ready'}</span></li>`;
     }).join('');
     picksEl.querySelectorAll('button').forEach(b => {
       b.disabled = L.playing;
@@ -4691,6 +4736,7 @@ import { SVGLoader } from 'three/addons/loaders/SVGLoader.js';
     window.__bbKO = i => { const f = fighters[i]; if (f && !f.dead) { f.hp = 0; die(f); } };   // knocks a fighter out, as this browser
     // one fighter, frame by frame: speed, facing, walking backwards, the guard, the lean
     window.__bbTrack = (i, on) => { if (on) { trackLog = { i, rows: [] }; return null; } const r = trackLog && trackLog.rows; trackLog = null; return r; };
+    window.__bbNet = { drop: () => net.ws && net.ws.reconnect(3000, 'test drop'), cut: () => net.ws && net.ws.close(3000, 'test cut') };
     window.__bbMem = () => ({ ...renderer.info.memory, programs: renderer.info.programs.length });   // GPU objects the main renderer holds
     window.__bbCam = on => { if (on) { camLog = []; return null; } const r = camLog; camLog = null; return r; };   // the camera, frame by frame
     // hands and heads in the versus gestures: steps one fighter's gesture through and reports how deep any part of
