@@ -1,0 +1,70 @@
+{
+ "duration": 44.08,
+ "lines": [
+  {
+   "line": "All three bots fight at once, with two lives each.",
+   "start": 0.0,
+   "end": 3.703
+  },
+  {
+   "line": "Claude's dots, ChatGPT's inhale and Stack Overflow's beam all go off in the first few seconds.",
+   "start": 4.352,
+   "end": 11.211
+  },
+  {
+   "line": "Stack Overflow punches its way in, and its beam knocks ChatGPT out.",
+   "start": 11.95,
+   "end": 15.999
+  },
+  {
+   "line": "ChatGPT comes back, and its cursor takes control of Stack Overflow.",
+   "start": 16.902,
+   "end": 21.471
+  },
+  {
+   "line": "A low kick and the beam knock Claude out next.",
+   "start": 22.383,
+   "end": 24.782
+  },
+  {
+   "line": "Claude parries again and again.",
+   "start": 25.561,
+   "end": 28.038
+  },
+  {
+   "line": "Then Stack Overflow is knocked out too, so everyone is down to one life.",
+   "start": 28.867,
+   "end": 33.034
+  },
+  {
+   "line": "ChatGPT compacts Claude and takes it over, and Claude is out of the match.",
+   "start": 33.979,
+   "end": 38.312
+  },
+  {
+   "line": "It comes down to Stack Overflow against ChatGPT, and Stack Overflow wins.",
+   "start": 39.006,
+   "end": 43.744
+  }
+ ],
+ "heard": [
+  "All three bots fight at once.",
+  "with two lives each.",
+  "Claude's dots.",
+  "inhale",
+  "and stack overflow's beam.",
+  "All go off in the first few seconds.",
+  "Stack Overflow punches its way in.",
+  "and its beam knocks chat GPT out.",
+  "Chat GPT comes back.",
+  "and its cursor takes control of stack overflow.",
+  "a low kick and the beam not clawed out next.",
+  "Claude Perry's again.",
+  "And again",
+  "Then stack overflow is knocked out too.",
+  "So everyone is down to one life.",
+  "Chat GPT compacts Claude and takes it over and Claude is out of the match.",
+  "It comes down to stack overflow against chat GPT.",
+  "And stack overflow wins."
+ ]
+}

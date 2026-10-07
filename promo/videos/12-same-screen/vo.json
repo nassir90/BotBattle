@@ -1,0 +1,48 @@
+{
+ "duration": 28.32,
+ "lines": [
+  {
+   "line": "Two people can also share one phone.",
+   "start": 0.0,
+   "end": 2.843
+  },
+  {
+   "line": "The screen splits across the middle, and User B's half is turned round for the player across the table.",
+   "start": 3.427,
+   "end": 10.234
+  },
+  {
+   "line": "Each player taps their own buttons, at their own end.",
+   "start": 10.564,
+   "end": 13.384
+  },
+  {
+   "line": "Here, User A's ChatGPT takes over User B's Stack Overflow.",
+   "start": 14.308,
+   "end": 19.351
+  },
+  {
+   "line": "Both halves show the same fight, each the right way up for its player.",
+   "start": 20.264,
+   "end": 24.048
+  },
+  {
+   "line": "The health plates sit in the middle, where both players can see them.",
+   "start": 24.767,
+   "end": 27.998
+  }
+ ],
+ "heard": [
+  "Two people can also share one phone.",
+  "The screen splits across the middle.",
+  "and user B's half is turned round for the player across the table.",
+  "I",
+  "Each player taps their own buttons at their own end.",
+  "Here.",
+  "User A's chat GPT",
+  "takes over user B's stack overflow.",
+  "Both halves show the same fight.",
+  "each the right way up for its player.",
+  "The health plates sit in the middle where both players can see them."
+ ]
+}

@@ -1,0 +1,54 @@
+{
+ "duration": 30.68,
+ "lines": [
+  {
+   "line": "Stack Overflow faces Claude, with two lives each.",
+   "start": 0.0,
+   "end": 4.212
+  },
+  {
+   "line": "Stack Overflow fires its correction and its beam, and Claude answers with a line of dots.",
+   "start": 4.892,
+   "end": 10.7
+  },
+  {
+   "line": "Claude closes in and punches.",
+   "start": 11.654,
+   "end": 13.45
+  },
+  {
+   "line": "Claude parries twice, but the beam catches it and knocks it out.",
+   "start": 14.212,
+   "end": 17.702
+  },
+  {
+   "line": "Then Stack Overflow is thrown off the page, so both are down to one life.",
+   "start": 18.65,
+   "end": 22.725
+  },
+  {
+   "line": "A low kick and another beam wear Claude down.",
+   "start": 23.704,
+   "end": 26.165
+  },
+  {
+   "line": "Claude goes over the edge, and Stack Overflow wins.",
+   "start": 27.002,
+   "end": 30.331
+  }
+ ],
+ "heard": [
+  "Stack Overflow faces fraud.",
+  "With two lives each.",
+  "Stack Overflow fires its correction and its beam.",
+  "and Claude answers with a line of dots.",
+  "Claude closes in and punches.",
+  "Claud twice?",
+  "But the beam catches it and knocks it out.",
+  "Then stack overflow is thrown off the page.",
+  "So both are down to one life.",
+  "A low kick and another beam were clawed down.",
+  "Clod goes over the edge.",
+  "And Stack Overflow wins."
+ ]
+}

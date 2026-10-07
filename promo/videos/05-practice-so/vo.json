@@ -1,0 +1,71 @@
+{
+ "duration": 35.36,
+ "lines": [
+  {
+   "line": "Stack Overflow fires blocks from the top of its stack.",
+   "start": 0.0,
+   "end": 3.803
+  },
+  {
+   "line": "Its whip lashes out low, or straight up.",
+   "start": 4.542,
+   "end": 7.401
+  },
+  {
+   "line": "The beam fires all five blocks at once.",
+   "start": 8.353,
+   "end": 11.29
+  },
+  {
+   "line": "Its correction stuns everyone nearby.",
+   "start": 12.196,
+   "end": 14.718
+  },
+  {
+   "line": "It parries from the side, and from above.",
+   "start": 15.714,
+   "end": 18.246
+  },
+  {
+   "line": "It crouches under a fling, then dashes past.",
+   "start": 19.125,
+   "end": 22.368
+  },
+  {
+   "line": "Below the stage, the whip grabs the ledge.",
+   "start": 23.253,
+   "end": 25.693
+  },
+  {
+   "line": "Everyone can punch, and kick low while crouching.",
+   "start": 26.581,
+   "end": 29.178
+  },
+  {
+   "line": "Holding parry keeps the shield up.",
+   "start": 30.129,
+   "end": 32.043
+  },
+  {
+   "line": "A dash with the shield up is a bash.",
+   "start": 32.773,
+   "end": 35.086
+  }
+ ],
+ "heard": [
+  "Stack Overflow fires blocks from the top of its stack.",
+  "It's whip lashes out low or straight up.",
+  "The beam fires all five blocks at once.",
+  "Its correction stuns everyone nearby.",
+  "It parries from the side.",
+  "And from above.",
+  "It crouches under a flank.",
+  "Then dash is past.",
+  "Below the stage?",
+  "The whip grabs the latch.",
+  "Everyone can punch and kick low while crouching.",
+  "Holding Perry keeps the shield up.",
+  "A dash with the shield up?",
+  "is a bash."
+ ]
+}

@@ -1,0 +1,53 @@
+{
+ "duration": 33.04,
+ "lines": [
+  {
+   "line": "ChatGPT takes on Claude, with two lives each.",
+   "start": 0.0,
+   "end": 4.274
+  },
+  {
+   "line": "Claude punches out its dots while ChatGPT inhales.",
+   "start": 4.688,
+   "end": 9.272
+  },
+  {
+   "line": "They trade punches and kicks up close, and both of them fall off the page.",
+   "start": 9.653,
+   "end": 13.956
+  },
+  {
+   "line": "Down to one life each, they parry each other's attacks.",
+   "start": 14.643,
+   "end": 18.263
+  },
+  {
+   "line": "Claude's dots keep finding ChatGPT, and its health drops by half.",
+   "start": 18.633,
+   "end": 23.721
+  },
+  {
+   "line": "Even ChatGPT's compaction can't turn it round.",
+   "start": 24.214,
+   "end": 27.465
+  },
+  {
+   "line": "ChatGPT goes over the edge, and Claude wins with most of its health left.",
+   "start": 28.035,
+   "end": 32.721
+  }
+ ],
+ "heard": [
+  "Chat GPT takes on Claude.",
+  "With two lives each.",
+  "Claude punches out its spots.",
+  "while chat GPT inhales.",
+  "They trade punches and kicks up close.",
+  "and both of them fall off the page.",
+  "down to one life each.",
+  "They parry each other's attacks.",
+  "Claude's dots keep finding quack GPT and its health drops by half.",
+  "Even chat GPT's compaction can't turn it around.",
+  "Chat GPT goes over the edge and Claude wins with most of its health left."
+ ]
+}

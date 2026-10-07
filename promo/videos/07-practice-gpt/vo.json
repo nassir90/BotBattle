@@ -1,0 +1,66 @@
+{
+ "duration": 27.64,
+ "lines": [
+  {
+   "line": "ChatGPT's cursor chases the nearest enemy.",
+   "start": 0.0,
+   "end": 3.495
+  },
+  {
+   "line": "Its inhale swallows Claude's rays.",
+   "start": 4.283,
+   "end": 6.487
+  },
+  {
+   "line": "It can jump twice.",
+   "start": 7.139,
+   "end": 8.024
+  },
+  {
+   "line": "The advanced cursor takes over Stack Overflow.",
+   "start": 8.816,
+   "end": 11.885
+  },
+  {
+   "line": "Compaction flattens everyone in front.",
+   "start": 12.755,
+   "end": 15.361
+  },
+  {
+   "line": "It punches, and kicks low while crouching.",
+   "start": 15.908,
+   "end": 18.285
+  },
+  {
+   "line": "It parries, then holds its shield up.",
+   "start": 19.053,
+   "end": 21.475
+  },
+  {
+   "line": "A dash with the shield up is a bash.",
+   "start": 22.281,
+   "end": 24.662
+  },
+  {
+   "line": "Crouching, it can still walk.",
+   "start": 25.511,
+   "end": 27.327
+  }
+ ],
+ "heard": [
+  "I'm",
+  "Chat GPT's cursor chases the nearest enemy.",
+  "Its inhale swallows Claude's race.",
+  "It can jump twice.",
+  "The advanced cursor.",
+  "takes over stack overflow.",
+  "Compaction flattens everyone in front.",
+  "It punches and kicks low while crouching.",
+  "It carries",
+  "Then holds its shield up.",
+  "A dash with the shield up?",
+  "is a bash.",
+  "Crouching.",
+  "It can still walk."
+ ]
+}
