@@ -79,6 +79,8 @@ const HOOK = `
 
 const INJECT_BASE = [
   { before: "  startMatch({ kind: 'watch' });   // CPUs brawl behind the main menu", code: HOOK },
+  // the game alone: no Roblox link and feature tiles below it (build-page.mjs), and so no scrolling
+  { replace: '<html lang="en" class="site">', code: '<html lang="en">' },
   // recording only: the camera may come in closer than the game's own limit, so a narrow frame isn't all paper
   { replace: 'const MAX_DIST = 26;', code: 'const MAX_DIST = window.__maxDist || 26;' },
 ];
@@ -105,7 +107,7 @@ const CSS_PLAYERS = `.moves { display: none !important; }`;
 // CPU matches show the health plates (they sit at the top, clear of the text)
 const CSS_MATCH = `.moves, .touch, .corner, .trainbar, .status { display: none !important; }`;
 
-export default {
+const config = {
   app: '../public/games/botbattle',
   size: [540, 960], dpr: 2,
   inject: INJECT,
@@ -616,3 +618,24 @@ export default {
       ] },
   },
 };
+
+// The site's feature tiles (scripts/features.mjs cuts them into short loops): scenes recorded square, 1080 x 1080,
+// each only as long as the moments the tiles use. A square frame is as tall as it is wide, so the camera's margin
+// either side of the fighters comes in from 3 to 1.6 and they fill it as they fill a phone-shaped one.
+// sq_<name>: [the take it copies, seconds, CSS px across (540 at 2x; 720 at 1x, the tiles' own size, for screens
+// with more on them), anything else to change]
+const SQUARE = {
+  so: ['so', 15], gpt: ['gpt', 50], claude: ['claude', 10], parry: ['parry', 10],
+  practice_gpt: ['practice_gpt', 21], practice_so: ['practice_so', 54], duel_so_gpt: ['duel_so_gpt', 110],
+  same_keyboard: ['same_keyboard', 36, 720], same_screen: ['same_screen', 30],
+  online_a: ['online_a', 30, 720], online_b: ['online_b', 30, 720],
+  training: ['practice_claude', 16, 720, { css: '' }],      // with the training bar, plates and move list showing
+};
+const SQUARE_CAM = { replace: 'const halfW = (maxX - minX) / 2 + 3;', code: 'const halfW = (maxX - minX) / 2 + 1.6;' };
+for (const [name, [base, seconds, css = 540, extra = {}]] of Object.entries(SQUARE)) {
+  const t = config.takes[base];
+  config.takes['sq_' + name] = { ...t, size: [css, css], dpr: css === 540 ? 2 : 1, seconds,
+    inject: [...(t.inject || config.inject), SQUARE_CAM], ...extra };
+}
+
+export default config;

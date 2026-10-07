@@ -1,5 +1,5 @@
 <!doctype html>
-<html lang="en">
+<html lang="en" class="site">
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
@@ -5385,6 +5385,169 @@ import ReconnectingWebSocket from 'partysocket/ws';
 
   startMatch({ kind: 'watch' });   // CPUs brawl behind the main menu
   tick();
+})();
+</script>
+
+
+<div class="site-spacer" aria-hidden="true"></div>
+<button type="button" class="site-cue" id="siteCue" hidden>Also on Roblox &darr;</button>
+<main id="site">
+  <div class="site-in">
+    <section class="sec" aria-labelledby="waysTitle">
+      <h2 id="waysTitle">Ways to play</h2>
+      <div class="tiles-box"><div class="tiles">
+      <a class="tile wide roblox" href="https://www.roblox.com/games/110903526036358/Bot-Battle" target="_blank" rel="noopener">
+        <img class="media" src="roblox.jpg" alt="Bot Battle on Roblox" width="1280" height="720" loading="lazy">
+        <div class="cap"><h3>Roblox</h3><p>The same fight on Roblox. Play the CPU, a friend on the same keyboard, or anyone in your server.</p><span class="go">Open on Roblox</span></div>
+      </a>
+      <figure class="tile">
+        <video data-src="features/versus.mp4" data-poster="features/versus.jpg" muted loop playsinline preload="none" disablepictureinpicture aria-label="Versus"></video>
+        <figcaption><h3>Versus</h3><p>Two to four fighters, each played by you, a friend or the computer. Every match ends on a results table.</p></figcaption>
+      </figure>
+      <figure class="tile">
+        <video data-src="features/keyboard.mp4" data-poster="features/keyboard.jpg" muted loop playsinline preload="none" disablepictureinpicture aria-label="One keyboard"></video>
+        <figcaption><h3>One keyboard</h3><p>Two players, each with their own keys.</p></figcaption>
+      </figure>
+      <figure class="tile">
+        <video data-src="features/online.mp4" data-poster="features/online.jpg" muted loop playsinline preload="none" disablepictureinpicture aria-label="Online"></video>
+        <figcaption><h3>Online</h3><p>Make a room for your friends, or find a casual match.</p></figcaption>
+      </figure>
+      <figure class="tile">
+        <video data-src="features/training.mp4" data-poster="features/training.jpg" muted loop playsinline preload="none" disablepictureinpicture aria-label="Training"></video>
+        <figcaption><h3>Training</h3><p>One fighter against dummies that stand still, move about or fight back.</p></figcaption>
+      </figure>
+      </div></div>
+    </section>
+    <section class="sec" aria-labelledby="movesTitle">
+      <h2 id="movesTitle">Moves</h2>
+      <div class="tiles-box"><div class="tiles">
+      <figure class="tile">
+        <video data-src="features/blockshot.mp4" data-poster="features/blockshot.jpg" muted loop playsinline preload="none" disablepictureinpicture aria-label="Block shot"></video>
+        <figcaption><span class="tile-who"><img src="features/logo-so.png" alt="" width="28" height="28" loading="lazy">Stack Overflow</span><h3>Block shot</h3><p>A burst of blocks off the top of the stack.</p></figcaption>
+      </figure>
+      <figure class="tile">
+        <video data-src="features/whip.mp4" data-poster="features/whip.jpg" muted loop playsinline preload="none" disablepictureinpicture aria-label="Block whip"></video>
+        <figcaption><span class="tile-who"><img src="features/logo-so.png" alt="" width="28" height="28" loading="lazy">Stack Overflow</span><h3>Block whip</h3><p>A lash of blocks. Off the edge, it catches the ledge and climbs back.</p></figcaption>
+      </figure>
+      <figure class="tile">
+        <video data-src="features/beam.mp4" data-poster="features/beam.jpg" muted loop playsinline preload="none" disablepictureinpicture aria-label="Unified beam"></video>
+        <figcaption><span class="tile-who"><img src="features/logo-so.png" alt="" width="28" height="28" loading="lazy">Stack Overflow</span><h3>Unified beam</h3><p>The whole stack at once, as one beam.</p></figcaption>
+      </figure>
+      <figure class="tile">
+        <video data-src="features/inhale.mp4" data-poster="features/inhale.jpg" muted loop playsinline preload="none" disablepictureinpicture aria-label="Inhale"></video>
+        <figcaption><span class="tile-who"><img src="features/logo-gpt.png" alt="" width="28" height="28" loading="lazy">ChatGPT</span><h3>Inhale</h3><p>Breathes in whatever's thrown at it, and gains context.</p></figcaption>
+      </figure>
+      <figure class="tile">
+        <video data-src="features/takeover.mp4" data-poster="features/takeover.jpg" muted loop playsinline preload="none" disablepictureinpicture aria-label="Computer use"></video>
+        <figcaption><span class="tile-who"><img src="features/logo-gpt.png" alt="" width="28" height="28" loading="lazy">ChatGPT</span><h3>Computer use</h3><p>Its cursor takes over another fighter and steers it.</p></figcaption>
+      </figure>
+      <figure class="tile">
+        <video data-src="features/compaction.mp4" data-poster="features/compaction.jpg" muted loop playsinline preload="none" disablepictureinpicture aria-label="Compaction"></video>
+        <figcaption><span class="tile-who"><img src="features/logo-gpt.png" alt="" width="28" height="28" loading="lazy">ChatGPT</span><h3>Compaction</h3><p>Spends its context to squash everyone in front of it.</p></figcaption>
+      </figure>
+      <figure class="tile">
+        <video data-src="features/combobulating.mp4" data-poster="features/combobulating.jpg" muted loop playsinline preload="none" disablepictureinpicture aria-label="Combobulating"></video>
+        <figcaption><span class="tile-who"><img src="features/logo-claude.png" alt="" width="28" height="28" loading="lazy">Claude</span><h3>Combobulating</h3><p>Rods snap into a line of three, or a square of four.</p></figcaption>
+      </figure>
+      <figure class="tile">
+        <video data-src="features/shoot.mp4" data-poster="features/shoot.jpg" muted loop playsinline preload="none" disablepictureinpicture aria-label="Shoot"></video>
+        <figcaption><span class="tile-who"><img src="features/logo-claude.png" alt="" width="28" height="28" loading="lazy">Claude</span><h3>Shoot</h3><p>Rods, one after another, for as long as it's held.</p></figcaption>
+      </figure>
+      <figure class="tile">
+        <video data-src="features/fling.mp4" data-poster="features/fling.jpg" muted loop playsinline preload="none" disablepictureinpicture aria-label="Fling"></video>
+        <figcaption><span class="tile-who"><img src="features/logo-claude.png" alt="" width="28" height="28" loading="lazy">Claude</span><h3>Fling</h3><p>Throws a fighter back, here off the end of the paper.</p></figcaption>
+      </figure>
+      <figure class="tile">
+        <video data-src="features/parry.mp4" data-poster="features/parry.jpg" muted loop playsinline preload="none" disablepictureinpicture aria-label="Parry"></video>
+        <figcaption><span class="tile-who"><img src="features/logo-so.png" alt="" width="28" height="28" loading="lazy"><img src="features/logo-gpt.png" alt="" width="28" height="28" loading="lazy"><img src="features/logo-claude.png" alt="" width="28" height="28" loading="lazy">Every fighter</span><h3>Parry</h3><p>Guard at the right moment, from the side or overhead, and the attack glances off.</p></figcaption>
+      </figure>
+      <figure class="tile">
+        <video data-src="features/shield.mp4" data-poster="features/shield.jpg" muted loop playsinline preload="none" disablepictureinpicture aria-label="Shield"></video>
+        <figcaption><span class="tile-who"><img src="features/logo-so.png" alt="" width="28" height="28" loading="lazy"><img src="features/logo-gpt.png" alt="" width="28" height="28" loading="lazy"><img src="features/logo-claude.png" alt="" width="28" height="28" loading="lazy">Every fighter</span><h3>Shield</h3><p>Hold the guard up and shots bounce off. Double-tap and guard to bash.</p></figcaption>
+      </figure>
+      <figure class="tile">
+        <video data-src="features/strike.mp4" data-poster="features/strike.jpg" muted loop playsinline preload="none" disablepictureinpicture aria-label="Punch and kick"></video>
+        <figcaption><span class="tile-who"><img src="features/logo-so.png" alt="" width="28" height="28" loading="lazy"><img src="features/logo-gpt.png" alt="" width="28" height="28" loading="lazy"><img src="features/logo-claude.png" alt="" width="28" height="28" loading="lazy">Every fighter</span><h3>Punch and kick</h3><p>A punch, and a low kick from a crouch.</p></figcaption>
+      </figure>
+      </div></div>
+    </section>
+    <footer class="site-foot">
+      <button type="button" id="toTop">&uarr; Back to the game</button>
+      <span>After a meme by NovaXCode</span>
+    </footer>
+  </div>
+</main>
+<style>
+html:not(.site) .site-spacer, html:not(.site) #site, html:not(.site) .site-cue { display: none !important; }
+html.site, html.site body { height: auto; min-height: 100%; }
+html.site body { overflow: hidden auto; }
+.site-spacer { height: 100vh; height: 100lvh; }
+.site-cue { position: fixed; left: 50%; bottom: calc(env(safe-area-inset-bottom, 0px) + 18px); transform: translateX(-50%); z-index: 45; font-size: 12px; padding: 8px 12px; }
+.site-cue:hover { transform: translate(calc(-50% - 1px), -1px); }
+.site-cue:active { transform: translate(calc(-50% + 2px), 2px); }
+#site { position: relative; z-index: 100; background: var(--paper); border-top: 2px solid var(--ink); user-select: text; -webkit-user-select: text;
+  padding: 56px max(16px, env(safe-area-inset-right)) calc(36px + env(safe-area-inset-bottom)) max(16px, env(safe-area-inset-left)); }
+.site-in { width: min(1080px, 100%); margin: 0 auto; display: grid; gap: 64px; }
+.sec { display: grid; gap: 22px; }
+#site h2 { margin: 0; font-family: var(--display); font-weight: 400; font-size: clamp(22px, 4vw, 32px); line-height: 1.1; }
+/* one column on a phone, two, then three; Roblox spans two of them, its still as tall as a square tile beside it */
+.tiles-box { container-type: inline-size; }
+.tiles { --gap: 22px; display: grid; grid-template-columns: minmax(0, 1fr); gap: var(--gap); }
+@container (min-width: 560px) {
+  .tiles { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+  .tile.wide { grid-column: span 2; }
+}
+@container (min-width: 880px) {
+  .tiles { grid-template-columns: repeat(3, minmax(0, 1fr)); }
+  .tile.wide .media { aspect-ratio: auto; height: calc((100cqw - 2 * var(--gap)) / 3); }
+}
+.tile { margin: 0; border: 2px solid var(--ink); box-shadow: 3px 3px 0 var(--ink); background: var(--paper); display: grid; grid-template-rows: auto 1fr; color: inherit; text-decoration: none; }
+.tile video, .tile .media { display: block; width: 100%; height: auto; aspect-ratio: 1; object-fit: cover; background: var(--paper-2); border-bottom: 2px solid var(--ink); }
+.tile video { cursor: pointer; }
+.tile.wide .media { aspect-ratio: 16 / 9; object-position: 50% 45%; }
+.tile figcaption, .tile .cap { padding: 12px 14px 16px; display: grid; align-content: start; justify-items: start; gap: 6px; }
+.tile-who { display: flex; align-items: center; gap: 6px; font-size: 11px; font-weight: 600; color: var(--ink-soft); min-height: 28px; }
+.tile-who img { width: 28px; height: 28px; display: block; }
+.tile-who img + img { margin-left: -8px; }
+.tile-who img:last-of-type { margin-right: 2px; }
+.tile h3 { margin: 0; font-family: var(--display); font-weight: 400; font-size: 17px; line-height: 1.15; }
+.tile p { margin: 0; font-size: 13px; line-height: 1.5; color: var(--ink-soft); }
+.roblox:hover { transform: translate(-1px, -1px); box-shadow: 4px 4px 0 var(--ink); }
+.roblox:active { transform: translate(2px, 2px); box-shadow: 1px 1px 0 var(--ink); }
+.roblox:focus-visible { outline: 3px solid var(--so); outline-offset: 3px; }
+.roblox .go { margin-top: 6px; border: 2px solid var(--ink); padding: 9px 13px; font-weight: 600; text-transform: uppercase; letter-spacing: 0.04em; font-size: 12px; box-shadow: 3px 3px 0 var(--ink); }
+.site-foot { display: flex; flex-wrap: wrap; gap: 12px 20px; align-items: center; justify-content: space-between; font-size: 12px; color: var(--ink-soft); }
+@media (max-width: 720px) {
+  #site { padding-top: 36px; }
+  .site-in { gap: 48px; }
+}
+</style>
+<script>
+(() => {
+  // a reload opens on the game, not wherever the page was left
+  if ('scrollRestoration' in history) history.scrollRestoration = 'manual';
+  const menu = document.getElementById('menu'), cue = document.getElementById('siteCue'), site = document.getElementById('site');
+  // the cue shows on the main menu only, until the page is scrolled, and only where it clears the menu's last button
+  const panel = menu.querySelector('.panel');
+  const update = () => { cue.hidden = menu.hidden || scrollY > 24 || panel.getBoundingClientRect().bottom > innerHeight - 70; };
+  new MutationObserver(update).observe(menu, { attributes: true, attributeFilter: ['hidden'] });
+  new ResizeObserver(update).observe(panel);      // the Leaderboard button comes and goes
+  addEventListener('scroll', update, { passive: true });
+  addEventListener('resize', update);
+  update();
+  cue.addEventListener('click', () => site.scrollIntoView({ behavior: 'smooth' }));
+  document.getElementById('toTop').addEventListener('click', () => scrollTo({ top: 0, behavior: 'smooth' }));
+  // the tiles load as they come near and play while they're on screen (or on a tap, for reduced motion)
+  const still = matchMedia('(prefers-reduced-motion: reduce)').matches;
+  const videos = [...site.querySelectorAll('video')];
+  const load = v => { if (!v.src) { v.poster = v.dataset.poster; v.src = v.dataset.src; } };
+  const near = new IntersectionObserver(es => es.forEach(e => { if (e.isIntersecting) { load(e.target); near.unobserve(e.target); } }), { rootMargin: '600px 0px' });
+  const seen = new IntersectionObserver(es => es.forEach(e => { if (e.isIntersecting) e.target.play().catch(() => {}); else e.target.pause(); }), { threshold: 0.4 });
+  for (const v of videos) {
+    near.observe(v);
+    if (!still) seen.observe(v);
+    v.addEventListener('click', () => { load(v); v.paused ? v.play().catch(() => {}) : v.pause(); });
+  }
 })();
 </script>
 

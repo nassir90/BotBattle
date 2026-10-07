@@ -1,6 +1,6 @@
 # Bot Battle
 
-**Live:** [mpts.ie/games/botbattle](https://mpts.ie/games/botbattle/)
+**Live:** [mpts.ie/games/botbattle](https://mpts.ie/games/botbattle/) · **On Roblox:** [Bot Battle](https://www.roblox.com/games/110903526036358/Bot-Battle) (the port: [BotBattleBlox](https://github.com/nassir90/BotBattleBlox))
 
 Stack Overflow, ChatGPT and Claude settle it on a sheet of paper. It's a 3D stick-figure fighting game in the browser, built from a meme: the angry Stack Overflow guy pointing at the two chatbots giving a thumbs up.
 
@@ -275,6 +275,16 @@ npm run deploy   # build the page and deploy the worker to mpts.ie/games/botbatt
 ```
 
 `npm run build:page` wraps `game/stick-standoff.html` into a full page at `public/games/botbattle/index.html`. The Cloudflare Worker ([`src/index.ts`](src/index.ts)) serves it at `mpts.ie/games/botbattle`, redirects the bare path to the trailing-slash URL, and runs the online API under `/games/botbattle/api`: rooms (the `Room` Durable Object), their WebSockets, and the leaderboard (D1). `npm run deploy` creates the database and the Durable Object class the first time.
+
+Below the game, the page has two sections of square tiles: **Ways to play** (Roblox first, then versus, one keyboard, online and training) and **Moves** (a row for each fighter, then the moves every fighter has). Scrolling brings them up over the game on a sheet of paper; the game itself is unchanged. Each tile is a short loop of a scene recorded square (the `sq_` takes in [`promo/takes.mjs`](promo/takes.mjs): the videos' scenes at 1080 × 1080, the camera a little closer), cut by [`scripts/features.mjs`](scripts/features.mjs), and each move carries its fighter's 3D logo, drawn by the game's own code ([`scripts/logos.py`](scripts/logos.py)). Both write to `public/games/botbattle/features/`, which isn't in git, so make them before deploying:
+
+```bash
+cd promo && node ~/projects/TapaTab/tapatab.mjs takes.mjs sq_so sq_gpt sq_claude sq_parry sq_practice_gpt sq_practice_so sq_duel_so_gpt sq_same_keyboard sq_online_a sq_online_b sq_training && cd ..
+node scripts/features.mjs
+~/projects/ShadowKit/.venv/bin/python scripts/logos.py
+```
+
+The online takes and `logos.py` need `npm run dev` running.
 
 Locally, `npm run dev` runs the same API against a local Durable Object and database. There, `?dev=<name>` signs you in as a test player without Clerk (the server accepts that only on localhost), which is how the end-to-end tests play two and three players at once:
 

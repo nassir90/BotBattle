@@ -13,3 +13,5 @@ dist/
 *.webm
 *.h264
 promo/clips/
+# the page's feature tiles and logos: scripts/features.mjs and scripts/logos.py make them from the sq_ takes
+public/games/botbattle/features/
