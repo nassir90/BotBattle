@@ -4,12 +4,15 @@
 # (videos/<id>/sfx_fight.wav, which ShadowKit's mixer plays as a single cue) and writes the edit list.
 #
 #   ~/projects/ShadowKit/.venv/bin/python fightcut.py <take> <video id>      then: python3 ~/projects/ShadowKit/make.py <id>
+#   ... fightcut.py <take> <video id> --sound-only <seconds>   just the sound track, for the take's first <seconds>, for a
+#   video whose own edit list plays the take from its start (the practice and multiplayer videos)
 import json, os, sys, wave
 import numpy as np
 
 SR = 48000
 HOLD = 4.6            # the results table stays up this long, under the end card
 take, vid = sys.argv[1], sys.argv[2]
+SOUND_ONLY = float(sys.argv[sys.argv.index("--sound-only") + 1]) if "--sound-only" in sys.argv else None
 meta = json.load(open(f"clips/{take}/meta.json"))
 fps, frames = meta["fps"], meta["frames"]
 rng = np.random.default_rng(7)
@@ -123,9 +126,11 @@ SHOT = {'block': tok, 'rod': pew, 'dot': pop, 'cursor': lambda k=1: click()}
 
 # ---- the match ----
 result = next((i for i, f in enumerate(frames) if f.get("state", {}).get("result")), None)
-if result is None: sys.exit(f"{take}: the match never reached its results table; record a longer take")
-fight_end = result / fps + 1.4          # the table has slid in by then
-total = fight_end + HOLD
+if SOUND_ONLY: fight_end = total = SOUND_ONLY
+else:
+    if result is None: sys.exit(f"{take}: the match never reached its results table; record a longer take")
+    fight_end = result / fps + 1.4          # the table has slid in by then
+    total = fight_end + HOLD
 if total * fps > len(frames): sys.exit(f"{take}: {len(frames) / fps:.1f} s recorded, needs {total:.1f} s")
 
 track = np.zeros(int((total + 3) * SR))
@@ -150,6 +155,8 @@ for i, fr in enumerate(frames[:int(total * fps)]):
         elif name == 'jump': put(at, hop(), 0.5)
         elif name == 'shot' and ev[2] in SHOT: put(at, SHOT[ev[2]](k), 0.55)
         elif name == 'move' and (kind, ev[2]) in MOVE: put(at, MOVE[(kind, ev[2])](), 0.8)
+        elif name in ('punch', 'kick'): put(at, swish(), 0.6)           # everyone's punch and low kick
+        elif name == 'bash': put(at, whoosh(), 0.8)                      # the shield bash
     st, prev = fr.get("state", {}), frames[i - 1].get("state", {}) if i else {}
     if st.get("result") and not prev.get("result"): put(at, bell([72, 76, 79, 84], 2.0, 0.12), 0.8)
 track = np.tanh(track[:int(total * SR)] * 0.9)        # gentle limiting where sounds pile up
@@ -157,6 +164,8 @@ D = f"videos/{vid}"; os.makedirs(D, exist_ok=True)
 with wave.open(f"{D}/sfx_fight.wav", "wb") as w:
     w.setnchannels(1); w.setsampwidth(2); w.setframerate(SR)
     w.writeframes((track * 0.95 * 32767).astype(np.int16).tobytes())
+if SOUND_ONLY:
+    print(f"{vid}: sound track only, {total:.1f} s, sounds:", json.dumps(counts)); sys.exit()
 
 who = sorted({f[0] for fr in frames[:10] for f in fr.get("state", {}).get("f", [])}, key=['so', 'gpt', 'claude'].index)
 names = {'so': 'Stack Overflow', 'gpt': 'ChatGPT', 'claude': 'Claude'}

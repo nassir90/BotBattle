@@ -5,7 +5,7 @@
   lines: [],               // no narration
   thumbnail: 2.6,          // the versus screen, every panel's line showing
   segments: [
-    { dur: 54.700, sfx: [{ type: 'fight', at: 0, vol: 1 }], layers: [{ type: 'clip', clip: 'ffa', from: 0, ann: false }] },
-    { dur: 4.6, layers: [{ type: 'clip', clip: 'ffa', from: 54.700, ann: false }, { type: 'end', title: 'Bot Battle', credits: ['After a meme by NovaXCode'], link: 'mpts.ie/games/botbattle' }] },
+    { dur: 68.133, sfx: [{ type: 'fight', at: 0, vol: 1 }], layers: [{ type: 'clip', clip: 'ffa', from: 0, ann: false }] },
+    { dur: 4.6, layers: [{ type: 'clip', clip: 'ffa', from: 68.133, ann: false }, { type: 'end', title: 'Bot Battle', credits: ['After a meme by NovaXCode'], link: 'mpts.ie/games/botbattle' }] },
   ],
 })

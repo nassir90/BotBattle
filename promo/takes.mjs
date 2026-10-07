@@ -9,7 +9,8 @@
 // where things are on screen for the callouts.
 const HOOK = `
   window.__app = {
-    get fighters() { return fighters; }, startMatch, camera,
+    get fighters() { return fighters; }, startMatch, camera, keys: KEYS_FOR,
+    get split() { return split; },
     get: kind => fighters.find(f => f.kind === kind),
     dummies: m => { dummyMode = m; },
     fire(kind, slot, face) {
@@ -93,6 +94,14 @@ const INJECT_PHONE = [
       { replace: '@media (pointer: coarse) {', code: '@media all {' },
       { replace: '@media (pointer: coarse) and (orientation: landscape) and (max-height: 540px) {', code: '@media (orientation: landscape) and (max-height: 540px) {' },
     ];
+// a take's own seats (the Play screen reads them once, as the page loads)
+const SEATS = seats => ({ replace: "const kept = JSON.parse(localStorage.getItem('botbattle.seats'));", code: `const kept = ${JSON.stringify(seats)};` });
+// two players on one phone: split the screen as the game does on a touch screen (the recording browser has a mouse)
+const SPLIT = { replace: "split = !!player2 && matchMedia('(pointer: coarse)').matches;", code: 'split = !!player2;' };
+// online: TapaTab's proxy carries ordinary requests but not WebSockets, so the room's socket goes to the dev server itself
+const ONLINE_WS = { replace: "`${location.protocol === 'https:' ? 'wss' : 'ws'}://${location.host}${API_BASE}/rooms/", code: "`ws://localhost:5173${API_BASE}/rooms/" };
+const CSS_PLAYERS = `.moves { display: none !important; }`;
+
 // CPU matches show the health plates (they sit at the top, clear of the text)
 const CSS_MATCH = `.moves, .touch, .corner, .trainbar, .status { display: none !important; }`;
 
@@ -129,20 +138,64 @@ export default {
       }
       seen[f.id] = { jumpT: f.jumpT, onGround: f.onGround, vy: f.vy };
     }
-    // practice: name what Stack Overflow is doing, at its stack
-    const so = A.get('so');
-    if (window.__labelMoves && so && !so.dead) {
-      const label = so.tether ? 'the whip latches on' : so.ledge ? 'hanging on' : so.whip ? (so.whip.up ? 'W + K: upward whip' : 'K: block whip')
-        : so.beam ? 'L: unified beam' : (so.shot || so.launch.length) ? 'J: block shot' : so.guard ? (so.guard.dir === 'up' ? 'W + Backspace: overhead parry' : 'Backspace: parry')
-        : so.crouch > 0.5 ? 'S: crouch' : so.passT > 0 ? 'double-tap: dash' : so.busy > 0.05 && document.querySelector('.bubble') ? 'I: correction' : null;
+    // practice: name what the practising fighter is doing (window.__labelKind), above its head. The keys are the
+    // ones a player alone uses; in the multiplayer takes (window.__labelPlayers) each player's own keys, with their name.
+    const V3 = A.camera.position.constructor;
+    const ab = (f, sl) => f.kit.abilities[sl] ? f.kit.abilities[sl].name : '';
+    const labelOf = (f, K) => {
+      if (f.strike) return f.strike.low ? `${K.crouch} + ${K.strike}: low kick` : `${K.strike}: punch`;
+      if (f.guard && f.guard.bash) return `double-tap + ${K.parry}: shield bash`;
+      if (f.kind === 'so') {
+        if (f.tether) return 'the whip latches on';
+        if (f.ledge) return 'hanging on';
+        if (f.whip) return f.whip.up ? `${K.jump} + ${K.a2}: upward whip` : `${K.a2}: block whip`;
+        if (f.beam) return `${K.a3}: unified beam`;
+        if (f.shot || f.launch.length) return `${K.a1}: block shot`;
+      }
+      if (f.possessing) return `${K.a3}: computer use (advanced)`;
+      if (f.inhale) return `${K.a2}: inhale`;
+      if (f.compaction) return `${K.a4}: compaction`;
+      if (f.combo) return `${K.a3}: combobulating`;
+      if (f.fling) return `${K.a2}: fling`;
+      if (f.guard) return f.guard.held ? (f.crouch > 0.5 ? `${K.crouch} + hold ${K.parry}: crouching shield` : `hold ${K.parry}: shield up`)
+        : f.guard.dir === 'up' ? `${K.jump} + ${K.parry}: overhead parry` : { minor: `${K.parry}: parry` };
+      if (f.crouch > 0.5) return Math.abs(f.vx) > 0.5 ? `${K.crouch} + move: crouch-walk` : { minor: `${K.crouch}: crouch` };
+      if (f.passT > 0) return 'double-tap: dash';
+      if (!f.onGround && f.kit.jumps > 1 && f.jumpsLeft === 0 && !f.ledge) return `${K.jump}, ${K.jump}: double jump`;
+      if (f.busy > 0.05 && f.kind === 'so' && document.querySelector('.bubble')) return `${K.a4}: correction`;
+      return null;
+    };
+    // shots that leave nothing to look at on the shooter (ChatGPT's cursor, Claude's rays) come from the event log
+    const fired = (f, ev) => { const e = ev.filter(x => x[0] === 'move' && x[1] === f.kind).pop(); return e ? e[2] : null; };
+    // key names as words where the callout font has no symbol for them
+    const nice = K => Object.fromEntries(Object.entries(K).map(([k, v]) => [k, String(v).replace('\u232B', 'Backspace').replace('R\u21E7', 'Right Shift')]));
+    const label = (id, f, K0, prefix, where) => {
+      const K = nice(K0);
+      const now = performance.now(), mem = (window.__labels ||= {});
+      let text = labelOf(f, K);
+      if (text && text.minor) text = mem[id] && now < mem[id].until ? null : text.minor;
+      if (!text) { const sl = fired(f, out.state.ev); if (sl) text = `${K[sl]}: ${ab(f, sl).replace(/^./, c => c.toLowerCase())}`; }
       // a label stays up at least 1.6 s, long enough to read
-      const now = performance.now();
-      if (label) window.__lastLabel = { text: label, until: now + 1600 };
-      const shown = label || (window.__lastLabel && now < window.__lastLabel.until ? window.__lastLabel.text : null);
-      if (shown) {
-        so.crown.updateMatrixWorld(true);
-        const [x, y] = A.screen(so.crown.localToWorld(new (so.crown.position.constructor)(0, 0.3, 0)));
-        out.moves.push({ k: 'call', id: 'move', x, y, text: shown, dx: 160, dy: -230 });
+      if (text) mem[id] = { text, until: now + 1600 };
+      const shown = text || (mem[id] && now < mem[id].until ? mem[id].text : null);
+      const full = prefix || shown;          // the multiplayer takes: just the player's name
+      if (full && !f.dead) {
+        const [x, y] = where(new V3(f.x, f.y + 3.3, 0));
+        const side = prefix ? (prefix === 'User B' ? 1 : -1) : f.x < 0 ? -1 : 1;
+        out.moves.push({ k: 'call', id, x, y, text: full, dx: side * 170, dy: -240 });
+      }
+    };
+    if (window.__labelKind) { const f = A.get(window.__labelKind); if (f) label('move', f, A.keys.all, null, A.screen); }
+    if (window.__labelPlayers) {
+      const W = innerWidth * devicePixelRatio, H = innerHeight * devicePixelRatio;
+      for (const f of A.fighters) {
+        if (!f.isPlayer && !f.isPlayer2) continue;
+        const who = f.isPlayer2 ? 'B' : 'A';
+        let where = A.screen;
+        if (A.split) {     // each player in their own half: User A's at the bottom, User B's turned round at the top
+          where = v => { const [x, y] = A.screen(v); return who === 'A' ? [x, H / 2 + y / 2] : [W - x, H / 2 - y / 2]; };
+        }
+        label('user' + who, f, A.keys[who], 'User ' + who, where);
       }
     }
     return out;
@@ -161,45 +214,259 @@ export default {
       script: [] },
 
     // practice: Stack Overflow goes through its moves on the dummies, each one named as it happens
-    practice_so: { seconds: 46,
-      setup: () => { window.__labelMoves = true; window.__app.stage('so', [['so', -2.6, 1], ['gpt', 0.4, -1], ['claude', 3.4, -1]]); },
+    practice_so: { seconds: 60,
+      setup: () => { window.__labelKind = 'so'; window.__app.stage('so', [['so', -2.6, 1], ['gpt', 0.4, -1], ['claude', 3.4, -1]]); },
       script: [
-        [1.0, page => page.down('KeyJ')],                                   // block shot
-        [2.3, page => page.up('KeyJ')],
-        [7, page => page.press('KeyK')],                                  // block whip
-        [10, page => page.js(() => window.__app.place('gpt', 2.4, -1))],
-        [10.2, page => page.down('ArrowUp')],                                // upward whip (from a jump)
-        [10.35, page => page.press('KeyK')],
-        [10.8, page => page.up('ArrowUp')],
-        [13, page => page.press('KeyL')],                                 // unified beam
-        [16.5, page => page.press('KeyI')],                                 // correction
+        [4.5, page => page.down('KeyJ')],                                   // block shot
+        [5.8, page => page.up('KeyJ')],
+        [10.5, page => page.press('KeyK')],                                  // block whip
+        [13.5, page => page.js(() => window.__app.place('gpt', 2.4, -1))],
+        [13.7, page => page.down('ArrowUp')],                                // upward whip (from a jump)
+        [13.85, page => page.press('KeyK')],
+        [14.3, page => page.up('ArrowUp')],
+        [16.5, page => page.press('KeyL')],                                 // unified beam
+        [20.0, page => page.press('KeyI')],                                 // correction
         // a parry: Claude fires a rod, Stack Overflow guards toward it
-        [20, page => page.js(() => { const A = window.__app; A.place('claude', 0.6, -1); A.place('gpt', 5, -1); })],
-        [20.6, page => page.press('Backspace')],
-        [20.64, page => page.js(() => window.__app.fire('claude', 'a1', -1))],
+        [23.5, page => page.js(() => { const A = window.__app; A.place('claude', 0.6, -1); A.place('gpt', 5, -1); })],
+        [24.1, page => page.press('Backspace')],
+        [24.14, page => page.js(() => window.__app.fire('claude', 'a1', -1))],
         // an overhead parry: ChatGPT slams a compaction down
-        [23, page => page.js(() => { const A = window.__app; A.place('claude', 6, -1); A.place('gpt', -0.6, -1); A.get('gpt').context = 100; })],
-        [23.6, page => page.js(() => window.__app.fire('gpt', 'a4', -1))],
-        [23.62, page => page.down('KeyW')],
-        [23.68, page => page.press('Backspace')],
-        [24, page => page.up('KeyW')],
+        [26.5, page => page.js(() => { const A = window.__app; A.place('claude', 6, -1); A.place('gpt', -0.6, -1); A.get('gpt').context = 100; })],
+        [27.1, page => page.js(() => window.__app.fire('gpt', 'a4', -1))],
+        [27.12, page => page.down('KeyW')],
+        [27.18, page => page.press('Backspace')],
+        [27.5, page => page.up('KeyW')],
         // crouch under Claude's fling
-        [26.5, page => page.js(() => { const A = window.__app; A.place('gpt', 6, -1); A.place('claude', 0.0, -1); })],
-        [27, page => page.down('KeyS')],
-        [27.4, page => page.js(() => window.__app.fire('claude', 'a2', -1))],
-        [28.6, page => page.up('KeyS')],
+        [30.0, page => page.js(() => { const A = window.__app; A.place('gpt', 6, -1); A.place('claude', 0.0, -1); })],
+        [30.5, page => page.down('KeyS')],
+        [30.9, page => page.js(() => window.__app.fire('claude', 'a2', -1))],
+        [32.1, page => page.up('KeyS')],
         // dash past Claude
-        [29.4, page => page.down('KeyD')],
-        [29.5, page => page.up('KeyD')],
-        [29.62, page => page.down('KeyD')],
-        [30.4, page => page.up('KeyD')],
+        [32.9, page => page.down('KeyD')],
+        [33.0, page => page.up('KeyD')],
+        [33.12, page => page.down('KeyD')],
+        [33.9, page => page.up('KeyD')],
         // off the edge with no jumps left: the upward whip latches onto the ledge, then it climbs up
-        [33, page => page.js(() => { const A = window.__app, f = A.get('so'); A.place('gpt', 7.5, -1); A.place('claude', 4, -1); f.x = 11.2; f.y = -5.2; f.vx = 0; f.vy = 0; f.onGround = false; f.jumpsLeft = 0; f.facing = -1; f.feet.forEach(ft => { ft.air = true; ft.y = -5.2; }); })],
-        [33.03, page => page.down('ArrowUp')],
-        [33.07, page => page.press('KeyK')],
-        [33.5, page => page.up('ArrowUp')],
-        [35.4, page => page.down('ArrowLeft')],
-        [36, page => page.up('ArrowLeft')],
+        [36.5, page => page.js(() => { const A = window.__app, f = A.get('so'); A.place('gpt', 7.5, -1); A.place('claude', 4, -1); f.x = 11.2; f.y = -5.2; f.vx = 0; f.vy = 0; f.onGround = false; f.jumpsLeft = 0; f.facing = -1; f.feet.forEach(ft => { ft.air = true; ft.y = -5.2; }); })],
+        [36.53, page => page.down('ArrowUp')],
+        [36.57, page => page.press('KeyK')],
+        [37.0, page => page.up('ArrowUp')],
+        [38.9, page => page.down('ArrowLeft')],
+        [39.5, page => page.up('ArrowLeft')],
+        // the moves every fighter has: a punch, a low kick, the shield held up, and the shield bash
+        [42.1, page => page.js(() => { const A = window.__app; A.place('so', -2.6, 1); A.place('gpt', -1.2, -1); A.place('claude', 4, -1); })],
+        [42.5, page => page.press('KeyH')],
+        [44.5, page => page.down('KeyS')],
+        [44.9, page => page.press('KeyH')],
+        [45.7, page => page.up('KeyS')],
+        [47.5, page => page.js(() => { const A = window.__app; A.place('claude', 0.6, -1); A.place('gpt', 5, -1); })],
+        [47.9, page => page.down('Backspace')],
+        [48.8, page => page.js(() => window.__app.fire('claude', 'a1', -1))],
+        [49.4, page => page.js(() => window.__app.fire('claude', 'a1', -1))],
+        [50.3, page => page.up('Backspace')],
+        [51.9, page => page.js(() => { const A = window.__app; A.place('so', -3.4, 1); A.place('gpt', 0.0, -1); A.place('claude', 4.6, -1); })],
+        [52.5, page => page.press('KeyD')],
+        [52.59, page => page.press('KeyD')],
+        [52.6, page => page.press('Backspace')],
+      ] },
+
+    // the other two pairings, as duel_so_gpt
+    duel_so_claude: { seconds: 120, css: CSS_MATCH,
+      setup: () => window.__app.cpuMatch(['so', 'claude'], 2, 22),
+      each: () => window.__app && window.__app.autoResult(),
+      script: [] },
+    duel_gpt_claude: { seconds: 120, css: CSS_MATCH,
+      setup: () => window.__app.cpuMatch(['gpt', 'claude'], 2, 22),
+      each: () => window.__app && window.__app.autoResult(),
+      script: [] },
+
+    // practice: ChatGPT's moves on the dummies, each named above its head
+    practice_gpt: { seconds: 50,
+      setup: () => { window.__labelKind = 'gpt'; window.__app.stage('gpt', [['gpt', -2.6, 1], ['so', 0.6, -1], ['claude', 3.6, -1]]); },
+      script: [
+        [4.5, page => page.press('KeyJ')],                                   // computer use: a cursor that chases
+        [7.7, page => page.press('KeyK')],                                   // inhale, against Claude's rays
+        [7.9, page => page.js(() => window.__app.fire('claude', 'a1', -1))],
+        [8.05, page => page.js(() => window.__app.fire('claude', 'a1', -1))],
+        [8.2, page => page.js(() => window.__app.fire('claude', 'a1', -1))],
+        [12.1, page => page.press('KeyW')],                                   // double jump
+        [12.4, page => page.press('KeyW')],
+        [15.1, page => page.js(() => window.__app.place('so', 0.4, -1))],
+        [15.5, page => page.press('KeyL')],                                  // computer use (advanced): it steers them
+        [16.4, page => page.down('KeyD')],
+        [17.8, page => page.up('KeyD')],
+        [20.1, page => page.js(() => { const A = window.__app; A.place('gpt', -2.6, 1); A.place('so', -0.4, -1); A.place('claude', 1.0, -1); A.get('gpt').context = 100; })],
+        [20.5, page => page.press('KeyI')],                                  // compaction
+        [24.5, page => page.js(() => { const A = window.__app; A.place('so', -1.4, -1); A.place('claude', 4, -1); })],
+        [24.9, page => page.press('KeyH')],                                  // punch
+        [26.9, page => page.down('KeyS')],                                   // low kick
+        [27.3, page => page.press('KeyH')],
+        [28.1, page => page.up('KeyS')],
+        [30.1, page => page.js(() => { const A = window.__app; A.place('claude', 0.4, -1); A.place('so', 4.4, -1); })],
+        [30.5, page => page.press('Backspace')],                             // parry a ray
+        [30.54, page => page.js(() => window.__app.fire('claude', 'a1', -1))],
+        [33.0, page => page.down('Backspace')],                              // hold the shield up; rays bounce off
+        [33.9, page => page.js(() => window.__app.fire('claude', 'a1', -1))],
+        [34.5, page => page.js(() => window.__app.fire('claude', 'a1', -1))],
+        [34.7, page => page.down('KeyS')],                                   // and crouch behind it
+        [36.1, page => page.up('KeyS')],
+        [36.5, page => page.up('Backspace')],
+        [37.9, page => page.js(() => { const A = window.__app; A.place('gpt', -3.4, 1); A.place('so', 0.0, -1); A.place('claude', 4.6, -1); })],
+        [38.5, page => page.press('KeyD')],                                  // shield bash: double-tap and Backspace
+        [38.59, page => page.press('KeyD')],
+        [38.6, page => page.press('Backspace')],
+        [41.9, page => page.js(() => { const A = window.__app; A.place('gpt', -1.0, 1); A.place('so', 2.2, -1); A.place('claude', 4.6, -1); })],
+        [42.5, page => page.down('KeyS')],                                   // crouch-walk
+        [42.5, page => page.down('KeyA')],
+        [44.1, page => page.up('KeyA')],
+        [44.1, page => page.up('KeyS')],
+      ] },
+
+    // practice: Claude's moves
+    practice_claude: { seconds: 50,
+      setup: () => { window.__labelKind = 'claude'; window.__app.stage('claude', [['claude', -2.6, 1], ['so', 0.8, -1], ['gpt', 3.6, -1]]); },
+      script: [
+        [4.5, page => page.down('KeyJ')],                                    // shoot: its rays, held down
+        [5.9, page => page.up('KeyJ')],
+        [8.1, page => page.press('KeyK')],                                   // fling
+        [10.9, page => page.press('KeyL')],                                   // combobulating: a line of three
+        [14.1, page => page.press('KeyL')],                                  // then a square of four
+        [17.5, page => page.press('KeyW')],                                  // double jump
+        [17.8, page => page.press('KeyW')],
+        [20.3, page => page.js(() => window.__app.place('so', -1.4, -1))],
+        [20.7, page => page.press('KeyH')],                                  // punch
+        [22.7, page => page.down('KeyS')],                                   // low kick
+        [23.1, page => page.press('KeyH')],
+        [23.9, page => page.up('KeyS')],
+        [25.9, page => page.js(() => { const A = window.__app; A.place('claude', -1.2, 1); A.place('so', 2.6, -1); A.place('gpt', -4.5, 1); })],
+        [26.5, page => page.js(() => window.__app.fire('so', 'a1', -1))],    // parry a block from the side
+        [26.66, page => page.press('Backspace')],
+        [29.44, page => page.down('KeyW')],                                  // and the whip from above
+        [29.5, page => page.js(() => { window.__app.place('so', 0.9, -1); window.__app.fire('so', 'a2', -1); })],
+        [29.5, page => page.press('Backspace')],
+        [29.8, page => page.up('KeyW')],
+        [32.1, page => page.js(() => window.__app.place('so', 2.6, -1))],
+        [32.5, page => page.down('Backspace')],                              // the shield held up; blocks bounce off
+        [33.2, page => page.js(() => window.__app.fire('so', 'a1', -1))],
+        [33.9, page => page.js(() => window.__app.fire('so', 'a1', -1))],
+        [35.1, page => page.up('Backspace')],
+        [36.9, page => page.js(() => { const A = window.__app; A.place('claude', -3.4, 1); A.place('so', 0.0, -1); A.place('gpt', 4.6, -1); })],
+        [37.5, page => page.press('KeyD')],                                  // shield bash
+        [37.59, page => page.press('KeyD')],
+        [37.6, page => page.press('Backspace')],
+        [40.9, page => page.js(() => { const A = window.__app; A.place('claude', -1.0, 1); A.place('so', 2.2, -1); A.place('gpt', 4.6, -1); })],
+        [41.5, page => page.down('KeyS')],                                   // crouch-walk
+        [41.5, page => page.down('KeyA')],
+        [43.1, page => page.up('KeyA')],
+        [43.1, page => page.up('KeyS')],
+      ] },
+
+    // two players on one keyboard: User A (left of the keyboard) as Stack Overflow, User B (right) as Claude
+    same_keyboard: { seconds: 40, size: [1280, 720], dpr: 1, css: '',     // the move lists show each player's keys
+      inject: [...INJECT_BASE, SEATS([{ kind: 'so', variant: 'orange', ctrl: 'A' }, { kind: 'claude', variant: 'orange', ctrl: 'B' }])],
+      setup: () => { window.__labelPlayers = true; },
+      script: [
+        [1.2, page => page.click('.mode[data-mode="play"]')],
+        [3.6, page => page.click('#fightBtn')],
+        // the match, from about 7.5 s
+        [8.0, page => page.down('KeyD')], [8.0, page => page.down('ArrowLeft')],
+        [9.0, page => page.up('KeyD')], [9.0, page => page.up('ArrowLeft')],
+        [9.4, page => page.down('KeyF')], [10.4, page => page.up('KeyF')],           // A: block shot
+        [11.6, page => page.press(',')], [11.75, page => page.press(',')], [11.9, page => page.press(',')],   // B: shoot
+        [12.0, page => page.press('KeyQ')],                                         // A: parry
+        [13.6, page => page.press('/')],                                        // B: combobulating
+        [14.0, page => page.press('KeyW')],                                         // A: jump
+        [16.0, page => page.down('KeyD')], [16.6, page => page.up('KeyD')],
+        [16.8, page => page.press('KeyG')],                                         // A: block whip
+        [18.0, page => page.press('.')],                                       // B: fling
+        [19.6, page => page.down('ArrowLeft')], [20.4, page => page.up('ArrowLeft')],
+        [20.6, page => page.press('KeyM')],                                         // B: punch
+        [21.2, page => page.press('KeyR')],                                         // A: punch
+        [22.4, page => page.down('ArrowDown')], [22.8, page => page.press('KeyM')], [23.4, page => page.up('ArrowDown')],   // B: low kick
+        [24.4, page => page.press('KeyA')], [24.5, page => page.press('KeyA')],     // A: dash
+        [26.0, page => page.press('KeyH')],                                         // A: unified beam
+        [26.2, page => page.press('ArrowUp')], [26.45, page => page.press('ArrowUp')],   // B: double jump
+        [28.6, page => page.press('/')],                                        // B: combobulating
+        [29.0, page => page.press('KeyQ')],
+        [31.0, page => page.press('KeyT')],                                         // A: correction
+        [32.6, page => page.press('KeyD')], [32.7, page => page.press('KeyD')], [32.72, page => page.press('KeyQ')],   // A: shield bash
+        [34.4, page => page.down('KeyF')], [35.4, page => page.up('KeyF')],
+        [35.0, page => page.down(',')], [36.2, page => page.up(',')],
+      ] },
+
+    // two players on one phone: the screen split across the middle, User B's half turned round at the top
+    same_screen: { seconds: 40, size: [390, 844], dpr: 2, css: CSS_PLAYERS,
+      inject: [...INJECT_PHONE, SPLIT, SEATS([{ kind: 'gpt', variant: 'green', ctrl: 'A' }, { kind: 'so', variant: 'orange', ctrl: 'B' }])],
+      setup: () => { window.__labelPlayers = true; },
+      script: [
+        [1.2, page => page.click('.mode[data-mode="play"]')],
+        [3.4, page => page.click('#fightBtn')],
+        // the match starts at once (no versus screen when the phone is shared); taps on each player's own buttons
+        [5.0, page => page.down('KeyD')], [5.0, page => page.down('ArrowLeft')],
+        [6.0, page => page.up('KeyD')], [6.0, page => page.up('ArrowLeft')],
+        [6.6, page => page.click('#touch [data-key="KeyJ"]')],                     // A: computer use
+        [7.4, page => page.click('#touchB [data-key="KeyJ"]')],                    // B: block shot
+        [7.9, page => page.click('#touchB [data-key="KeyJ"]')],
+        [9.2, page => page.click('#touch [data-key="KeyK"]')],                     // A: inhale
+        [9.4, page => page.click('#touchB [data-key="KeyJ"]')],
+        [12.0, page => page.click('#touchB [data-key="KeyK"]')],                   // B: whip
+        [12.6, page => page.click('#touch [data-key="Space"]')],                   // A: jump
+        [12.9, page => page.click('#touch [data-key="Space"]')],
+        [15.0, page => page.click('#touch [data-key="Backspace"]')],               // A: parry
+        [15.1, page => page.click('#touchB [data-key="KeyL"]')],                   // B: beam
+        [18.0, page => page.click('#touch [data-key="KeyL"]')],                    // A: take over
+        [20.5, page => page.down('KeyA')], [21.4, page => page.up('KeyA')],
+        [22.0, page => page.click('#touchB [data-key="KeyH"]')],                   // B: punch
+        [22.6, page => page.click('#touch [data-key="KeyH"]')],                    // A: punch
+        [24.0, page => page.click('#touchB [data-key="KeyI"]')],                   // B: correction
+        [26.0, page => page.click('#touch [data-key="KeyJ"]')],
+        [27.5, page => page.click('#touchB [data-key="Backspace"]')],
+        [28.0, page => page.click('#touchB [data-key="KeyJ"]')],
+        [30.0, page => page.click('#touch [data-key="KeyK"]')],
+        [30.2, page => page.click('#touchB [data-key="KeyJ"]')],
+        [33.0, page => page.click('#touch [data-key="KeyJ"]')],
+        [34.5, page => page.click('#touchB [data-key="KeyK"]')],
+      ] },
+
+    // online: two phones in a casual match through the local dev server (npm run dev), each its own player
+    online_a: { seconds: 48, size: [390, 844], dpr: 2, app: 'http://localhost:5173/', page: 'games/botbattle/?dev=nova', css: CSS_PLAYERS,
+      inject: [...INJECT_PHONE, ONLINE_WS],
+      script: [
+        [1.0, page => page.click('.mode[data-mode="online"]')],
+        [3.0, page => page.click('#casualBtn')],
+        [7.0, page => page.click('#picks button[data-kind="so"]')],
+        [8.2, page => page.click('#readyBtn')],
+        // the match, from about 13 s (both ready, the versus screen)
+        [16.0, page => page.down('KeyD')], [17.0, page => page.up('KeyD')],
+        [17.4, page => page.click('[data-key="KeyJ"]')], [17.7, page => page.click('[data-key="KeyJ"]')],
+        [20.0, page => page.click('[data-key="KeyK"]')],
+        [22.5, page => page.click('[data-key="Backspace"]')],
+        [24.0, page => page.click('[data-key="KeyL"]')],
+        [27.0, page => page.click('[data-key="Space"]')],
+        [29.0, page => page.click('[data-key="KeyH"]')],
+        [31.0, page => page.click('[data-key="KeyI"]')],
+        [34.0, page => page.click('[data-key="KeyJ"]')], [34.3, page => page.click('[data-key="KeyJ"]')],
+        [37.0, page => page.click('[data-key="KeyK"]')],
+        [40.0, page => page.click('[data-key="KeyL"]')],
+      ] },
+    online_b: { seconds: 48, size: [390, 844], dpr: 2, app: 'http://localhost:5173/', page: 'games/botbattle/?dev=orbit', css: CSS_PLAYERS,
+      inject: [...INJECT_PHONE, ONLINE_WS],
+      script: [
+        [1.0, page => page.click('.mode[data-mode="online"]')],
+        [5.0, page => page.click('#casualBtn')],
+        [7.4, page => page.click('#picks button[data-kind="claude"]')],
+        [8.6, page => page.click('#readyBtn')],
+        [16.0, page => page.down('ArrowLeft')], [17.0, page => page.up('ArrowLeft')],
+        [18.0, page => page.click('[data-key="KeyL"]')],
+        [21.0, page => page.click('[data-key="KeyJ"]')], [21.2, page => page.click('[data-key="KeyJ"]')], [21.4, page => page.click('[data-key="KeyJ"]')],
+        [23.0, page => page.click('[data-key="Backspace"]')],
+        [25.0, page => page.click('[data-key="KeyK"]')],
+        [27.5, page => page.click('[data-key="Space"]')], [27.8, page => page.click('[data-key="Space"]')],
+        [30.0, page => page.click('[data-key="KeyL"]')],
+        [33.0, page => page.click('[data-key="KeyH"]')],
+        [35.0, page => page.click('[data-key="KeyJ"]')], [35.2, page => page.click('[data-key="KeyJ"]')],
+        [38.0, page => page.click('[data-key="KeyK"]')],
+        [41.0, page => page.click('[data-key="Backspace"]')],
       ] },
 
     // the showcase: the game being played on a phone held upright, on a desktop, and on a phone on its side
@@ -221,7 +488,7 @@ export default {
         [25.5, page => page.click('[data-key="KeyK"]')],
         [27.5, page => page.click('[data-key="KeyJ"]')], [27.75, page => page.click('[data-key="KeyJ"]')],
       ] },
-    show_desktop: { seconds: 30, size: [1280, 720], dpr: 1, inject: INJECT_BASE, css: '',
+    show_desktop: { seconds: 31, size: [1280, 720], dpr: 1, inject: INJECT_BASE, css: '',
       script: [
         [1.2, page => page.glide([260, 160], '.mode[data-mode="play"]', 0.8)],
         [2.2, page => page.click('.mode[data-mode="play"]')],
@@ -229,19 +496,21 @@ export default {
         [3.8, page => page.click({ selector: '.seat-fighter', nth: 0 })],
         [4.6, page => page.press('ArrowRight')],
         [5.6, page => page.press('Enter')],
-        [7.2, page => page.click('#fightBtn')],
-        [13.1, page => page.down('KeyD')],
-        [14.2, page => page.up('KeyD')],
-        [14.6, page => page.down('KeyJ')],
-        [15.8, page => page.up('KeyJ')],
-        [17.1, page => page.press('KeyK')],
-        [18.6, page => page.press('KeyL')],
-        [21.1, page => page.press('KeyW')],
-        [21.4, page => page.press('KeyW')],
-        [22.6, page => page.press('Backspace')],
-        [24.1, page => page.down('KeyJ')],
-        [25.2, page => page.up('KeyJ')],
-        [26.6, page => page.press('KeyK')],
+        [6.4, page => page.click({ selector: '.seat-fighter', nth: 1 })],   // the opponent's seat: R leaves it to chance
+        [7.3, page => page.press('KeyR')],
+        [8.2, page => page.click('#fightBtn')],
+        [14.1, page => page.down('KeyD')],
+        [15.2, page => page.up('KeyD')],
+        [15.6, page => page.down('KeyJ')],
+        [16.8, page => page.up('KeyJ')],
+        [18.1, page => page.press('KeyK')],
+        [19.6, page => page.press('KeyL')],
+        [22.1, page => page.press('KeyW')],
+        [22.4, page => page.press('KeyW')],
+        [23.6, page => page.press('Backspace')],
+        [25.1, page => page.down('KeyJ')],
+        [26.2, page => page.up('KeyJ')],
+        [27.6, page => page.press('KeyK')],
       ] },
     show_landscape: { seconds: 24, size: [844, 390], inject: INJECT_PHONE, css: '',
       script: [

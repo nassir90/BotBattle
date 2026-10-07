@@ -12,22 +12,31 @@ Stack Overflow, ChatGPT and Claude settle it on a sheet of paper. It's a 3D stic
 |---|---|
 | ![Showcase video](docs/screenshots/video-showcase.jpg) | ![Inhale devlog video](docs/screenshots/video-inhale.jpg) |
 
-| Who would win? Stack Overflow vs ChatGPT | Free-for-all: three bots, two lives each |
+| Showcase: play it anywhere | Free-for-all: three bots, two lives each |
 |---|---|
-| ![Duel video](docs/screenshots/video-who-would-win.jpg) | ![Free-for-all video](docs/screenshots/video-free-for-all.jpg) |
+| ![Phone, laptop and landscape video](docs/screenshots/video-play-anywhere.jpg) | ![Free-for-all video](docs/screenshots/video-free-for-all.jpg) |
 
-| Practice: Stack Overflow's moves | Showcase: play it anywhere |
-|---|---|
-| ![Practice video](docs/screenshots/video-practice-so.jpg) | ![Phone, desktop and landscape video](docs/screenshots/video-play-anywhere.jpg) |
+| Who would win? Stack Overflow vs ChatGPT | Stack Overflow vs Claude | ChatGPT vs Claude |
+|---|---|---|
+| ![Stack Overflow vs ChatGPT](docs/screenshots/video-who-would-win.jpg) | ![Stack Overflow vs Claude](docs/screenshots/video-so-vs-claude.jpg) | ![ChatGPT vs Claude](docs/screenshots/video-gpt-vs-claude.jpg) |
+
+| Practice: Stack Overflow's moves | Practice: ChatGPT's moves | Practice: Claude's moves |
+|---|---|---|
+| ![Stack Overflow practice](docs/screenshots/video-practice-so.jpg) | ![ChatGPT practice](docs/screenshots/video-practice-gpt.jpg) | ![Claude practice](docs/screenshots/video-practice-claude.jpg) |
+
+| Two players, one keyboard | Two players, one phone | Online, phone to phone |
+|---|---|---|
+| ![Same keyboard on a laptop](docs/screenshots/video-same-keyboard.jpg) | ![Split screen on a phone](docs/screenshots/video-same-screen.jpg) | ![Two phones online](docs/screenshots/video-online.jpg) |
 
 The videos themselves aren't kept in git (they're build output, ignored in `.gitignore`); `make.py` writes them to `promo/out/`.
 
-All six are made in [`promo/`](promo/) with TapaTab (recording) and ShadowKit (compositing, narration, music): `takes.mjs` stages each scene, and `videos/<id>/edl.js` is each video's edit list.
+All thirteen are made in [`promo/`](promo/) with TapaTab (recording) and ShadowKit (compositing, narration, music): `takes.mjs` stages each scene, and `videos/<id>/edl.js` is each video's edit list. They were all re-recorded on the current game.
 
-- The first two were recorded before the directional parry and lives existed, so they still show the old shield bubble.
-- The duel and the free-for-all are whole CPU-against-CPU matches (`cpuMatch` in `takes.mjs`), from the versus screen to the results table, with no narration. The game is silent, so the takes log what happens in it (hits, parries, knockouts, every move and shot) and `promo/fightcut.py` turns that log into a sound track and the edit list. Stack Overflow won both.
-- The practice video names each move with a callout as it's used.
-- The last one shows the same build on a phone held upright (19.5:9, with 55px rounded screen corners), a laptop, and a phone on its side, each a 3D device (ShadowKit's `device` layer) with the recording on its screen.
+- The showcase, the inhale devlog and "play it anywhere" are narrated. The rest have no narration: what's happening is named on screen.
+- The three duels (every pairing) and the free-for-all are whole CPU-against-CPU matches (`cpuMatch` in `takes.mjs`), from the versus screen to the results table. The game is silent, so the takes log what happens in it (hits, parries, knockouts, every move, shot, punch, kick and bash) and `promo/fightcut.py` turns that log into a sound track and the edit list. Stack Overflow beat ChatGPT, Stack Overflow beat Claude, Claude beat ChatGPT, and Stack Overflow won the free-for-all.
+- The practice videos go through each fighter's moves on the training dummies, each named above its head with its key as it's used, ending with the moves everyone has (punch, low kick, the shield held up, the shield bash). `fightcut.py <take> <id> --sound-only <seconds>` makes their sound tracks, and the multiplayer videos'.
+- "Play it anywhere" shows the same build on a phone held upright (19.5:9, with 55px rounded screen corners), a laptop, and a phone on its side, each a 3D device (ShadowKit's `device` layer) with the recording on its screen.
+- Multiplayer: User A and User B sharing a laptop's keyboard (each one's keys in the game's move lists), sharing a phone in split screen (User B's half turned round), and two phones matched in a casual match through the real server (the local dev server; two takes recorded together, each its own player).
 - Every take logs, per frame, any fighter outside the picture; in the current recordings that's 0 frames.
 
 ## Modes
