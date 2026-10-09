@@ -3766,6 +3766,7 @@ import ReconnectingWebSocket from 'partysocket/ws';
   let pending = null;   // the mode being set up
   function openMenu() {
     leaveRoom();
+    keepSigningIn(false);          // chose the menu: a sign-in left unfinished doesn't bring Online back
     showScreen(menuEl);
     if (mode.kind !== 'watch') startMatch({ kind: 'watch' });
   }
@@ -4262,12 +4263,14 @@ import ReconnectingWebSocket from 'partysocket/ws';
     const who = document.getElementById('who');
     if (!acc) {
       who.textContent = '';
+      keepSigningIn(true);
       showView('signin');
       mountSignIn();
       say(message || (net.pendingJoin ? 'Sign in to join the room you were invited to.' : 'Sign in to make or join a room. Your wins go on the leaderboard.'));
       return;
     }
     unmountSignIn();
+    keepSigningIn(false);
     who.innerHTML = `Signed in as <b>${esc(acc.name)}</b>`;
     if (acc.signOut) {
       const out = document.createElement('button'); out.type = 'button'; out.textContent = 'Sign out';
@@ -4303,6 +4306,11 @@ import ReconnectingWebSocket from 'partysocket/ws';
     try { const j = JSON.parse(localStorage.getItem(JOIN_KEY)); return j && Date.now() - j.at < JOIN_FOR ? { key: j.key, invite: j.invite } : null; }
     catch { return null; }
   }
+  // Signing in can end with the page loaded afresh at the game's plain address: back from Google, or a sign-up finished
+  // from its email. Opening the form notes it on this device (half an hour at most), so the page comes back to Online.
+  const SIGNIN_KEY = 'botbattle.signingIn';
+  function keepSigningIn(on) { try { if (on) localStorage.setItem(SIGNIN_KEY, String(Date.now())); else localStorage.removeItem(SIGNIN_KEY); } catch { /* storage blocked */ } }
+  function signingIn() { try { return Date.now() - Number(localStorage.getItem(SIGNIN_KEY)) < JOIN_FOR; } catch { return false; } }
   document.getElementById('onlineBack').addEventListener('click', () => { net.pendingJoin = null; keepJoin(null); openMenu(); });
 
   // a signed-in request to the server: the reply's body, or null after saying what went wrong (or showing sign-in)
@@ -4764,7 +4772,7 @@ import ReconnectingWebSocket from 'partysocket/ws';
     // screen opens, Clerk's form carries on if it needs to, and once signed in the invite joins the room
     else {
       net.pendingJoin = savedJoin();
-      if (net.pendingJoin || location.hash.startsWith('#/') || /[?&]__clerk/.test(location.search)) openOnline();
+      if (net.pendingJoin || signingIn() || location.hash.startsWith('#/') || /[?&]__clerk/.test(location.search)) openOnline();
     }
   }
   // local testing only (?dev=<name> on localhost): where everyone is, as this browser sees it
