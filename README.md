@@ -301,6 +301,8 @@ npm run deploy   # build the page and deploy the worker to mpts.ie/games/botbatt
 
 `npm run build:page` wraps `game/stick-standoff.html` into a full page at `public/games/botbattle/index.html`. The Cloudflare Worker ([`src/index.ts`](src/index.ts)) serves it at `mpts.ie/games/botbattle`, redirects the bare path to the trailing-slash URL, and runs the online API under `/games/botbattle/api`: rooms (the `Room` Durable Object), their WebSockets, and the leaderboard (D1). `npm run deploy` creates the database and the Durable Object class the first time.
 
+mpts.ie itself is [BannerAndLogo](https://github.com/nassir90/BannerAndLogo) on `mpts.ie/*`; this route is more specific, so it wins. Bot Battle is listed on the games index, [mpts.ie/games](https://mpts.ie/games/) (BannerAndLogo's `site/games/index.html`), so a changed route needs updating there too.
+
 Below the game, the page has two sections of square tiles: **Ways to play** (Roblox first, then versus, one keyboard, online and training) and **Moves** (a row for each fighter, then the moves every fighter has). Scrolling brings them up over the game on a sheet of paper; the game itself is unchanged. Each tile is a short loop of a scene recorded square (the `sq_` takes in [`promo/takes.mjs`](promo/takes.mjs): the videos' scenes at 1080 × 1080, the camera a little closer), cut by [`scripts/features.mjs`](scripts/features.mjs), and each move carries its fighter's 3D logo, drawn by the game's own code ([`scripts/logos.py`](scripts/logos.py)). Both write to `public/games/botbattle/features/`, which isn't in git, so make them before deploying:
 
 ```bash
