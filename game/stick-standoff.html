@@ -1512,6 +1512,7 @@ import ReconnectingWebSocket from 'partysocket/ws';
   }
   const CROUCH_DROP = 0.4;           // how far the body sinks in a full crouch
   const CROUCH_SLOW = 0.55;          // and how much slower it walks
+  const SHIELD_WALK = 0.6;           // crouched behind a held shield, slower again (about a quarter of walking pace)
   const boxH = h => BOX_H * (h.compact || 1) * (1 - 0.3 * (h.crouch || 0));   // crouching makes a smaller target
   const centerOf = h => V(h.x, h.y + boxH(h) * 0.5, 0);
   function aimFrom(f, from, speed, frontOnly = true) {
@@ -2660,7 +2661,10 @@ import ReconnectingWebSocket from 'partysocket/ws';
       // holding down on the ground crouches: the body sinks, and it can still walk, slowly
       const crouching = !!inp.down && f.onGround && !(f.busy > 0) && !(f.stumble > 0);      // a shield can crouch too
       f.crouch = THREE.MathUtils.clamp((f.crouch || 0) + (crouching ? dt : -dt) * 9, 0, 1);
-      if (rooted || f.stumble > 0) move = 0;
+      // a held shield, crouched, can shuffle along behind it (slowly, still facing the way it guards); otherwise a
+      // shield, or anything keeping the fighter busy, holds it still
+      const shieldWalk = !!(f.guard && f.guard.held && f.crouch > 0.5 && f.onGround) && !(f.busy > 0);
+      if ((rooted && !shieldWalk) || f.stumble > 0) move = 0;
       f.intent = move;
       // double-tap a direction: a quick dash that slips past anyone in the way
       f.passT = Math.max(0, f.passT - dt);
@@ -2674,7 +2678,7 @@ import ReconnectingWebSocket from 'partysocket/ws';
       }
       // setting off (from standing, from the other way, or after letting go): a short burst that eases to walking pace
       let kick = false;
-      if (move && move !== f.lastMove && f.passT <= 0 && f.onGround) { f.burstT = BURST_TIME; kick = true; }
+      if (move && move !== f.lastMove && f.passT <= 0 && f.onGround && !shieldWalk) { f.burstT = BURST_TIME; kick = true; }
       // direction inertia: having just attacked one way, walking the other way is walking backwards, still facing
       // that way (shots, punches and parries still go there); a jump taken then faces that way until it lands
       f.aimHold = Math.max(0, (f.aimHold || 0) - dt);
@@ -2683,7 +2687,7 @@ import ReconnectingWebSocket from 'partysocket/ws';
       f.burstT = Math.max(0, (f.burstT || 0) - dt);
       f.lastMove = move;
       const back = backing(f) && move === -f.facing;
-      const speed = 5.5 * (0.7 + 0.3 * f.compact) * (1 - CROUCH_SLOW * f.crouch) * (back ? BACK_SPEED : 1) * (1 + BURST_K * f.burstT / BURST_TIME);
+      const speed = 5.5 * (0.7 + 0.3 * f.compact) * (1 - CROUCH_SLOW * f.crouch) * (back ? BACK_SPEED : 1) * (shieldWalk ? SHIELD_WALK : 1) * (1 + BURST_K * f.burstT / BURST_TIME);
       if (f.passT > 0) {
         // the dash eases off over its last part, into a walk if you're still holding that way
         f.passK = smooth(Math.min(1, f.passT / (PASS_TIME * PASS_EASE)));
@@ -2696,7 +2700,7 @@ import ReconnectingWebSocket from 'partysocket/ws';
         const rate = f.stumble > 0 ? 7 : !f.onGround ? 12 : f.kbT > 0 ? 30 : f.dashSettle > 0 ? 24 : Infinity;
         f.vx += THREE.MathUtils.clamp(move * speed - f.vx, -rate * dt, rate * dt);
       }
-      if (move && f.passT <= 0 && !f.pushing && !backing(f)) f.facing = move;
+      if (move && f.passT <= 0 && !f.pushing && !backing(f) && !shieldWalk) f.facing = move;
 
       if (inp.jump && !rooted && f.jumpsLeft > 0) {
         const air = !f.onGround;

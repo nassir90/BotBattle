@@ -107,6 +107,19 @@ async def main():
         rows = await track(pg, False); await kb.up("KeyS"); await kb.up("Backspace"); await frames(pg, 30)
         check("you can crouch behind a shield", rows[-1]["guard"] and rows[-1]["crouch"] > 0.9, (bool(rows[-1]["guard"]), round(rows[-1]["crouch"], 2)))
 
+        # crouched behind a held shield, it can walk: slowly, both ways, still facing forward with the shield up
+        await home(); await track(pg, True)
+        await kb.down("Backspace"); await frames(pg, 10); await kb.down("KeyS"); await frames(pg, 30)
+        await kb.down("KeyA"); await frames(pg, 40); await kb.up("KeyA")       # backwards, away from where it faces
+        await kb.down("KeyD"); await frames(pg, 40); await kb.up("KeyD")       # and forwards
+        rows = await track(pg, False); await kb.up("KeyS"); await kb.up("Backspace"); await frames(pg, 30)
+        walk = [r for r in rows if r["crouch"] > 0.9 and r["guard"] and abs(r["vx"]) > 0.2]
+        fast = max((abs(r["vx"]) for r in walk), default=0)
+        check("crouched behind a held shield, you can walk both ways, slower than crouch-walking (0.6 of its 2.5 units/s)",
+              any(r["vx"] < -0.2 for r in walk) and any(r["vx"] > 0.2 for r in walk) and 1.2 < fast < 1.8, round(fast, 2))
+        check("shuffling behind the shield, it keeps facing the way it did, with the shield held",
+              walk and all(r["facing"] == rows[0]["facing"] and r["guard"]["held"] for r in walk), sorted({(r["facing"], r["guard"]["held"]) for r in walk}))
+
         # the shield bash: dash at a dummy with the shield up; it flies (after a reset, so the dummies stand apart)
         await pg.click("#resetBtn"); await frames(pg, 40)
         fs = await pg.evaluate("window.__bb()"); near = min(range(1, len(fs)), key=lambda i: abs(fs[i]["x"] - fs[0]["x"]))
