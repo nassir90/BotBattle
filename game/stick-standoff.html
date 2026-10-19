@@ -2788,7 +2788,7 @@ import ReconnectingWebSocket from 'partysocket/ws';
         if (air) airJump(f);
         else { f.vy = 9.6; f.onGround = false; f.jumpT = 0; }
       }
-      if (f.lift > 0) {
+      if (f.lift > 0 && !f.ragFly) {      // (never while limp)
         f.lift -= dt;
         f.vy += LIFT_THRUST * dt;
         f.rotorBoost = 1;
@@ -2984,6 +2984,10 @@ import ReconnectingWebSocket from 'partysocket/ws';
           .sort((a, b) => Math.abs(a.x - f.x) - Math.abs(b.x - f.x))[0];
         if (h) {
           h.heldBy = f; h.guard = null; h.strike = null; h.passT = 0; h.struggleDir = 0; h.ragFly = null;
+          // a double jump's rotor lift ends here: otherwise it carried on once dropped, floating the limp body up,
+          // hips first and head down
+          if (h.lift > 0) { h.lift = 0; if (h.spring && !h.whip && !h.inhale && !h.compaction && !h.beam) h.spring.override = null; }
+          h.vy = 0;
           startRagdoll(h, true);
           // the grip starts at its chest, where it stands, and settles into the hands
           const c = h.rag.pts.sho;

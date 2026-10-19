@@ -123,6 +123,19 @@ async def main():
               over and over["y"] + 1 > 2.4 and behind and behind["y"] > 0.5, (over and round(over["y"], 2), behind and round(behind["y"], 2)))
         await frames(pg, 120)   # (a thrown fighter lies a moment, then takes about half a second to get up)
 
+        # grabbed in the middle of Claude's double jump (its rotor lifts it for a moment), then dropped: it falls and
+        # gets up, rather than the leftover lift floating the limp body up, head down, for seconds
+        await pg.evaluate("window.__bbPlace(0, -2, 1); window.__bbPlace(1, -0.85, -1)"); await frames(pg, 20)
+        await kb.press("ArrowUp"); await frames(pg, 8); await kb.press("ArrowUp"); await frames(pg, 2)
+        await kb.down("KeyE"); await frames(pg, 10); held = (await bb(pg))[1]["held"]
+        await pg.evaluate("window.__bbTrack(1, true)"); await kb.up("KeyE"); await frames(pg, 150)
+        rows = await pg.evaluate("window.__bbTrack(1, false)")
+        rise = max(r["y"] for r in rows) - rows[0]["y"]
+        after = await bb(pg)
+        check("grabbed mid double jump and dropped: it falls (no float up) and is back on its feet",
+              held and rise < 0.3 and after[1]["limp"] is None and after[1]["y"] == 0, (held, round(rise, 2), after[1]["limp"], after[1]["y"]))
+        await frames(pg, 30)
+
         # User B grabs with N
         await pg.evaluate("window.__bbPlace(0, 0, -1); window.__bbPlace(1, -1.25, 1)"); await frames(pg, 20)
         await kb.down("KeyN"); await frames(pg, 12)
