@@ -2552,7 +2552,8 @@ import ReconnectingWebSocket from 'partysocket/ws';
     f.vis.position.z = 0; f.vis.rotation.x = 0; f.z = 0; f.zVel = 0;
     f.root.updateMatrixWorld(true);
     const pts = {};
-    const add = (name, local) => { const p = f.vis.localToWorld(local.clone()); pts[name] = { x: p.x, y: p.y, px: p.x, py: p.y }; };
+    const home = {};
+    const add = (name, local) => { const p = f.vis.localToWorld(local.clone()); pts[name] = { x: p.x, y: p.y, px: p.x, py: p.y }; home[name] = { x: local.x, y: local.y }; };
     add('hip', HIP_LOCAL); add('sho', SHOULDER_LOCAL); add('neck', V(0, 2, 0)); add('head', V(0, HEAD_Y + CUP_H * 0.5, 0));
     f.feet.forEach((ft, i) => { add('knee' + i, ft.limb.b); add('foot' + i, ft.limb.c); });
     f.arms.forEach((a, i) => { add('elb' + i, a.limb.b); add('hand' + i, a.limb.c); });
@@ -2569,7 +2570,7 @@ import ReconnectingWebSocket from 'partysocket/ws';
     f.arms.forEach(a => { a.limb.L1 = a.L1; a.limb.L2 = a.L2; });     // undo an overhead guard's stretch
     f.vis.rotation.z = 0; f.ledge = null;
     f.rag = {
-      pts,
+      pts, home,
       links: RAG_LINKS.map(([a, b]) => [a, b, Math.hypot(pts[a].x - pts[b].x, pts[a].y - pts[b].y)]),
     };
     f.root.rotation.z = 0;
@@ -2622,6 +2623,7 @@ import ReconnectingWebSocket from 'partysocket/ws';
   // back up when it lands.
   function stepGrabRag(f, dt) {
     const { pts, links } = f.rag, holder = f.heldBy, g = holder && holder.grab;
+    if (f.ragFly && f.ragFly.rise !== undefined) { riseFromRag(f, dt); return; }
     const pin = g ? pts.sho : pts.hip;
     const px = g ? holder.x + holder.facing * g.lx : f.x, py = g ? holder.y + g.ly : f.y + HIP_LOCAL.y;
     for (const p of Object.values(pts)) {
@@ -2646,9 +2648,26 @@ import ReconnectingWebSocket from 'partysocket/ws';
     poseRagdoll(f, !g);
     f.root.position.z = g ? (g.lz || 0) : 0;
     if (g) { f.vx = 0; f.vy = 0; f.onGround = false; return; }
-    f.ragFly.t += dt;
-    f.ragFly.down = f.onGround ? (f.ragFly.down || 0) + dt : 0;
-    if (f.ragFly.down > 0.35 || f.ledge || f.ragFly.t > 2.5) endGrabRag(f);       // lies there a moment first
+    const fl = f.ragFly;
+    fl.t += dt;
+    fl.down = f.onGround ? (fl.down || 0) + dt : 0;
+    if (f.ledge) endGrabRag(f);
+    else if (fl.down > 0.3 || fl.t > 2.5) {                             // lies there a moment, then gets up
+      fl.rise = 0;
+      fl.from = Object.fromEntries(Object.entries(pts).map(([n, q]) => [n, { x: q.x - f.x, y: q.y - f.y }]));
+    }
+  }
+  // getting up: every point eases from where it lay to where it is in the standing pose (as it stood when grabbed),
+  // slowly out and slowly in, and ends on that pose exactly, so normal posing carries on from it without a jump
+  function riseFromRag(f, dt) {
+    const fl = f.ragFly, e = smooth(Math.min(1, (fl.rise += dt) / RISE_TIME));
+    for (const [name, p] of Object.entries(f.rag.pts)) {
+      const a = fl.from[name], hm = f.rag.home[name];
+      p.x = p.px = f.x + a.x + (f.facing * hm.x - a.x) * e;
+      p.y = p.py = f.y + a.y + (hm.y - a.y) * e;
+    }
+    poseRagdoll(f, true);
+    if (fl.rise >= RISE_TIME) endGrabRag(f);
   }
   // keeps a point clear of a fighter's cup (a disc) and body (a short upright line)
   function bumpBody(p, r, o) {
@@ -2659,12 +2678,10 @@ import ReconnectingWebSocket from 'partysocket/ws';
     const by = THREE.MathUtils.clamp(p.y, o.y + 0.9, o.y + 2.0), bx = p.x - o.x, bd = Math.hypot(bx, p.y - by), br = 0.16 + r;
     if (bd < br) { const s = (bx || (o.facing)) >= 0 ? 1 : -1; if (bd < 1e-4) p.x = o.x + s * br; else { p.x = o.x + bx / bd * br; p.y = by + (p.y - by) / bd * br; } }
   }
+  const RISE_TIME = 0.7;              // getting up after a throw, from lying limp to standing
   function endGrabRag(f) {
-    // it gets up from the way it lies: the body keeps that tilt and rights itself (see getUp in the pose)
-    const tilt = f.root.rotation.z;
     f.rag = null; f.ragFly = null;
-    f.root.rotation.z = 0; f.root.position.set(f.x, f.y, 0);
-    f.vis.rotation.z = Math.atan2(Math.sin(tilt), Math.cos(tilt)); f.getUp = 0.45;
+    f.root.rotation.z = 0; f.root.position.set(f.x, f.y, 0); f.vis.rotation.z = 0;
     for (const ft of f.feet) { ft.x = f.x + f.facing * ft.s * FOOT_SPREAD; ft.y = f.y; ft.stepping = false; ft.air = !f.onGround; }
   }
 
@@ -2690,8 +2707,12 @@ import ReconnectingWebSocket from 'partysocket/ws';
     for (const k of COUNTDOWNS) f[k] = Math.max(0, (f[k] || 0) - dt);
     if (f.pushT <= 0) { f.lean = 0; f.pushing = 0; }
     if (f.stun > 0) { f.stun -= dt; inp = NO_INPUT; }
-    if (f.heldBy) { struggle(f, inp); inp = NO_INPUT; }       // held: only struggling, which loosens the grip
-    if (f.possessing) inp = NO_INPUT;
+    if (f.heldBy) {                                           // held: only struggling, which loosens the grip,
+      struggle(f, inp);                                       // and hanging from the hands (no walking, falling,
+      if (f.rag) { stepGrabRag(f, dt); return; }              // ledges or ring-outs of its own)
+      inp = NO_INPUT;
+    }
+    if (f.possessing || f.ragFly) inp = NO_INPUT;              // (thrown or dropped: not until it's back up)
     f.jumpT += dt;
 
     // guard: forms, shines, loosens; nothing else happens until it has loosened
@@ -2813,7 +2834,7 @@ import ReconnectingWebSocket from 'partysocket/ws';
     // compaction grows back slowly on its own
     if (f.compact < 1) f.compact = Math.min(1, f.compact + dt * 0.04);
 
-    if (f.rag && (f.heldBy || f.ragFly)) { stepGrabRag(f, dt); return; }     // limp: held, or thrown
+    if (f.rag && f.ragFly) { stepGrabRag(f, dt); return; }     // limp: thrown, or dropped
 
     // pose
     f.vis.scale.x = f.facing;
@@ -2824,8 +2845,7 @@ import ReconnectingWebSocket from 'partysocket/ws';
     const leanTo = lean || (backing(f) && f.onGround && f.vx * f.facing < -0.5 ? f.facing * 0.07 : 0);
     // leaning into a dash is quick; coming out of it (as it slows, and just after) is gentle
     const easing = f.dashSettle > 0 && !(f.passT > 0 && f.passK >= 1);
-    f.getUp = Math.max(0, (f.getUp || 0) - dt);
-    f.vis.rotation.z += (leanTo - f.vis.rotation.z) * Math.min(1, dt * (f.getUp > 0 ? 7 : easing ? 5 : 14));
+    f.vis.rotation.z += (leanTo - f.vis.rotation.z) * Math.min(1, dt * (easing ? 5 : 14));
 
     const c = f.compact;
     f.root.scale.set(1 + (1 - c) * 0.35, c, 1 + (1 - c) * 0.35);
@@ -2927,8 +2947,8 @@ import ReconnectingWebSocket from 'partysocket/ws';
   // heaves them over its head behind it. A throw can't be blocked or parried. Letting go of N drops them unhurt, and
   // a grabber that's hit lets go. Attacks beat grabs, grabs beat shields, shields beat attacks.
   const GRIP = { x: 1.05, y: 1.7 };   // where the hands hold a grabbed fighter's chest, from the grabber's feet
-  const GRAB = { reach: 1.45, from: 0.05, to: 0.14, whiff: 0.45, cd: 0.6, hold: 1.3, struggle: 0.1, minThrow: 0.12, swing: 0.42, after: 0.25, holdAt: 1.15,
-    fwd: { dmg: 8, kbx: 9, kby: 5 }, back: { dmg: 10, kbx: 6, kby: 8.5 } };
+  const GRAB = { reach: 1.45, from: 0.05, to: 0.14, whiff: 0.45, cd: 0.6, hold: 1.3, struggle: 0.1, minThrow: 0.12, swing: 0.42, swingBack: 0.3, after: 0.25, holdAt: 1.15,
+    fwd: { dmg: 8, kbx: 9, kby: 5 }, back: { dmg: 10, kbx: 7.5, kby: 2.5 } };
   function tryGrab(f, face) {
     if (f.grab || f.grabCd > 0 || f.busy > 0 || f.guard || f.strike || f.heldBy || f.ledge || f.tether || f.stumble > 0 || f.possessing || !f.onGround) return;
     if (face) f.facing = face;
@@ -2991,11 +3011,11 @@ import ReconnectingWebSocket from 'partysocket/ws';
       g.lx = g.x0 + (GRIP.x - g.x0) * k; g.ly = g.y0 + (GRIP.y - g.y0) * k;
       if (dir && g.t >= GRAB.minThrow) { Object.assign(g, { phase: 'swing', t: 0, back: dir !== f.facing, x0: g.lx, y0: g.ly }); cue('throw', f.kind); }
     } else if (g.phase === 'swing') {
-      const p = Math.min(1, g.t / GRAB.swing), h = g.who;
+      const p = Math.min(1, g.t / (g.back ? GRAB.swingBack : GRAB.swing)), h = g.who;
       if (g.back) {
-        // over the head: round the shoulder, up from in front, over the top, down behind, on arms that stretch to
-        // keep it clear of the cup
-        const a0 = Math.atan2(g.y0 - 2.0, g.x0), a = a0 + (Math.PI + 0.45 - a0) * smooth(p), r = 1.05 + 0.5 * Math.sin(Math.PI * p);
+        // over the head: round the shoulder from in front, gathering speed, and let go straight overhead, moving
+        // backward, so it arcs down behind; the arms stretch up to keep it clear of the cup
+        const a0 = Math.atan2(g.y0 - 2.0, g.x0), a = a0 + (Math.PI / 2 - a0) * p * p, r = 1.05 + 0.45 * smooth(p);
         g.lx = r * Math.cos(a); g.ly = 2.0 + r * Math.sin(a); g.lz = 0;
       } else {
         // forward: swung back round behind in depth, then round and out across, rising
@@ -3007,6 +3027,7 @@ import ReconnectingWebSocket from 'partysocket/ws';
         dropHeld(f);
         f.busy = Math.max(f.busy, GRAB.after);
         h.x = h.rag ? h.rag.pts.hip.x : h.x; h.y = h.rag ? h.rag.pts.hip.y - HIP_LOCAL.y : h.y;
+        h.bashBy = f; h.bashT = 0.6;              // not pushed back off the thrower while it flies clear
         hurt(h, T.dmg, way * T.kbx, T.kby, f, { dir: { x: way, y: 0 }, throw: true });
         ring(V(h.x, h.y + 1, 0), f.kit.color, 0.6);
       }
@@ -4951,7 +4972,9 @@ import ReconnectingWebSocket from 'partysocket/ws';
   if (DEV_USER) {
     window.__bb = () => fighters.map(f => ({ id: f.netId, kind: f.kind, x: f.x, y: f.y, z: f.z || 0, face: f.face.rotation.y, hp: f.hp, dead: f.dead, out: !!f.out, stocks: f.stocks, versus: !!versus,
       vx: f.vx, crouch: f.crouch || 0, stumble: f.stumble || 0, facing: f.facing, variant: f.kit.variant,
-      grab: f.grab ? f.grab.phase : null, held: !!f.heldBy, guard: !!f.guard, busy: f.busy || 0 }));
+      grab: f.grab ? f.grab.phase : null, held: !!f.heldBy, guard: !!f.guard, busy: f.busy || 0, ledge: !!f.ledge, limp: f.ragFly ? (f.ragFly.rise !== undefined ? 'rising' : 'down') : null }));
+    // puts a fighter at x, standing, facing that way (tests that need somewhere in particular, like an edge)
+    window.__bbPlace = (i, x, facing) => { const f = fighters[i]; if (!f) return; Object.assign(f, { x, y: 0, vx: 0, vy: 0, onGround: true, facing: facing || f.facing }); for (const ft of f.feet) { ft.x = x + f.facing * ft.s * FOOT_SPREAD; ft.y = 0; ft.stepping = false; } };
     window.__bbKO = i => { const f = fighters[i]; if (f && !f.dead) { f.hp = 0; die(f); } };   // knocks a fighter out, as this browser
     // one fighter, frame by frame: speed, facing, walking backwards, the guard, the lean
     window.__bbTrack = (i, on) => { if (on) { trackLog = { i, rows: [] }; return null; } const r = trackLog && trackLog.rows; trackLog = null; return r; };

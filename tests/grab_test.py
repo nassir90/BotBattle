@@ -2,7 +2,7 @@
 # shield; holding it and pressing forward swings the other fighter back and hurls it across (8 damage), pressing back
 # heaves it over the head to land behind (10); letting go of the key drops it unhurt; a grab that misses leaves the
 # grabber stuck for a moment. Waits are counted in game frames.
-import asyncio
+import asyncio, os
 from playwright.async_api import async_playwright
 from bb import BASE as B, check, summary, launch, frames, bb
 
@@ -76,7 +76,7 @@ async def main():
         f2 = await bb(pg)
         check("forward throw: 8 damage, through the shield, and it lands well away in front", round(f1[1]["hp"] - f2[1]["hp"], 1) == 8 and (f2[1]["x"] - f2[0]["x"]) * face > 2.5,
               (f1[1]["hp"], f2[1]["hp"], round((f2[1]["x"] - f2[0]["x"]) * face, 2)))
-        await frames(pg, 60)
+        await frames(pg, 120)   # (a thrown fighter lies a moment, then takes about half a second to get up)
 
         # thrown backward, over the head
         await walk_up(pg, 0, 1, "KeyD", "KeyA"); await frames(pg, 30)
@@ -86,7 +86,7 @@ async def main():
         f4 = await bb(pg)
         check("backward throw: 10 damage, and it lands behind the thrower", round(f3[1]["hp"] - f4[1]["hp"], 1) == 10 and (f4[1]["x"] - f4[0]["x"]) * face < 0,
               (f3[1]["hp"], f4[1]["hp"], round((f4[1]["x"] - f4[0]["x"]) * face, 2)))
-        await frames(pg, 60)
+        await frames(pg, 120)   # (a thrown fighter lies a moment, then takes about half a second to get up)
 
         # let go: dropped, unhurt
         await walk_up(pg, 0, 1, "KeyD", "KeyA"); await frames(pg, 30)
@@ -95,8 +95,36 @@ async def main():
         f6 = await bb(pg)
         check("letting go of the grab drops User B unhurt", not f6[1]["held"] and f6[0]["grab"] is None and f6[1]["hp"] == f5[1]["hp"], (f6[1]["held"], f6[0]["grab"], f5[1]["hp"], f6[1]["hp"]))
 
+        # grabbed at the very edge: held in the hands the whole time, never snapped onto the ledge (it used to be)
+        await pg.evaluate("window.__bbPlace(0, 9.2, 1); window.__bbPlace(1, 10.35, -1)"); await frames(pg, 20)
+        await kb.down("KeyE"); seen = []
+        for _ in range(8):                                   # while it's held (the grip lasts 1.3 s)
+            await frames(pg, 4); f = await bb(pg)
+            if not f[1]["held"]: break
+            seen.append((f[1]["held"], f[1]["ledge"], round(f[1]["x"] - f[0]["x"], 2)))
+        await kb.up("KeyE"); await frames(pg, 120)   # (a thrown fighter lies a moment, then takes about half a second to get up)
+        check("grabbed at the edge, it stays in the grabber's hands (never on the ledge)",
+              seen and all(h and not l and 0.3 < d < 2.2 for h, l, d in seen), seen)
+        await pg.evaluate("window.__bbPlace(0, -2, 1); window.__bbPlace(1, -0.75, -1)"); await frames(pg, 120)   # (a thrown fighter lies a moment, then takes about half a second to get up)
+
+        # the backward throw lets go overhead: it goes over the top of the thrower's head and comes down behind in an
+        # arc (it used to be carried round and let go low down behind)
+        await pg.evaluate("window.__bbPlace(0, -2, 1); window.__bbPlace(1, -0.75, -1)"); await frames(pg, 20)
+        await kb.down("KeyE"); await frames(pg, 12)
+        ax = (await bb(pg))[0]["x"]
+        await pg.evaluate("window.__bbTrack(1, true)")
+        await kb.press("KeyA"); await frames(pg, 45); await kb.up("KeyE")
+        rows = await pg.evaluate("window.__bbTrack(1, false)")
+        if os.environ.get("TRACE"): print("   ax", ax, [(round(r["x"], 2), round(r["y"], 2)) for r in rows[::3]])
+        over = next((r for r in rows if r["x"] < ax + 0.3), None)                 # where it crosses above the thrower
+        behind = next((r for r in rows if r["x"] < ax - 0.8), None)              # and once it's behind
+        # (y is where its feet would be: its hips are a unit above, over the thrower's cup at about 2.6 as it crosses)
+        check("backward throw: over the top of the head (hips above the thrower's cup as it crosses), then down behind in an arc",
+              over and over["y"] + 1 > 2.4 and behind and behind["y"] > 0.5, (over and round(over["y"], 2), behind and round(behind["y"], 2)))
+        await frames(pg, 120)   # (a thrown fighter lies a moment, then takes about half a second to get up)
+
         # User B grabs with N
-        await walk_up(pg, 1, 0, "ArrowRight", "ArrowLeft"); await frames(pg, 30)
+        await pg.evaluate("window.__bbPlace(0, 0, -1); window.__bbPlace(1, -1.25, 1)"); await frames(pg, 20)
         await kb.down("KeyN"); await frames(pg, 12)
         f9 = await bb(pg); await kb.up("KeyN"); await frames(pg, 10)
         check("N is User B's grab", f9[1]["grab"] == "hold" and f9[0]["held"], (f9[1]["grab"], f9[0]["held"]))
