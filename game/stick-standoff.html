@@ -465,6 +465,7 @@ body.two-players .corner { left: 50%; right: auto; transform: translateX(-50%); 
     <button type="button" data-key="ParryUp" aria-label="Parry overhead">&uarr; Parry</button>
     <button type="button" data-key="Space" aria-label="Jump">Jump</button>
     <button type="button" data-key="KeyH" class="strike" aria-label="Punch, or a low kick while crouched">Punch</button>
+    <button type="button" data-key="KeyN" aria-label="Grab: hold it, and press an arrow to throw">Grab</button>
   </div>
 </div>
 
@@ -1183,7 +1184,7 @@ import ReconnectingWebSocket from 'partysocket/ws';
     syncLimb(limb);
     return limb.c;
   }
-  const _hint = V();
+  const _hint = V(), _grabAt = V();
   function planeHint(root, end, bend) {
     const dx = end.x - root.x, dy = end.y - root.y, l = Math.hypot(dx, dy) || 1;
     return _hint.set(-dy / l * bend, dx / l * bend, 0);
@@ -1573,9 +1574,9 @@ import ReconnectingWebSocket from 'partysocket/ws';
     if (h.dead || h.invuln > 0) return 'none';
     const src = from && from !== h ? (from.possessedBy || from) : null;
     // a successful parry also turns away the rest of that attacker's hits for a moment (a beam's later pulses)
-    if (h.parryGrace > 0 && src && src === h.parryFrom) return 'parry';
+    if (h.parryGrace > 0 && src && src === h.parryFrom && !opts.throw) return 'parry';
     const dir = opts.dir ? V(opts.dir.x, opts.dir.y, 0).normalize() : V(Math.sign(kbx) || 1, 0, 0);
-    if (guarding(h, dir)) {
+    if (!opts.throw && guarding(h, dir)) {
       h.guard.t = Math.max(h.guard.t, GUARD_IN + GUARD_SHINE + GUARD_OUT * 0.5);   // skip most of the loosening
       h.parryGrace = 0.45; h.parryFrom = src;
       hitstop = Math.max(hitstop, 0.12);
@@ -1587,13 +1588,14 @@ import ReconnectingWebSocket from 'partysocket/ws';
       flashScreen();
       return 'parry';
     }
-    if (blocking(h, dir)) {                     // a held shield: no damage, pushed back a little
+    if (!opts.throw && blocking(h, dir)) {      // a held shield: no damage, pushed back a little
       h.vx = THREE.MathUtils.clamp(h.vx + kbx * 0.3, -KB_MAX, KB_MAX);
       floatText(h.x, h.y + boxH(h) + 0.4, 'Block', 'info');
       ring(h.root.localToWorld(guardCenter(h)), '#141414', 0.7);
       return 'parry';
     }
     if (h.guard) h.guard = null;               // a hit from an unguarded side breaks the pose
+    if (h.grab) dropHeld(h);                   // a grabber that's hit lets go
     if (h.ledge) { h.ledge = null; h.ledgeCd = 0.5; }   // and knocks it off a ledge
     if (h.tether) { h.tether = null; h.spring.override = null; h.spring.stretch = 1; h.spring.profile = null; }
     const dealt = Math.min(dmg, h.hp);         // damage past zero health doesn't count in the stats
@@ -1623,6 +1625,8 @@ import ReconnectingWebSocket from 'partysocket/ws';
     if (h.dead || (guestOnline() && !netSays)) return;      // online, only the host knocks anyone out
     if (isHost()) net.match.ev.push(['die', fighters.indexOf(h), ringOut ? 1 : 0]);
     h.dead = true; h.deadT = 0; h.stun = 0; h.guard = null;
+    if (h.grab) dropHeld(h);
+    if (h.heldBy) dropHeld(h.heldBy);
     if (Number.isFinite(h.stocks)) { h.stocks = Math.max(0, h.stocks - 1); if (h.stocks === 0) h.out = true; }
     if (h.lastHitBy && h.lastHitBy !== h) h.lastHitBy.stats.kos++;
     if (h.possessing) release(h.possessing);
@@ -1839,7 +1843,7 @@ import ReconnectingWebSocket from 'partysocket/ws';
   // ================= Abilities =================
   function tryAbility(f, slot) {
     const ab = f.kit.abilities[slot];
-    if (!ab || f.cd[slot] > 0 || f.busy > 0 || f.guard || f.ledge || f.tether || f.stumble > 0) return false;
+    if (!ab || f.cd[slot] > 0 || f.busy > 0 || f.guard || f.grab || f.heldBy || f.ledge || f.tether || f.stumble > 0) return false;
     const ok = ABILITY[f.kind][slot](f);
     if (ok !== false) { f.cd[slot] = ab.cd; f.stats.moves++; holdAim(f); }
     return ok !== false;
@@ -2632,6 +2636,7 @@ import ReconnectingWebSocket from 'partysocket/ws';
     for (const k of COUNTDOWNS) f[k] = Math.max(0, (f[k] || 0) - dt);
     if (f.pushT <= 0) { f.lean = 0; f.pushing = 0; }
     if (f.stun > 0) { f.stun -= dt; inp = NO_INPUT; }
+    if (f.heldBy) { struggle(f, inp); inp = NO_INPUT; }       // held: only struggling, which loosens the grip
     if (f.possessing) inp = NO_INPUT;
     f.jumpT += dt;
 
@@ -2648,9 +2653,9 @@ import ReconnectingWebSocket from 'partysocket/ws';
       const acting = inp.left || inp.right || inp.jump || inp.strike || inp.dash || SLOTS.some(sl => inp[sl]);
       if (f.guard.t >= GUARD_END || (f.guard.t > GUARD_HELD && !f.guard.held && acting)) { f.guard = null; f.guardCd = 0.04; }
     }
-    if (inp.parry && !f.guard && !f.ledge && f.guardCd <= 0 && f.busy <= 0) startGuard(f, inp);
+    if (inp.parry && !f.guard && !f.ledge && !f.grab && f.guardCd <= 0 && f.busy <= 0) startGuard(f, inp);
 
-    const rooted = f.busy > 0 || !!f.guard;
+    const rooted = f.busy > 0 || !!f.guard || !!f.grab;
     f.busy = Math.max(0, f.busy - dt);
 
     f.ledgeCd = Math.max(0, f.ledgeCd - dt);
@@ -2734,6 +2739,9 @@ import ReconnectingWebSocket from 'partysocket/ws';
     f.aimUp = !!inp.up;                       // holding up turns the whip upward
     if (inp.strike) tryStrike(f, inp.face);
     updateStrike(f, dt);
+    if (inp.grab && !f.grabWas) tryGrab(f, inp.face);      // pressed (it's held while it holds on)
+    f.grabWas = !!inp.grab;
+    updateGrab(f, inp, dt);
     for (const s of SLOTS) {
       if (inp[s]) {
         if (inp.face) f.facing = inp.face;
@@ -2751,6 +2759,8 @@ import ReconnectingWebSocket from 'partysocket/ws';
     // compaction grows back slowly on its own
     if (f.compact < 1) f.compact = Math.min(1, f.compact + dt * 0.04);
 
+    if (f.heldBy) pinHeld(f);
+
     // pose
     f.vis.scale.x = f.facing;
     // discomfort shows on the face, which also shakes while it lasts
@@ -2761,6 +2771,8 @@ import ReconnectingWebSocket from 'partysocket/ws';
     // leaning into a dash is quick; coming out of it (as it slows, and just after) is gentle
     const easing = f.dashSettle > 0 && !(f.passT > 0 && f.passK >= 1);
     f.vis.rotation.z += (leanTo - f.vis.rotation.z) * Math.min(1, dt * (easing ? 5 : 14));
+    const thrown = f.heldBy && f.heldBy.grab;
+    if (thrown && thrown.phase === 'swing') f.vis.rotation.z = thrown.spin * f.facing;
     const c = f.compact;
     f.root.scale.set(1 + (1 - c) * 0.35, c, 1 + (1 - c) * 0.35);
     f.root.position.set(f.x, f.y, 0);
@@ -2825,7 +2837,7 @@ import ReconnectingWebSocket from 'partysocket/ws';
   const strikeOf = f => f.strike.low ? STRIKE.kick : STRIKE.punch;
   const PUNCH_STRETCH = 0.6;           // the punching arm stretches out this much further
   function tryStrike(f, face) {
-    if (f.strike || f.strikeCd > 0 || f.busy > 0 || f.guard || f.ledge || f.tether || f.stumble > 0 || f.possessing) return;
+    if (f.strike || f.strikeCd > 0 || f.busy > 0 || f.guard || f.grab || f.ledge || f.tether || f.stumble > 0 || f.possessing) return;
     if (face) f.facing = face;
     f.strike = { t: 0, low: f.onGround && f.crouch > 0.5, hit: new Set() };
     f.strikeCd = strikeOf(f).cd;
@@ -2851,6 +2863,98 @@ import ReconnectingWebSocket from 'partysocket/ws';
       const out = hurt(h, S.dmg, f.facing * S.kbx, S.kby, f, { dir: { x: f.facing, y: 0 } });
       burst(V(h.x - f.facing * BOX_W, f.y + (S.y0 + S.y1) / 2, 0), out === 'parry' ? '#ffffff' : f.kit.color);
       if (out === 'hit' && st.low) stumble(h, f.facing, 3, 3);      // swept off its feet
+    }
+  }
+
+  // ================= Grab and throw =================
+  // Every fighter can grab (N): a short reach that goes straight through a shield, held or crouched. Missing leaves
+  // the grabber stuck for a moment. Keep it held to hold on, for a little over a second (less if the other fighter
+  // struggles), and press a direction to throw: forward, it swings them back and hurls them across; backward, it
+  // heaves them over its head behind it. A throw can't be blocked or parried. Letting go of N drops them unhurt, and
+  // a grabber that's hit lets go. Attacks beat grabs, grabs beat shields, shields beat attacks.
+  const GRAB = { reach: 1.45, from: 0.05, to: 0.14, whiff: 0.45, cd: 0.6, hold: 1.3, struggle: 0.1, minThrow: 0.12, swing: 0.42, after: 0.25, holdAt: 1.15,
+    fwd: { dmg: 8, kbx: 9, kby: 5 }, back: { dmg: 10, kbx: 6, kby: 8.5 } };
+  function tryGrab(f, face) {
+    if (f.grab || f.grabCd > 0 || f.busy > 0 || f.guard || f.strike || f.heldBy || f.ledge || f.tether || f.stumble > 0 || f.possessing || !f.onGround) return;
+    if (face) f.facing = face;
+    f.grab = { phase: 'reach', t: 0, lx: 0, ly: 0 };
+    f.grabCd = GRAB.cd;
+    f.stats.moves++;
+    cue('grab', f.kind);
+  }
+  function dropHeld(f) {
+    if (f.grab && f.grab.who) f.grab.who.heldBy = null;
+    f.grab = null;
+  }
+  // the held fighter's struggling: each press loosens the grip a little
+  function struggle(h, inp) {
+    const g = h.heldBy.grab;
+    if (!g) return;
+    const dirNow = (inp.right ? 1 : 0) - (inp.left ? 1 : 0);
+    const presses = [inp.jump, inp.strike, inp.parry, inp.dash, ...SLOTS.map(sl => inp[sl])].filter(Boolean).length + (dirNow && dirNow !== h.struggleDir ? 1 : 0);
+    h.struggleDir = dirNow;
+    g.left -= presses * GRAB.struggle;
+  }
+  // where the held fighter is: in the grabber's hands (g.lx forward, g.ly up, from its feet)
+  function pinHeld(h) {
+    const f = h.heldBy, g = f.grab;
+    h.x = f.x + f.facing * g.lx; h.y = f.y + g.ly;
+    h.vx = 0; h.vy = 0; h.onGround = g.ly < 0.01 && f.onGround;
+  }
+  function updateGrab(f, inp, dt) {
+    f.grabCd = Math.max(0, (f.grabCd || 0) - dt);
+    const g = f.grab;
+    if (!g) return;
+    g.t += dt;
+    if (g.phase === 'reach') {
+      g.lx = GRAB.reach * Math.min(1, g.t / GRAB.to); g.ly = 0;
+      if (g.t >= GRAB.from) {
+        const x0 = f.x + f.facing * 0.1, x1 = f.x + f.facing * GRAB.reach;
+        const h = enemiesOf(f).filter(h => !h.heldBy && !h.grab && !h.ledge && !(h.invuln > 0) && overlapsBox(h, x0, x1, f.y + 0.4, f.y + 2.6))
+          .sort((a, b) => Math.abs(a.x - f.x) - Math.abs(b.x - f.x))[0];
+        if (h) {
+          Object.assign(g, { phase: 'hold', t: 0, who: h, left: GRAB.hold, lx: GRAB.holdAt, ly: 0 });
+          h.heldBy = f; h.guard = null; h.strike = null; h.passT = 0; h.struggleDir = 0;
+          floatText(h.x, h.y + BOX_H + 0.5, 'Grabbed', 'info');
+          cue('grabbed', h.kind);
+          pinHeld(h);
+          return;
+        }
+      }
+      if (g.t >= GRAB.to) { g.phase = 'whiff'; g.t = 0; }
+    } else if (g.phase === 'whiff') {
+      g.lx = GRAB.reach * Math.max(0, 1 - g.t / GRAB.whiff);
+      if (g.t >= GRAB.whiff) f.grab = null;
+    } else if (g.phase === 'hold') {
+      const h = g.who;
+      if (!inp.grab) { dropHeld(f); return; }                                  // let go: dropped, unhurt
+      if (g.t >= g.left) {                                                   // it struggled free
+        dropHeld(f);
+        h.vx = f.facing * 3; f.vx = -f.facing * 2;
+        floatText(h.x, h.y + BOX_H + 0.5, 'Broke free', 'info');
+        return;
+      }
+      const dir = (inp.right ? 1 : 0) - (inp.left ? 1 : 0);
+      if (dir && g.t >= GRAB.minThrow) { Object.assign(g, { phase: 'swing', t: 0, back: dir !== f.facing, spin: 0 }); cue('throw', f.kind); }
+      pinHeld(h);
+    } else if (g.phase === 'swing') {
+      const p = Math.min(1, g.t / GRAB.swing), h = g.who;
+      if (g.back) {           // over the head: up from in front, over the top, down behind
+        g.lx = GRAB.holdAt * Math.cos(Math.PI * p); g.ly = 2.4 * Math.sin(Math.PI * p); g.spin = -Math.PI * p;
+      } else if (p < 0.45) {  // forward: swung back low behind first...
+        const q = p / 0.45; g.lx = GRAB.holdAt - 2.1 * smooth(q); g.ly = 0.5 * Math.sin(Math.PI * q); g.spin = 0.5 * Math.sin(Math.PI * q);
+      } else {                // ...then round and out across
+        const q = (p - 0.45) / 0.55; g.lx = GRAB.holdAt - 2.1 + 2.5 * smooth(q); g.ly = 1.0 * q; g.spin = -0.9 * q;
+      }
+      pinHeld(h);
+      if (p >= 1) {
+        const T = g.back ? GRAB.back : GRAB.fwd, way = g.back ? -f.facing : f.facing;
+        dropHeld(f);
+        f.busy = Math.max(f.busy, GRAB.after);
+        h.vis.rotation.z = 0;
+        hurt(h, T.dmg, way * T.kbx, T.kby, f, { dir: { x: way, y: 0 }, throw: true });
+        ring(V(h.x, h.y + 1, 0), f.kit.color, 0.6);
+      }
     }
   }
 
@@ -3154,6 +3258,8 @@ import ReconnectingWebSocket from 'partysocket/ws';
         if (i === 0) { _hand.lerp(V(1.85, 2.0, 0.1), k); stretch = 1 + PUNCH_STRETCH * k; bend = -1; }
         else if (f.kind !== 'so') { _hand.lerp(V(0.4, 1.9, -0.12), k * 0.7); bend = -1; }
       }
+      // grabbing: both hands out to the other fighter's middle, and with it through a throw
+      if (f.grab) { _hand.lerp(_grabAt.set(f.grab.lx - 0.25, f.grab.ly + (i ? 1.55 : 1.85), i ? -0.16 : 0.16), Math.min(1, 0.4 + f.grab.lx)); bend = -1; }
       const shoveArm = shoveReach(f);
       if (shoveArm > 0) { _hand.lerp(V(0.92, i ? 1.8 : 2.0, i ? -0.12 : 0.14), shoveArm); bend = -1; }
       // pushing: both hands on the other fighter; stumbling: arms flung up
@@ -3223,7 +3329,7 @@ import ReconnectingWebSocket from 'partysocket/ws';
   touchA.after(touchB);
   // with two players on one phone, each pad's buttons stand for its own player's keys: the button's action, in that
   // player's scheme (SCHEMES A and B). User B sees the arena turned round, so their right is the arena's left
-  const PAD_ACTIONS = { ArrowLeft: 'left', ArrowRight: 'right', ArrowDown: 'down', Space: 'jump', KeyJ: 'a1', KeyK: 'a2', KeyL: 'a3', KeyI: 'a4', Backspace: 'parry', ParryUp: 'up', KeyH: 'strike' };
+  const PAD_ACTIONS = { ArrowLeft: 'left', ArrowRight: 'right', ArrowDown: 'down', Space: 'jump', KeyJ: 'a1', KeyK: 'a2', KeyL: 'a3', KeyI: 'a4', Backspace: 'parry', ParryUp: 'up', KeyH: 'strike', KeyN: 'grab' };
   const padKey = (who, key) => {
     const a = PAD_ACTIONS[key], turned = who === 'B' && { left: 'right', right: 'left' }[a];
     return SCHEMES[who][turned || a][0];
@@ -3244,11 +3350,11 @@ import ReconnectingWebSocket from 'partysocket/ws';
   // left of the keyboard and User B the right (KEYS_FOR shows them)
   const SCHEMES = {
     all: { left: ['KeyA', 'ArrowLeft'], right: ['KeyD', 'ArrowRight'], jump: ['KeyW', 'ArrowUp', 'Space'], down: ['KeyS', 'ArrowDown'],
-      parry: ['Backspace', 'ParryUp'], up: ['ParryUp'], strike: ['KeyH'], a1: ['KeyJ', 'Digit1'], a2: ['KeyK', 'Digit2'], a3: ['KeyL', 'Digit3'], a4: ['KeyI', 'Digit4'],
+      parry: ['Backspace', 'ParryUp'], up: ['ParryUp'], strike: ['KeyH'], grab: ['KeyN'], a1: ['KeyJ', 'Digit1'], a2: ['KeyK', 'Digit2'], a3: ['KeyL', 'Digit3'], a4: ['KeyI', 'Digit4'],
       dashL: ['DashLA', 'DashLB'], dashR: ['DashRA', 'DashRB'] },
-    A: { left: ['KeyA'], right: ['KeyD'], jump: ['KeyW', 'Space'], down: ['KeyS'], parry: ['KeyQ', 'ParryUpA'], up: ['ParryUpA'], strike: ['KeyR'],
+    A: { left: ['KeyA'], right: ['KeyD'], jump: ['KeyW', 'Space'], down: ['KeyS'], parry: ['KeyQ', 'ParryUpA'], up: ['ParryUpA'], strike: ['KeyR'], grab: ['KeyE'],
       a1: ['KeyF'], a2: ['KeyG'], a3: ['KeyH'], a4: ['KeyT'], dashL: ['DashLA'], dashR: ['DashRA'] },
-    B: { left: ['ArrowLeft'], right: ['ArrowRight'], jump: ['ArrowUp'], down: ['ArrowDown'], parry: ['ShiftRight', 'Numpad0', 'ParryUpB'], up: ['ParryUpB'], strike: ['KeyM', 'Numpad5'],
+    B: { left: ['ArrowLeft'], right: ['ArrowRight'], jump: ['ArrowUp'], down: ['ArrowDown'], parry: ['ShiftRight', 'Numpad0', 'ParryUpB'], up: ['ParryUpB'], grab: ['KeyN'], strike: ['KeyM', 'Numpad5'],
       a1: ['Comma', 'Numpad1'], a2: ['Period', 'Numpad2'], a3: ['Slash', 'Numpad3'], a4: ['Quote', 'Numpad4'], dashL: ['DashLB'], dashR: ['DashRB'] },
   };
   // every key some player uses (the keys the page takes over from the browser)
@@ -3256,7 +3362,8 @@ import ReconnectingWebSocket from 'partysocket/ws';
   function playerInput(scheme = 'all', body = controlledBody()) {
     const S = SCHEMES[scheme], k = c => S[c].some(x => keys.has(x)), p = c => S[c].some(x => pressed.has(x));
     return {
-      left: k('left'), right: k('right'), jump: p('jump'), parry: p('parry'), guard: k('parry'), down: k('down'), strike: p('strike'),
+      // (a tap shorter than a frame still counts: a grab, or a throw's direction)
+      left: k('left') || p('left'), right: k('right') || p('right'), jump: p('jump'), parry: p('parry'), guard: k('parry'), down: k('down'), strike: p('strike'), grab: k('grab') || p('grab'),
       dash: p('dashL') ? -1 : p('dashR') ? 1 : 0,
       up: k('jump') || p('up'),
       a1: p('a1') || (keys.has(S.a1[0]) && body?.kind !== 'gpt'),     // hold it to keep firing blocks or rods
@@ -3370,8 +3477,15 @@ import ReconnectingWebSocket from 'partysocket/ws';
     if (ai.burstT > 0) { inp.a1 = true; inp.face = Math.sign(dx) || f.facing; }
     if (ai.act === 'a2up') { ai.act = 'a2'; inp.up = true; }
     if (ai.act) { inp[ai.act] = true; inp.face = Math.sign(dx) || f.facing; ai.act = null; ai.rest = 0.55 + Math.random() * 0.9; }
+    // up close to a shield: grab it (and now and then anyone close); held, thrown toward the nearer edge
+    if (dist < 1.7 && dy < 1 && f.onGround && !f.grab && !(ai.grabT > 0) && Math.random() < dt * (t.guard ? 4 : 0.8)) { ai.grabT = 1.1; inp.face = Math.sign(dx) || f.facing; }
+    if (ai.grabT > 0) {
+      ai.grabT -= dt; inp.grab = true; inp.left = inp.right = false;
+      if (f.grab && f.grab.phase === 'hold' && f.grab.t > 0.3) { const edge = Math.sign(f.x) || f.facing; inp.right = edge > 0; inp.left = edge < 0; }
+      if (!f.grab && ai.grabT < 0.9) ai.grabT = 0;          // missed, or done
+    }
     // up close: a punch now and then, or a crouch into a low kick
-    if (dist < 1.8 && dy < 1 && f.onGround && !(ai.kickT > 0) && !f.strike && Math.random() < dt * 2.5) {
+    if (dist < 1.8 && dy < 1 && f.onGround && !(ai.kickT > 0) && !f.strike && !f.grab && Math.random() < dt * 2.5) {
       if (Math.random() < 0.35) ai.kickT = 0.4; else { inp.strike = true; inp.face = Math.sign(dx) || f.facing; }
     }
     if (ai.kickT > 0) {
@@ -3447,9 +3561,9 @@ import ReconnectingWebSocket from 'partysocket/ws';
   // the keys each player uses: alone, all of them; with User B in the match, User A has the left of the keyboard
   // and User B the right
   const KEYS_FOR = {
-    all: { a1: 'J', a2: 'K', a3: 'L', a4: 'I', strike: 'H', jump: 'W', dash: 'AA DD', crouch: 'S', parry: '\u232B', over: 'W+\u232B' },
-    A: { a1: 'F', a2: 'G', a3: 'H', a4: 'T', strike: 'R', jump: 'W', dash: 'AA DD', crouch: 'S', parry: 'Q', over: 'W+Q' },
-    B: { a1: ',', a2: '.', a3: '/', a4: "'", strike: 'M', jump: '\u2191', dash: '\u2190\u2190 \u2192\u2192', crouch: '\u2193', parry: 'R\u21E7', over: '\u2191+R\u21E7' },
+    all: { a1: 'J', a2: 'K', a3: 'L', a4: 'I', strike: 'H', grab: 'N', jump: 'W', dash: 'AA DD', crouch: 'S', parry: '\u232B', over: 'W+\u232B' },
+    A: { a1: 'F', a2: 'G', a3: 'H', a4: 'T', strike: 'R', grab: 'E', jump: 'W', dash: 'AA DD', crouch: 'S', parry: 'Q', over: 'W+Q' },
+    B: { a1: ',', a2: '.', a3: '/', a4: "'", strike: 'M', grab: 'N', jump: '\u2191', dash: '\u2190\u2190 \u2192\u2192', crouch: '\u2193', parry: 'R\u21E7', over: '\u2191+R\u21E7' },
   };
   const movesBEl = document.getElementById('movesB');
   let movesForB = null, movesParts = [], movesPartsB = [];     // each list's chips, with the parts that change
@@ -3484,7 +3598,7 @@ import ReconnectingWebSocket from 'partysocket/ws';
       parts.push(part);
       el.appendChild(m);
     }
-    const extra = [[keyFor.strike, 'Punch'], [keyFor.crouch + '+' + keyFor.strike, 'Low kick'], [keyFor.jump, body.kit.jumps > 1 ? 'Double jump' : 'Jump'], [keyFor.dash, 'Dash'], [keyFor.crouch, 'Crouch'], [keyFor.parry, 'Parry'], [keyFor.over, 'Overhead parry']];
+    const extra = [[keyFor.strike, 'Punch'], [keyFor.crouch + '+' + keyFor.strike, 'Low kick'], [keyFor.grab, 'Grab (hold)'], [keyFor.grab + '+\u2190\u2192', 'Throw'], [keyFor.jump, body.kit.jumps > 1 ? 'Double jump' : 'Jump'], [keyFor.dash, 'Dash'], [keyFor.crouch, 'Crouch'], [keyFor.parry, 'Parry'], [keyFor.over, 'Overhead parry']];
     for (const [k, text] of extra) {
       const m = document.createElement('div');
       m.className = 'move static';
@@ -4172,7 +4286,7 @@ import ReconnectingWebSocket from 'partysocket/ws';
   const GAME_URL = `${location.origin}/games/botbattle/`;   // where any sign-in step that leaves the page comes back to
   const EMOTES = [['\u{1F44D}', 'Thumbs up'], ['\u{1F602}', 'Laughing'], ['\u{1F62D}', 'Crying'], ['\u{1F621}', 'Angry'], ['\u{1F525}', 'Fire'], ['\u{1F91D}', 'Good game']];
   // controls as bits: held ones, then ones pressed since the last message
-  const IN = { left: 1, right: 2, down: 4, up: 8, fire: 16, jump: 32, parry: 64, dashL: 128, dashR: 256, a1: 512, a2: 1024, a3: 2048, a4: 4096, strike: 8192, guard: 16384 };
+  const IN = { left: 1, right: 2, down: 4, up: 8, fire: 16, jump: 32, parry: 64, dashL: 128, dashR: 256, a1: 512, a2: 1024, a3: 2048, a4: 4096, strike: 8192, guard: 16384, grab: 32768 };
   const HELD = 31 | 16384;          // the bits that are held down (moving, firing, the guard), not pressed once
   const esc = s => String(s).replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' })[c]);
   const net = { ws: null, me: null, room: null, lobby: null, match: null, remote: new Map(), frame: 0, error: null, ping: 0, giveUp: 0, pendingJoin: null, view: null };
@@ -4650,7 +4764,7 @@ import ReconnectingWebSocket from 'partysocket/ws';
       r.inp = {
         left: !!(b & IN.left), right: !!(b & IN.right), down: !!(b & IN.down), up: !!(b & IN.up),
         jump: !!(b & IN.jump), parry: !!(b & IN.parry), dash: b & IN.dashL ? -1 : b & IN.dashR ? 1 : 0,
-        a1: !!(b & (IN.a1 | IN.fire)), a2: !!(b & IN.a2), a3: !!(b & IN.a3), a4: !!(b & IN.a4), strike: !!(b & IN.strike), guard: !!(b & IN.guard),
+        a1: !!(b & (IN.a1 | IN.fire)), a2: !!(b & IN.a2), a3: !!(b & IN.a3), a4: !!(b & IN.a4), strike: !!(b & IN.strike), guard: !!(b & IN.guard), grab: !!(b & IN.grab),
       };
       r.pend = 0; r.frame = net.frame;
     }
@@ -4659,7 +4773,7 @@ import ReconnectingWebSocket from 'partysocket/ws';
   function encodeInput(p) {
     return (p.left ? IN.left : 0) | (p.right ? IN.right : 0) | (p.down ? IN.down : 0) | (p.up ? IN.up : 0) | (p.a1 ? IN.fire : 0)
       | (p.jump ? IN.jump : 0) | (p.parry ? IN.parry : 0) | (p.dash < 0 ? IN.dashL : 0) | (p.dash > 0 ? IN.dashR : 0)
-      | (p.a1 ? IN.a1 : 0) | (p.a2 ? IN.a2 : 0) | (p.a3 ? IN.a3 : 0) | (p.a4 ? IN.a4 : 0) | (p.strike ? IN.strike : 0) | (p.guard ? IN.guard : 0);
+      | (p.a1 ? IN.a1 : 0) | (p.a2 ? IN.a2 : 0) | (p.a3 ? IN.a3 : 0) | (p.a4 ? IN.a4 : 0) | (p.strike ? IN.strike : 0) | (p.guard ? IN.guard : 0) | (p.grab ? IN.grab : 0);
   }
   const r2 = v => Math.round(v * 100) / 100;
   const snapOf = f => [r2(f.x), r2(f.y), r2(f.vx), r2(f.vy), f.facing, Math.round(f.hp * 10) / 10, Number.isFinite(f.stocks) ? f.stocks : 0,
@@ -4775,7 +4889,8 @@ import ReconnectingWebSocket from 'partysocket/ws';
   // local testing only (?dev=<name> on localhost): where everyone is, as this browser sees it
   if (DEV_USER) {
     window.__bb = () => fighters.map(f => ({ id: f.netId, kind: f.kind, x: f.x, y: f.y, z: f.z || 0, face: f.face.rotation.y, hp: f.hp, dead: f.dead, out: !!f.out, stocks: f.stocks, versus: !!versus,
-      vx: f.vx, crouch: f.crouch || 0, stumble: f.stumble || 0, facing: f.facing, variant: f.kit.variant }));
+      vx: f.vx, crouch: f.crouch || 0, stumble: f.stumble || 0, facing: f.facing, variant: f.kit.variant,
+      grab: f.grab ? f.grab.phase : null, held: !!f.heldBy, guard: !!f.guard, busy: f.busy || 0 }));
     window.__bbKO = i => { const f = fighters[i]; if (f && !f.dead) { f.hp = 0; die(f); } };   // knocks a fighter out, as this browser
     // one fighter, frame by frame: speed, facing, walking backwards, the guard, the lean
     window.__bbTrack = (i, on) => { if (on) { trackLog = { i, rows: [] }; return null; } const r = trackLog && trackLog.rows; trackLog = null; return r; };
@@ -5157,7 +5272,7 @@ import ReconnectingWebSocket from 'partysocket/ws';
     const now = new Set(), t = pushClock;
     for (let i = 0; i < live.length; i++) for (let j = i + 1; j < live.length; j++) {
       const a = live[i], b = live[j];
-      if (a.ledge || b.ledge || a.tether || b.tether) continue;
+      if (a.ledge || b.ledge || a.tether || b.tether || a.heldBy === b || b.heldBy === a) continue;   // (one holds the other)
       if (Math.abs(a.y - b.y) > BOX_H * 0.7) continue;
       if (a.passT > 0 || b.passT > 0) { brushPast(a, b); continue; }
       if ((a.bashT > 0 && a.bashBy === b) || (b.bashT > 0 && b.bashBy === a)) continue;   // just bashed: it flies clear
