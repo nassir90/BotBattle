@@ -267,36 +267,34 @@ body.two-players .corner { left: 50%; right: auto; transform: translateX(-50%); 
   .touch {
     position: fixed; left: max(calc(env(safe-area-inset-left, 0px) + 12px), 20px); right: max(calc(env(safe-area-inset-right, 0px) + 12px), 20px);
     bottom: max(calc(env(safe-area-inset-bottom, 0px) + 12px), 20px);
-    display: flex; justify-content: space-between; align-items: flex-end; gap: 12px; pointer-events: none;
+    display: flex; justify-content: space-between; align-items: flex-end; gap: 10px; pointer-events: none;
   }
-  /* the d-pad: ◀ and ▶ tall either side of the jump, and under them the crouch with a crouch-walk either side, cut
-     along the tall buttons' diagonals. Each piece is drawn (and touched) as its own shape: the button is only a box
-     round it, and only the shape takes a finger */
-  .pad { position: relative; width: 128px; height: 156px; pointer-events: auto; }
+  /* the d-pad: ◀ and ▶ tall either side of a full-height ▼, and a crouch-walk under each, cut along the tall
+     buttons' diagonals. Each piece is drawn (and touched) as its own shape: the button is only a box round it, and
+     only the shape takes a finger. A thumb sliding across the pad presses whichever piece it's on */
+  .pad { position: relative; width: 138px; height: 150px; pointer-events: auto; touch-action: none; }
   .touch .pad .dir { position: absolute; padding: 0; border: 0; background: none; box-shadow: none; overflow: visible; pointer-events: none; transform: none; }
-  .pad .dir svg { position: absolute; pointer-events: none; }
-  .pad .dir .shape { inset: 0; width: 100%; height: 100%; overflow: visible; }
+  .pad .dir .shape { position: absolute; pointer-events: none; }
+  .pad .dir .shape { inset: 0; width: 100%; height: 100%; overflow: visible; filter: drop-shadow(3px 3px 0 var(--ink)); }
   .pad .dir .face { fill: var(--paper); stroke: var(--ink); stroke-width: 2px; stroke-linejoin: round; vector-effect: non-scaling-stroke; pointer-events: all; }
-  .pad .dir .sh { fill: var(--ink); }
-  .pad .dir .g { width: 15px; height: 15px; left: var(--gx); top: var(--gy); transform: translate(-50%, -50%); fill: var(--ink); }
-  .pad .dir:active .shape, .pad .dir:active .g { translate: 2px 2px; }
-  .pad .dir:active .sh { visibility: hidden; }
-  .pad .left { left: 1%; top: 4%; width: 34%; height: 56%; --gx: 50%; --gy: 41%; }
-  .pad .up { left: 39%; top: 4%; width: 22%; height: 36%; --gx: 50%; --gy: 50%; }
-  .pad .right { left: 65%; top: 4%; width: 34%; height: 56%; --gx: 50%; --gy: 41%; }
-  .pad .dl { left: 1%; top: 50%; width: 34%; height: 46%; --gx: 50%; --gy: 72%; }
-  .pad .down { left: 39%; top: 50%; width: 22%; height: 46%; --gx: 50%; --gy: 50%; }
-  .pad .dr { left: 65%; top: 50%; width: 34%; height: 46%; --gx: 50%; --gy: 72%; }
-  .acts { display: grid; grid-template-columns: repeat(4, 48px); gap: 6px; pointer-events: auto; }
+  .pad .dir .g { position: absolute; width: 30px; height: 30px; left: var(--gx); top: var(--gy); transform: translate(-50%, -50%); pointer-events: none; }
+  .pad .dir.on .shape, .pad .dir.on .g { translate: 2px 2px; }
+  .pad .dir.on .shape { filter: none; }
+  .pad .left { left: 1%; top: 3%; width: 30%; height: 71%; --gx: 50%; --gy: 45%; }
+  .pad .down { left: 35%; top: 3%; width: 30%; height: 94%; --gx: 50%; --gy: 50%; }
+  .pad .right { left: 69%; top: 3%; width: 30%; height: 71%; --gx: 50%; --gy: 45%; }
+  .pad .dl { left: 1%; top: 65%; width: 30%; height: 32%; --gx: 50%; --gy: 67%; }
+  .pad .dr { left: 69%; top: 65%; width: 30%; height: 32%; --gx: 50%; --gy: 67%; }
+  .acts { display: grid; grid-template-columns: repeat(4, 46px); gap: 6px; pointer-events: auto; }
   .acts button[data-slot] { grid-row: 1; }          /* the fighter's own moves along the top row */
   .acts .basic { grid-row: 2; }                     /* the shield, punch and grab everyone has, underneath */
   .touch button {
     touch-action: none; width: 56px; height: 56px; padding: 4px; font-size: 10px; line-height: 1.1;
     text-transform: none; letter-spacing: 0; position: relative; overflow: hidden;
   }
-  .acts button { width: 48px; height: 48px; font-size: 9.5px; }
-  .touch .basic svg { width: 26px; height: 26px; fill: currentColor; display: block; margin: auto; }
-  .touch .shield b { position: absolute; top: 2px; right: 5px; font-size: 10px; font-weight: 400; }   /* swipe up: overhead */
+  .acts button { width: 46px; height: 46px; font-size: 9.5px; }
+  .touch .basic .ico { width: 34px; height: 34px; display: block; margin: auto; pointer-events: none; }
+  .touch .ico:not([src]) { visibility: hidden; }
   .touch .strike .boot, .touch .strike.kick .fist { display: none; }
   .touch .strike.kick .boot { display: block; }
   .touch button .cool { position: absolute; left: 0; bottom: 0; height: 4px; background: var(--ink); width: 100%; transform: scaleX(0); transform-origin: left; }
@@ -309,7 +307,7 @@ body.two-players .corner { left: 50%; right: auto; transform: translateX(-50%); 
   body.split .hud-b { top: auto; bottom: calc(50% + 14px); transform: rotate(180deg); }
   body.split .touch-b { top: max(calc(env(safe-area-inset-top, 0px) + 12px), 20px); bottom: auto; transform: rotate(180deg); }
   body.split .touch button { width: 44px; height: 44px; font-size: 9px; padding: 3px; }
-  body.split .touch .basic svg { width: 22px; height: 22px; }
+  body.split .touch .basic .ico { width: 30px; height: 30px; }
   body.split .pad { width: 120px; height: 136px; }
   body.split .acts { grid-template-columns: repeat(4, 44px); gap: 6px; }
   @media (orientation: landscape) {      /* on its side the halves are short: the plates go to the outer edges, between the pads */
@@ -325,7 +323,8 @@ body.two-players .corner { left: 50%; right: auto; transform: translateX(-50%); 
   .topstack { top: calc(env(safe-area-inset-top, 0px) + 72px); }
   .acts { grid-template-columns: repeat(4, 50px); gap: 6px; }
   .touch button { width: 50px; height: 50px; }
-  .pad, body.split .pad { width: 170px; height: 112px; }    /* wider and shorter */
+  .pad, body.split .pad { width: 176px; height: 122px; }    /* wider and shorter */
+  .pad .dir .g { width: 24px; height: 24px; }
   .overlay { padding: 10px 16px; }
   .panel h1 { font-size: 24px; }
   .mode { padding: 9px 14px; }
@@ -469,14 +468,13 @@ body.two-players .corner { left: 50%; right: auto; transform: translateX(-50%); 
 <div id="fx"></div>
 <div class="flash" id="flash"></div>
 
-<div class="touch" id="touch">
+<div class="touch" id="touch" hidden>   <!-- (shown once a match starts: none of it flashes up over the menu while the page loads) -->
   <div class="pad">
-    <button class="dir left" type="button" data-key="ArrowLeft" aria-label="Move left"><svg class="shape" viewBox="1 4 34 56" preserveAspectRatio="none" aria-hidden="true"><polygon class="sh" points="3,6.4 37,6.4 37,42.4 3,62.4"/><polygon class="face" points="1,4 35,4 35,40 1,60"/></svg><svg class="g" viewBox="-6 -6 12 12" aria-hidden="true"><polygon points="-5,0 4,-5 4,5"/></svg></button>
-    <button class="dir up" type="button" data-key="Space" aria-label="Jump"><svg class="shape" viewBox="39 4 22 36" preserveAspectRatio="none" aria-hidden="true"><polygon class="sh" points="41,6.4 63,6.4 63,42.4 41,42.4"/><polygon class="face" points="39,4 61,4 61,40 39,40"/></svg><svg class="g" viewBox="-6 -6 12 12" aria-hidden="true"><polygon points="0,-5 -5,4 5,4"/></svg></button>
-    <button class="dir right" type="button" data-key="ArrowRight" aria-label="Move right"><svg class="shape" viewBox="65 4 34 56" preserveAspectRatio="none" aria-hidden="true"><polygon class="sh" points="67,6.4 101,6.4 101,62.4 67,42.4"/><polygon class="face" points="65,4 99,4 99,60 65,40"/></svg><svg class="g" viewBox="-6 -6 12 12" aria-hidden="true"><polygon points="5,0 -4,-5 -4,5"/></svg></button>
-    <button class="dir dl" type="button" data-key="ArrowDown ArrowLeft" aria-label="Crouch and move left"><svg class="shape" viewBox="1 50 34 46" preserveAspectRatio="none" aria-hidden="true"><polygon class="sh" points="3,72.4 37,52.4 37,98.4 3,98.4"/><polygon class="face" points="1,70 35,50 35,96 1,96"/></svg><svg class="g" viewBox="-6 -6 12 12" aria-hidden="true"><polygon points="-4.5,4.5 4.5,4.5 -4.5,-4.5"/></svg></button>
-    <button class="dir down" type="button" data-key="ArrowDown" aria-label="Crouch"><svg class="shape" viewBox="39 50 22 46" preserveAspectRatio="none" aria-hidden="true"><polygon class="sh" points="41,52.4 63,52.4 63,98.4 41,98.4"/><polygon class="face" points="39,50 61,50 61,96 39,96"/></svg><svg class="g" viewBox="-6 -6 12 12" aria-hidden="true"><polygon points="0,5 -5,-4 5,-4"/></svg></button>
-    <button class="dir dr" type="button" data-key="ArrowDown ArrowRight" aria-label="Crouch and move right"><svg class="shape" viewBox="65 50 34 46" preserveAspectRatio="none" aria-hidden="true"><polygon class="sh" points="67,52.4 101,72.4 101,98.4 67,98.4"/><polygon class="face" points="65,50 99,70 99,96 65,96"/></svg><svg class="g" viewBox="-6 -6 12 12" aria-hidden="true"><polygon points="4.5,4.5 -4.5,4.5 4.5,-4.5"/></svg></button>
+    <button class="dir left" type="button" data-key="ArrowLeft" aria-label="Move left"><svg class="shape" viewBox="1 3 30 71" preserveAspectRatio="none" aria-hidden="true"><polygon class="face" points="1,3 31,3 31,60 1,74"/></svg><img class="g ico" data-icon="left" alt=""></button>
+    <button class="dir down" type="button" data-key="ArrowDown" aria-label="Crouch"><svg class="shape" viewBox="35 3 30 94" preserveAspectRatio="none" aria-hidden="true"><polygon class="face" points="35,3 65,3 65,97 35,97"/></svg><img class="g ico" data-icon="down" alt=""></button>
+    <button class="dir right" type="button" data-key="ArrowRight" aria-label="Move right"><svg class="shape" viewBox="69 3 30 71" preserveAspectRatio="none" aria-hidden="true"><polygon class="face" points="69,3 99,3 99,74 69,60"/></svg><img class="g ico" data-icon="right" alt=""></button>
+    <button class="dir dl" type="button" data-key="ArrowDown ArrowLeft" aria-label="Crouch and move left"><svg class="shape" viewBox="1 65 30 32" preserveAspectRatio="none" aria-hidden="true"><polygon class="face" points="1,79 31,65 31,97 1,97"/></svg><img class="g ico" data-icon="dl" alt=""></button>
+    <button class="dir dr" type="button" data-key="ArrowDown ArrowRight" aria-label="Crouch and move right"><svg class="shape" viewBox="69 65 30 32" preserveAspectRatio="none" aria-hidden="true"><polygon class="face" points="69,65 99,79 99,97 69,97"/></svg><img class="g ico" data-icon="dr" alt=""></button>
   </div>
   <div class="acts" id="acts">
     <button type="button" data-key="KeyJ" data-slot="a1"><span></span><i class="cool"></i></button>
@@ -484,9 +482,10 @@ body.two-players .corner { left: 50%; right: auto; transform: translateX(-50%); 
     <button type="button" data-key="KeyL" data-slot="a3"><span></span><i class="cool"></i></button>
     <button type="button" data-key="KeyI" data-slot="a4"><span></span><i class="cool"></i></button>
     <!-- tap the shield to parry to the side; swipe up from it to parry overhead -->
-    <button type="button" data-key="Backspace" class="basic shield" aria-label="Parry: tap to the side, swipe up for overhead"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 3l7 2.6v5.6c0 4.6-2.9 8.3-7 9.8-4.1-1.5-7-5.2-7-9.8V5.6z"/></svg><b aria-hidden="true">&#8593;</b></button>
-    <button type="button" data-key="KeyH" class="basic strike" aria-label="Punch, or a low kick while crouched"><svg class="fist" viewBox="0 0 24 24" aria-hidden="true"><rect x="5" y="6" width="13" height="12" rx="3.2"/><rect x="2.5" y="11" width="5" height="7.5" rx="2.4"/><path d="M9.3 6.5v5M13.6 6.5v5" stroke="var(--paper)" stroke-width="1.3" fill="none"/></svg><svg class="boot" viewBox="0 0 24 24" aria-hidden="true"><path d="M7 3h6v9.5l6.2 2.7c1 .4 1.8 1.4 1.8 2.5V20H7z"/></svg></button>
-    <button type="button" data-key="KeyN" class="basic grab" aria-label="Grab: hold it, and press an arrow to throw"><svg viewBox="0 0 24 24" aria-hidden="true"><rect x="6.5" y="11" width="11.5" height="10" rx="3.5"/><rect x="6.5" y="4.5" width="2.5" height="9" rx="1.25"/><rect x="9.6" y="3" width="2.5" height="10" rx="1.25"/><rect x="12.7" y="3.5" width="2.5" height="10" rx="1.25"/><rect x="15.8" y="5.5" width="2.3" height="8" rx="1.15"/><rect x="2.6" y="11.5" width="6" height="2.6" rx="1.3" transform="rotate(35 5.6 12.8)"/></svg></button>
+    <button type="button" data-key="Backspace" class="basic shield" aria-label="Parry: tap to the side, swipe up for overhead"><img class="ico" data-icon="shield" alt=""></button>
+    <button type="button" data-key="KeyH" class="basic strike" aria-label="Punch, or a low kick while crouched"><img class="ico fist" data-icon="fist" alt=""><img class="ico boot" data-icon="boot" alt=""></button>
+    <button type="button" data-key="KeyN" class="basic grab" aria-label="Grab: hold it, and press an arrow to throw"><img class="ico" data-icon="hand" alt=""></button>
+    <button type="button" data-key="Space" class="basic jump" aria-label="Jump"><img class="ico" data-icon="jump" alt=""></button>
   </div>
 </div>
 
@@ -1023,6 +1022,27 @@ import ReconnectingWebSocket from 'partysocket/ws';
   // it's drawn (with its outline) in every pass, its outline rewritten each frame while it grows to inhale
   const openaiFighterGeo = logoGeometry(OPENAI_PATH, 0.85, 8, 2);
   const claudeGeo = logoGeometry(CLAUDE_PATH, 0.9);
+  // the touch pad's icons, as SVG pieces on the same 24 x 24 box (each piece its own shape, so where they overlap
+  // none is read as a hole in another)
+  const rr = (x, y, w, h, r) => `M${x + r} ${y}h${w - 2 * r}a${r} ${r} 0 0 1 ${r} ${r}v${h - 2 * r}a${r} ${r} 0 0 1 ${-r} ${r}h${2 * r - w}a${r} ${r} 0 0 1 ${-r} ${-r}v${2 * r - h}a${r} ${r} 0 0 1 ${r} ${-r}z`;
+  const PAD_ICONS = {
+    left: ['M3 12L18 3.5V20.5Z'], right: ['M21 12L6 3.5V20.5Z'], down: ['M12 21L3.5 6H20.5Z'], jump: ['M12 3L20.5 18H3.5Z'],
+    dl: ['M4 20H20L4 4Z'], dr: ['M20 20H4L20 4Z'],
+    shield: ['M12 2.5l7.5 2.8v6c0 4.9-3.1 8.9-7.5 10.5-4.4-1.6-7.5-5.6-7.5-10.5v-6z'],
+    fist: [rr(3.5, 4.5, 9, 15.5, 3.6), rr(9, 4.5, 11, 3.9, 1.95), rr(9, 8.5, 11.8, 3.9, 1.95), rr(9, 12.5, 11.4, 3.9, 1.95), rr(9, 16.4, 10, 3.6, 1.8),
+      rr(4.5, 9, 10.5, 3.4, 1.7)],
+    boot: ['M7 2.5h6.5v9.8l6 2.6c1.1.5 1.9 1.5 1.9 2.7V21H7z'],
+    hand: [rr(7, 12, 11.5, 10, 3.6), rr(7, 3.5, 2.5, 11, 1.25), rr(10.1, 1.5, 2.5, 13, 1.25), rr(13.2, 2, 2.5, 12.5, 1.25), rr(16.2, 4, 2.3, 10.5, 1.15),
+      'M2.4 9.4l2-1.5 4.7 5.6-2 1.5z'],
+  };
+  function iconGeometry(ds, size) {
+    const geo = new THREE.ExtrudeGeometry(ds.flatMap(svgShapes), { depth: 3, bevelEnabled: true, bevelThickness: 0.4, bevelSize: 0.25, bevelSegments: 3, curveSegments: 12 });
+    geo.center();
+    const s = size / 24;
+    geo.scale(s, -s, -s);
+    geo.userData.flat = true;
+    return geo;
+  }
   const openaiMat = new THREE.MeshStandardMaterial({ color: GPT_GREEN, roughness: 0.4, metalness: 0.05 });
 
   // Claude's logo cut into its separate rays (between the outline's inner valleys),
@@ -3436,6 +3456,25 @@ import ReconnectingWebSocket from 'partysocket/ws';
   touchB.id = 'touchB'; touchB.classList.add('touch-b'); touchB.hidden = true;
   touchB.querySelectorAll('[id]').forEach(el => el.removeAttribute('id'));
   touchA.after(touchB);
+  // the pad's icons: little gray cutouts, extruded, outlined and lit like the logos, turned a little to show their
+  // depth. Drawn once into pictures (a WebGL canvas of their own for a moment, then let go)
+  function drawPadIcons() {
+    const N = 96, cv = document.createElement('canvas'), r3 = makeOverlayRenderer(cv);
+    r3.setPixelRatio(1); r3.setSize(N, N, false);
+    const cam = new THREE.OrthographicCamera(-0.6, 0.6, 0.6, -0.6, 0.1, 10); cam.position.z = 5;
+    const mat = new THREE.MeshStandardMaterial({ color: '#5f5f5c', roughness: 0.45, metalness: 0.05 });
+    const pics = {};
+    for (const [name, ds] of Object.entries(PAD_ICONS)) {
+      const sc = new THREE.Scene(); addLights(sc, 0.85, 0.75, [2, 3, 5]);
+      const geo = iconGeometry(ds, 0.92), m = inked(geo, mat, 0.05);
+      m.rotation.set(-0.4, 0.45, 0); sc.add(m);
+      r3.render(sc, cam); pics[name] = cv.toDataURL();
+      geo.dispose(); m.children[0].geometry.dispose();
+    }
+    mat.dispose(); r3.dispose(); r3.forceContextLoss();
+    document.querySelectorAll('.touch img[data-icon]').forEach(img => { img.src = pics[img.dataset.icon]; });
+  }
+  drawPadIcons();
   // with two players on one phone, each pad's buttons stand for its own player's keys: the button's action, in that
   // player's scheme (SCHEMES A and B). User B sees the arena turned round, so their right is the arena's left
   const PAD_ACTIONS = { ArrowLeft: 'left', ArrowRight: 'right', ArrowDown: 'down', Space: 'jump', KeyJ: 'a1', KeyK: 'a2', KeyL: 'a3', KeyI: 'a4', Backspace: 'parry', ParryUp: 'up', KeyH: 'strike', KeyN: 'grab' };
@@ -3443,9 +3482,39 @@ import ReconnectingWebSocket from 'partysocket/ws';
     const a = PAD_ACTIONS[key], turned = who === 'B' && { left: 'right', right: 'left' }[a];
     return SCHEMES[who][turned || a][0];
   };
-  document.querySelectorAll('.touch button').forEach(btn => {
+  const padCodes = (btn, mine) => btn.dataset.key.split(' ').map(k => mine === 'B' ? padKey('B', k) : player2 ? padKey('A', k) : k);
+  // the d-pad: a thumb presses the piece it lands on, and sliding onto another piece lets go of that one and presses
+  // the new one (across a gap between pieces, the last one stays pressed)
+  document.querySelectorAll('.touch .pad').forEach(pad => {
+    const mine = pad.closest('.touch-b') ? 'B' : 'A', held = new Map();
+    const release = id => { const h = held.get(id); if (!h) return; for (const c of h.codes) keys.delete(c); h.btn.classList.remove('on'); held.delete(id); };
+    const press = (id, btn, first) => {
+      if (held.get(id)?.btn === btn) return;
+      release(id);
+      const codes = padCodes(btn, mine);
+      for (const c of codes) { keys.add(c); pressed.add(c); }
+      if (first && codes.length === 1) noteTap(codes[0]);     // a double tap dashes; sliding across doesn't
+      btn.classList.add('on'); held.set(id, { btn, codes });
+    };
+    pad.addEventListener('pointerdown', e => {
+      e.preventDefault();
+      const btn = e.target.closest?.('.dir');
+      if (!btn) return;
+      pad.setPointerCapture?.(e.pointerId); press(e.pointerId, btn, true);
+    });
+    pad.addEventListener('pointermove', e => {
+      if (!held.has(e.pointerId)) return;
+      const btn = document.elementFromPoint(e.clientX, e.clientY)?.closest('.dir');
+      if (btn && pad.contains(btn)) press(e.pointerId, btn, false);
+    });
+    const up = e => { e.preventDefault(); release(e.pointerId); };
+    pad.addEventListener('pointerup', up);
+    pad.addEventListener('pointercancel', up);
+    pad.addEventListener('contextmenu', e => e.preventDefault());
+  });
+  document.querySelectorAll('.touch .acts button').forEach(btn => {
     const mine = btn.closest('.touch-b') ? 'B' : 'A';
-    const codesOf = () => btn.dataset.key.split(' ').map(k => mine === 'B' ? padKey('B', k) : player2 ? padKey('A', k) : k);
+    const codesOf = () => padCodes(btn, mine);
     let codes = [];
     let startY = null, upCode = null;
     const down = e => {

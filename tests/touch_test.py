@@ -1,5 +1,6 @@
-# The touch pad on a phone held upright, with real fingers (DevTools touch events): the black triangle on the d-pad
-# jumps; the d-pad's bottom corners crouch and walk that way; the shield parries to the side when tapped and overhead when swiped up from; the punch button shows a boot
+# The touch pad on a phone held upright, with real fingers (DevTools touch events): nothing of it shows over the menu
+# while the page loads; the icons are drawn (little 3D cutouts); the ▲ at the bottom right jumps; the d-pad's bottom
+# corners crouch and walk that way, and a thumb sliding across the d-pad presses whichever piece it's on; the shield parries to the side when tapped and overhead when swiped up from; the punch button shows a boot
 # while crouched (it kicks); the hand grabs. Then the layout: every button on screen, each piece of the d-pad taking the finger at its own centre,
 # the rest not overlapping, in two rows of
 # actions (the fighter's moves, then the shield, punch and grab).
@@ -19,17 +20,24 @@ async def main():
         ctx = await b.new_context(viewport={"width": 390, "height": 844}, device_scale_factor=2, is_mobile=True, has_touch=True)
         pg = await ctx.new_page(); errs = []; pg.on("pageerror", lambda e: errs.append(str(e))); pg.set_default_timeout(180000)
         cdp = await ctx.new_cdp_session(pg)
-        await pg.goto(B + "?dev=touch", wait_until="domcontentloaded", timeout=300000); await pg.wait_for_timeout(1500)
+        await pg.goto(B + "?dev=touch", wait_until="commit", timeout=300000)
+        await pg.wait_for_selector("#touch", state="attached")
+        early = await pg.evaluate("getComputedStyle(document.getElementById('touch')).display")
+        await pg.wait_for_load_state("domcontentloaded"); await pg.wait_for_timeout(1500)
+        check("the pad doesn't show over the menu while the page loads", early == "none", early)
         await pg.click('.mode[data-mode="training"]'); await pg.click("#pickBtn")
         await pg.wait_for_function("window.__bb && window.__bb().length > 1"); await frames(pg, 40)
 
-        # the jump: a black triangle pointing up, on the d-pad
-        jump = await pg.evaluate("(() => { const b = document.querySelector('#touch button[data-key=\"Space\"]'), pts = [...b.querySelector('.g polygon').points];"
-                                 " return [pts.length === 3 && pts.filter(q => q.y < 0).length === 1 && getComputedStyle(b.querySelector('.g')).fill, !!b.closest('.pad')]; })()")
+        icons = await pg.evaluate("[...document.querySelectorAll('#touch img[data-icon]')].filter(i => !(i.src.startsWith('data:image/png') && i.naturalWidth > 0)).map(i => i.dataset.icon)")
+        check("every icon is drawn", not icons, icons)
+        # the jump: ▲, the last of the actions' bottom row
+        jump = await pg.evaluate("(() => { const b = document.querySelector('#touch button[data-key=\"Space\"]'), r = b.getBoundingClientRect();"
+                                 " const others = [...document.querySelectorAll('#touch .acts button:not([hidden])')].map(o => o.getBoundingClientRect());"
+                                 " return [b.querySelector('img').dataset.icon, others.every(o => o.right <= r.right + 1 && o.bottom <= r.bottom + 1)]; })()")
         x, y = await centre(pg, "Space")
         await touch(cdp, "touchStart", x, y); await frames(pg, 3); await touch(cdp, "touchEnd", 0, 0)
         await frames(pg, 6); f = await bb(pg)
-        check("the jump button is a black triangle pointing up, on the d-pad, and it jumps", jump == ["rgb(20, 20, 20)", True] and f[0]["y"] > 0.3, (jump, round(f[0]["y"], 2)))
+        check("the jump button (▲) is at the bottom right, and it jumps", jump == ["jump", True] and f[0]["y"] > 0.3, (jump, round(f[0]["y"], 2)))
         await frames(pg, 60)
 
         # the d-pad's bottom corners: crouch and walk that way
@@ -40,6 +48,21 @@ async def main():
             side = 'left' if way < 0 else 'right'
             check(f"the bottom {side} piece crouches and walks {side}", f[0]["crouch"] and (f[0]["x"] - x0) * way > 0.3, (f[0]["crouch"], round(f[0]["x"] - x0, 2)))
             await frames(pg, 20)
+
+        # sliding: from ◀ across to ▶ walks left then right, then down onto the bottom right corner crouches
+        await pg.evaluate("window.__bbPlace(0, 0, 1)"); await frames(pg, 10)
+        lx, ly = await centre(pg, "ArrowLeft"); rx, ry = await centre(pg, "ArrowRight"); cx, cy = await centre(pg, "ArrowDown ArrowRight")
+        x0 = (await bb(pg))[0]["x"]
+        await touch(cdp, "touchStart", lx, ly); await frames(pg, 20); xl = (await bb(pg))[0]["x"]
+        for k in range(1, 9): await touch(cdp, "touchMove", lx + (rx - lx) * k / 8, ly + (ry - ly) * k / 8)
+        await frames(pg, 30); xr = (await bb(pg))[0]["x"]
+        await touch(cdp, "touchMove", cx, cy); await frames(pg, 20); f = await bb(pg)
+        on = await pg.evaluate("[...document.querySelectorAll('#touch .pad .on')].map(b => b.dataset.key)")
+        await touch(cdp, "touchEnd", 0, 0); await frames(pg, 6)
+        left = await pg.evaluate("document.querySelectorAll('#touch .pad .on').length")
+        check("one thumb sliding across the d-pad: walks left, then right, then crouch-walks, and lets go at the end",
+              xl < x0 - 0.2 and xr > xl + 0.2 and f[0]["crouch"] and on == ["ArrowDown ArrowRight"] and left == 0, (round(xl - x0, 2), round(xr - xl, 2), f[0]["crouch"], on, left))
+        await frames(pg, 20)
 
         # the shield: a tap parries to the side, a swipe up parries overhead
         x, y = await centre(pg, "Backspace")
@@ -84,7 +107,7 @@ async def main():
           return { n: bs.length, over, off, missed, pieces: pad.length, moves: tops(true), basics: tops(false) };
         })()""")
         check("every button on screen, each d-pad piece taking its own centre, none overlapping, in two rows: the fighter's moves above the shield, punch and grab",
-              lay["over"] == 0 and lay["off"] == 0 and not lay["missed"] and lay["pieces"] == 6 and len(lay["moves"]) == 1 and len(lay["basics"]) == 1 and lay["moves"][0] < lay["basics"][0], lay)
+              lay["over"] == 0 and lay["off"] == 0 and not lay["missed"] and lay["pieces"] == 5 and len(lay["moves"]) == 1 and len(lay["basics"]) == 1 and lay["moves"][0] < lay["basics"][0], lay)
         check("no page errors", not errs, errs[:3])
         await b.close()
     summary()

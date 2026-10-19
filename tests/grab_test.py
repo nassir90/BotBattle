@@ -126,8 +126,12 @@ async def main():
         # grabbed in the middle of Claude's double jump (its rotor lifts it for a moment), then dropped: it falls and
         # gets up, rather than the leftover lift floating the limp body up, head down, for seconds
         await pg.evaluate("window.__bbPlace(0, -2, 1); window.__bbPlace(1, -0.85, -1)"); await frames(pg, 20)
-        await kb.press("ArrowUp"); await frames(pg, 8); await kb.press("ArrowUp"); await frames(pg, 2)
-        await kb.down("KeyE"); await frames(pg, 10); held = (await bb(pg))[1]["held"]
+        # (the double jump as soon as it's off the ground, and the grab with it: the rotor carries it out of reach fast)
+        await kb.press("ArrowUp")
+        for _ in range(20):
+            await frames(pg, 1)
+            if (await bb(pg))[1]["y"] > 0.2: break
+        await kb.press("ArrowUp"); await kb.down("KeyE"); await frames(pg, 10); held = (await bb(pg))[1]["held"]
         await pg.evaluate("window.__bbTrack(1, true)"); await kb.up("KeyE"); await frames(pg, 150)
         rows = await pg.evaluate("window.__bbTrack(1, false)")
         rise = max(r["y"] for r in rows) - rows[0]["y"]
