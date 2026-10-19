@@ -616,6 +616,22 @@ const config = {
         [5.0, page => page.js(() => { const A = window.__app; A.place('claude', 7.7, 1); A.place('so', 9.95, -1); A.place('gpt', 4.5, 1); })],
         [5.9, page => page.press('KeyK')],
       ] },
+
+    // Grab and throw: Stack Overflow grabs a Claude dummy (N held), throws it forward (swung round behind in depth,
+    // then across), walks up again, grabs it and throws it backward over its head
+    grab: { seconds: 9,
+      setup: () => window.__app.stage('so', [['so', -2.2, 1], ['claude', -0.9, -1], ['gpt', 6, -1]]),
+      script: [
+        [0.8, page => page.down('KeyN')],
+        [1.6, page => page.down('KeyD')],
+        [1.75, page => page.up('KeyD')],
+        [2.6, page => page.up('KeyN')],
+        [4.6, page => page.js(() => { window.__app.place('so', -2.2, 1); window.__app.place('claude', -0.9, -1); })],
+        [5.2, page => page.down('KeyN')],
+        [6.0, page => page.down('KeyA')],
+        [6.15, page => page.up('KeyA')],
+        [7.0, page => page.up('KeyN')],
+      ] },
   },
 };
 
