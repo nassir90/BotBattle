@@ -15,3 +15,6 @@ dist/
 promo/clips/
 # the page's feature tiles and logos: scripts/features.mjs and scripts/logos.py make them from the sq_ takes
 public/games/botbattle/features/
+
+# the pad tuner's last submission (tools/padtune): read once, put into PAD_SIZES
+tools/padtune/submitted.json

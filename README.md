@@ -128,7 +128,7 @@ With User B in a Play match, the keyboard is split between the two:
 
 Each user's moves are listed along the bottom with their own keys: User A's on the left, User B's on the right, in smaller chips, with the Menu button between them at the bottom so nothing crowds the plates. Measured at 1024×768, 1280×720, 1440×900 and 1920×1080 with two and four seats, no two of them overlap or come within 6px (before, up to 17 pairs did).
 
-On phones and tablets, the same controls appear as on-screen buttons, held upright or on its side. A d-pad has tall ◀ ▶ to move (double-tap to dash) either side of a full-height ▼ to crouch, with a corner piece under each that crouches and walks that way; a thumb can slide across it, and whichever piece it's on is pressed. Beside it are two rows: the fighter's own moves, by name, along the top, and four icons everyone has underneath, little gray 3D cutouts made like the fighters' logos. ▲ at the bottom right jumps. The shield parries to the side when you tap it and overhead when you swipe up from it. The fist punches, and turns into a boot (a low kick) while you're crouched. The hand grabs: hold it, and press an arrow to throw. Each fighter shows as its logo square with a thin health bar under it and an `x3` lives badge on its corner; held upright, the camera uses a wider lens so the whole fight fits across the screen.
+On phones and tablets, the same controls appear as on-screen buttons, held upright or on its side. A d-pad has tall ◀ ▶ to move (double-tap to dash) either side of a full-height ▼ to crouch, with a corner piece under each that crouches and walks that way; a thumb can slide across it, and whichever piece it's on is pressed. Beside it are two rows: the fighter's own moves, by name, along the top, and four icons everyone has underneath, little gray 3D cutouts made like the fighters' logos. ▲ at the bottom right jumps. Their sizes live in `PAD_SIZES`, one set for each way of holding the phone (upright, on its side, and each shared across a table). They're chosen with [`tools/padtune`](tools/padtune): see Tuning the touch pad below. The shield parries to the side when you tap it and overhead when you swipe up from it. The fist punches, and turns into a boot (a low kick) while you're crouched. The hand grabs: hold it, and press an arrow to throw. Each fighter shows as its logo square with a thin health bar under it and an `x3` lives badge on its corner; held upright, the camera uses a wider lens so the whole fight fits across the screen.
 
 | Upright | On its side |
 |---|---|
@@ -293,6 +293,14 @@ Each match ends with a benchmark-style table, laid out like the ones in AI model
   | Menu | 4.6 ms | 2.8 ms |
   | Four-CPU match | 5.9 ms | 3.2 ms |
   | Split phone | 3.0 ms | 2.6 ms |
+
+## Tuning the touch pad
+
+```bash
+npm run padtune
+```
+
+builds the page and serves [`tools/padtune`](tools/padtune) at http://localhost:5181: the real game in four phone-sized frames (upright, on its side, and each shared across a table), its touch-screen styles turned on so a laptop's mouse can press the buttons, with handles on the controls themselves: drag the d-pad's corner to size it, the middle column's edge, the gap between pieces, the two ends of the diagonal cut, an arrow's or an icon's corner, an action button's corner and the gap between two of them, or the pad's bottom left corner to move everything in from the screen's edges. Every frame changes as you drag, and the buttons still press between the handles. **Submit to Claude** writes all four sets to `tools/padtune/submitted.json` (not in git), and they go into `PAD_SIZES` in the game.
 
 ## Run and deploy
 

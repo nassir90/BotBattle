@@ -1,0 +1,257 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Pad Tuner</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500;600&display=swap" rel="stylesheet">
+<style>
+:root { --paper: #fbfaf7; --ink: #141414; --soft: #6b6862; --line: #d9d5cc; --mono: 'IBM Plex Mono', ui-monospace, Menlo, monospace; }
+* { box-sizing: border-box; }
+html, body { height: 100%; }
+body { margin: 0; background: #efece5; color: var(--ink); font: 13px/1.4 var(--mono); }
+.app { display: grid; grid-template-columns: 330px 1fr; height: 100%; }
+aside { background: var(--paper); border-right: 2px solid var(--ink); padding: 18px 18px 16px; display: flex; flex-direction: column; gap: 14px; overflow: auto; }
+h1 { margin: 0; font-size: 16px; font-weight: 600; letter-spacing: 0.02em; }
+.sub { margin: 0; color: var(--soft); font-size: 12px; }
+.tabs { display: grid; grid-template-columns: 1fr 1fr; gap: 6px; }
+button { font: 600 11px/1 var(--mono); text-transform: uppercase; letter-spacing: 0.04em; background: var(--paper); color: var(--ink);
+  border: 2px solid var(--ink); box-shadow: 3px 3px 0 var(--ink); padding: 9px 10px; cursor: pointer; }
+button:active { transform: translate(2px, 2px); box-shadow: 1px 1px 0 var(--ink); }
+button[aria-pressed="true"] { background: var(--ink); color: var(--paper); }
+.vals { display: grid; grid-template-columns: 1fr auto; gap: 5px 12px; margin: 0; font-size: 12px; }
+.vals dt { color: var(--soft); }
+.vals dd { margin: 0; text-align: right; font-variant-numeric: tabular-nums; }
+.vals .hot { color: var(--ink); font-weight: 600; }
+.overlay { position: absolute; inset: 0; pointer-events: none; }
+.box { position: absolute; border: 1.5px dashed rgba(20, 20, 20, 0.55); }
+.h { position: absolute; width: 14px; height: 14px; margin: -7px 0 0 -7px; border-radius: 50%; background: #e8542f; border: 2px solid var(--paper);
+  box-shadow: 0 0 0 1.5px var(--ink); pointer-events: auto; touch-action: none; }
+.h.ew { cursor: ew-resize; } .h.ns { cursor: ns-resize; } .h.nesw { cursor: nesw-resize; } .h.nwse { cursor: nwse-resize; } .h.move { cursor: move; border-radius: 3px; }
+.h:hover, .h.drag { background: var(--ink); }
+.tip { position: absolute; transform: translate(12px, -130%); background: var(--ink); color: var(--paper); font-size: 11px; padding: 3px 6px; white-space: nowrap; pointer-events: none; }
+.foot { display: grid; gap: 8px; margin-top: auto; }
+.row { display: flex; gap: 8px; }
+.row button { flex: 1; }
+#submit { background: var(--ink); color: var(--paper); padding: 12px; font-size: 12px; }
+#status { min-height: 1.4em; font-size: 12px; color: var(--soft); }
+main { overflow: auto; padding: 22px; }
+.zoom { display: flex; align-items: center; gap: 10px; margin-bottom: 16px; color: var(--soft); font-size: 12px; }
+.zoom input { width: 160px; accent-color: var(--ink); }
+.frames { display: flex; flex-wrap: wrap; gap: 22px; align-items: flex-start; }
+figure { margin: 0; display: grid; gap: 6px; cursor: pointer; }
+figcaption { font-size: 12px; color: var(--soft); }
+figure.on figcaption { color: var(--ink); font-weight: 600; }
+.phone { position: relative; overflow: hidden; border: 2px solid var(--ink); border-radius: 18px; background: var(--paper); box-shadow: 4px 4px 0 var(--ink); }
+figure.on .phone { outline: 3px solid var(--ink); outline-offset: 4px; }
+.phone iframe { position: absolute; left: 0; top: 0; border: 0; transform-origin: 0 0; }
+</style>
+</head>
+<body>
+<div class="app">
+  <aside>
+    <div>
+      <h1>Touch pad sizes</h1>
+      <p class="sub">The real game, as a phone sees it. Drag the orange handles on the controls to resize them (hover one to see what it sets); click the buttons themselves to try them. Each way of holding the phone has its own sizes.</p>
+    </div>
+    <div class="tabs" id="tabs"></div>
+    <dl class="vals" id="vals"></dl>
+    <div class="foot">
+      <div class="row"><button type="button" id="reset">Reset this one</button><button type="button" id="resetAll">Reset all</button></div>
+      <button type="button" id="submit">Submit to Claude</button>
+      <div id="status" role="status"></div>
+    </div>
+  </aside>
+  <main>
+    <div class="zoom"><span>Zoom</span><input type="range" id="zoom" min="0.35" max="1.5" step="0.01" value="0.9"><output id="zoomOut"></output></div>
+    <div class="frames" id="frames"></div>
+  </main>
+</div>
+<script>
+// the four ways of holding the phone, as the game names them (PAD_SIZES), and the phone each is shown on
+const LAYOUTS = [
+  { key: 'upright', name: 'Upright', w: 390, h: 844, split: false },
+  { key: 'split', name: 'Shared, upright', w: 390, h: 844, split: true },
+  { key: 'side', name: 'On its side', w: 844, h: 390, split: false },
+  { key: 'splitSide', name: 'Shared, on its side', w: 844, h: 390, split: true },
+];
+// [setting, label, min, max, unit]
+const KNOBS = [
+  ['padW', 'D-pad width', 70, 300, 'px'], ['padH', 'D-pad height', 60, 300, 'px'],
+  ['mid', 'Middle (▼) width', 10, 60, '%'], ['gap', 'Gap between pieces', 0, 12, '%'],
+  ['cut', 'Where ◀ ▶ end', 25, 85, '%'], ['drop', 'Slope of their cut', 0, 35, '%'],
+  ['arrow', 'Arrow size', 10, 64, 'px'], ['act', 'Action button size', 28, 90, 'px'],
+  ['actGap', 'Gap between actions', 0, 24, 'px'], ['icon', 'Icon size', 10, 72, 'px'],
+  ['edge', 'Distance from the edges', 4, 90, 'px'],
+];
+const KNOB = Object.fromEntries(KNOBS.map(k => [k[0], k]));
+const $ = id => document.getElementById(id);
+let current = 'upright', defaults = null, sizes = null, hot = null;
+const frames = [];
+
+// which frame's values the list shows (the last one touched, or picked from the tabs)
+$('tabs').innerHTML = LAYOUTS.map(l => `<button type="button" data-key="${l.key}">${l.name}</button>`).join('');
+function select(key) {
+  current = key;
+  document.querySelectorAll('#tabs button').forEach(b => b.setAttribute('aria-pressed', b.dataset.key === key));
+  frames.forEach(f => f.fig.classList.toggle('on', f.l.key === key));
+  showVals();
+}
+function showVals() {
+  if (!sizes) return;
+  $('vals').innerHTML = KNOBS.map(([k, label, , , unit]) => `<dt class="${k === hot ? 'hot' : ''}">${label}</dt><dd class="${k === hot ? 'hot' : ''}">${Math.round(sizes[current][k])}${unit}</dd>`).join('');
+}
+$('tabs').addEventListener('click', e => { const b = e.target.closest('button'); if (b) select(b.dataset.key); });
+// every frame has every layout's sizes (each shows the one for how it's held)
+const push = (key, z) => frames.forEach(f => f.ready && f.win().__bbPadSizes(key, z));
+function set(key, k, v) {
+  const [, , lo, hi] = KNOB[k];
+  sizes[key][k] = Math.round(Math.min(hi, Math.max(lo, v)));
+  push(key, { [k]: sizes[key][k] });
+}
+$('reset').addEventListener('click', () => { sizes[current] = { ...defaults[current] }; push(current, sizes[current]); showVals(); });
+$('resetAll').addEventListener('click', () => { for (const l of LAYOUTS) { sizes[l.key] = { ...defaults[l.key] }; push(l.key, sizes[l.key]); } showVals(); });
+$('submit').addEventListener('click', async () => {
+  if (!sizes) return;
+  $('status').textContent = 'Sending…';
+  try {
+    const r = await fetch('/submit', { method: 'POST', body: JSON.stringify(sizes) });
+    if (!r.ok) throw new Error(await r.text());
+    $('status').textContent = `Submitted at ${new Date().toLocaleTimeString()}. Claude reads it from tools/padtune/submitted.json.`;
+  } catch (err) { $('status').textContent = 'Not sent: ' + err.message; }
+});
+
+// ---------- handles: each sits on a part of the controls and sets one size as it's dragged ----------
+// where: the handle's spot in the phone (CSS px) from the controls' boxes; set: the new value from the drag
+// (dx, dy in phone px since the drag began, z0 the sizes then). The pad is pinned bottom left and the
+// actions bottom right, so a corner that moves with the size is the one away from the pin.
+const HANDLES = [
+  { k: 'padW', also: 'padH', tip: 'D-pad size', cls: 'nesw', where: b => [b.pad.right, b.pad.top],
+    set: (key, z0, dx, dy) => { set(key, 'padW', z0.padW + dx); set(key, 'padH', z0.padH - dy); } },
+  { k: 'edge', tip: 'Distance from the edges', cls: 'move', where: b => [b.pad.left, b.pad.bottom],
+    set: (key, z0, dx, dy) => set(key, 'edge', z0.edge + (Math.abs(dx) > Math.abs(dy) ? dx : -dy)) },
+  { k: 'mid', tip: 'Middle (▼) width', cls: 'ew', where: b => [b.down.right, b.down.top + b.down.height * 0.5],
+    set: (key, z0, dx) => set(key, 'mid', z0.mid + 2 * dx / z0.padW * 100) },
+  { k: 'gap', tip: 'Gap between pieces', cls: 'ew', where: b => [b.left.right, b.left.top + b.left.height * 0.2],
+    set: (key, z0, dx) => set(key, 'gap', z0.gap - dx / z0.padW * 100) },
+  { k: 'cut', tip: 'Where ◀ ▶ end', cls: 'ns', where: b => [b.left.right, b.pad.top + b.pad.height * b.z.cut / 100],
+    set: (key, z0, dx, dy) => set(key, 'cut', z0.cut + dy / z0.padH * 100) },
+  { k: 'drop', tip: 'Slope of their cut', cls: 'ns', where: b => [b.left.left, b.pad.top + b.pad.height * (b.z.cut + b.z.drop) / 100],
+    set: (key, z0, dx, dy) => set(key, 'drop', z0.drop + dy / z0.padH * 100) },
+  { k: 'arrow', tip: 'Arrow size', cls: 'nwse', where: b => [b.arrow.right, b.arrow.bottom],
+    set: (key, z0, dx, dy) => set(key, 'arrow', z0.arrow + dx + dy) },
+  { k: 'act', tip: 'Action button size', cls: 'nwse', where: b => [b.act.left, b.act.top],
+    set: (key, z0, dx, dy) => set(key, 'act', z0.act + (Math.abs(dx / 4) > Math.abs(dy / 2) ? -dx / 4 : -dy / 2)) },
+  { k: 'actGap', tip: 'Gap between actions', cls: 'ew', where: b => [(b.act.right + b.act2.left) / 2, b.act.top + b.act.height / 2],
+    set: (key, z0, dx) => set(key, 'actGap', z0.actGap - dx / 2.5) },
+  { k: 'icon', tip: 'Icon size', cls: 'nwse', where: b => [b.icon.right, b.icon.bottom],
+    set: (key, z0, dx, dy) => set(key, 'icon', z0.icon + dx + dy) },
+];
+// the controls' boxes in one frame, in phone px (User A's pad: in a shared frame User B's mirrors it)
+function boxes(f) {
+  const d = f.win().document, r = sel => d.querySelector(sel)?.getBoundingClientRect();
+  const b = { z: sizes[f.l.key], pad: r('#touch .pad'), acts: r('#touch .acts'), left: r('#touch .pad .left'), down: r('#touch .pad .down'),
+    arrow: r('#touch .pad .left .g'), act: r('#touch .acts button[data-slot="a1"]'), act2: r('#touch .acts button[data-slot="a2"]'), icon: r('#touch .acts .shield .ico') };
+  return Object.values(b).every(Boolean) ? b : null;
+}
+function addOverlay(f) {
+  const ov = document.createElement('div'); ov.className = 'overlay';
+  const padBox = document.createElement('div'), actsBox = document.createElement('div');
+  padBox.className = actsBox.className = 'box';
+  const tip = document.createElement('div'); tip.className = 'tip'; tip.hidden = true;
+  ov.append(padBox, actsBox, tip);
+  const hs = HANDLES.map(h => {
+    const el = document.createElement('div');
+    el.className = 'h ' + h.cls; el.title = h.tip;
+    el.addEventListener('pointerdown', e => {
+      if (!f.ready || !sizes) return;
+      e.preventDefault(); el.setPointerCapture(e.pointerId); el.classList.add('drag');
+      const x0 = e.clientX, y0 = e.clientY, z0 = { ...sizes[f.l.key] };
+      select(f.l.key); hot = h.k; showVals();
+      const move = ev => {
+        h.set(f.l.key, z0, (ev.clientX - x0) / zoom(), (ev.clientY - y0) / zoom());
+        tip.hidden = false; tip.textContent = `${h.tip}: ${h.also ? `${sizes[f.l.key][h.k]} × ${sizes[f.l.key][h.also]}px` : sizes[f.l.key][h.k] + KNOB[h.k][4]}`;
+        showVals();
+      };
+      const up = () => { el.classList.remove('drag'); tip.hidden = true; hot = null; showVals(); el.removeEventListener('pointermove', move); el.removeEventListener('pointerup', up); el.removeEventListener('pointercancel', up); };
+      el.addEventListener('pointermove', move); el.addEventListener('pointerup', up); el.addEventListener('pointercancel', up);
+    });
+    ov.append(el);
+    return { h, el };
+  });
+  f.box.append(ov);
+  // follow the controls every frame (they move as sizes change)
+  const place = (el, x, y) => { el.style.left = x * zoom() + 'px'; el.style.top = y * zoom() + 'px'; };
+  const frame = () => {
+    const b = f.ready && sizes && boxes(f);
+    ov.hidden = !b;
+    if (b) {
+      for (const [el, r] of [[padBox, b.pad], [actsBox, b.acts]]) {
+        place(el, r.left, r.top); el.style.width = r.width * zoom() + 'px'; el.style.height = r.height * zoom() + 'px';
+      }
+      for (const { h, el } of hs) { const [x, y] = h.where(b); place(el, x, y); if (el.classList.contains('drag')) place(tip, x, y); }
+    }
+    requestAnimationFrame(frame);
+  };
+  frame();
+}
+
+// ---------- the frames: the built game, with its dev hooks (?dev), each started into a match ----------
+const zoom = () => +$('zoom').value;
+function layoutFrames() {
+  $('zoomOut').textContent = Math.round(zoom() * 100) + '%';
+  for (const f of frames) {
+    f.box.style.width = f.l.w * zoom() + 'px'; f.box.style.height = f.l.h * zoom() + 'px';
+    f.ifr.style.transform = `scale(${zoom()})`;
+  }
+}
+$('zoom').addEventListener('input', layoutFrames);
+const until = async (test, ms = 30000) => { const t0 = performance.now(); while (!test()) { if (performance.now() - t0 > ms) throw new Error('timed out'); await new Promise(r => setTimeout(r, 100)); } };
+async function start(f) {
+  const win = f.win(), doc = win.document;
+  await until(() => doc.querySelector('.mode[data-mode="training"]') && win.__bbPadSizes);
+  await new Promise(r => setTimeout(r, 300));
+  if (f.l.split) {
+    // two players on one phone: a duel through Play, User A and User B each on their own pad
+    doc.querySelector('.mode[data-mode="play"]').click();
+    await until(() => doc.getElementById('fightBtn')); doc.getElementById('fightBtn').click();
+    await until(() => win.__bb && win.__bb().length === 2);
+    win.dispatchEvent(new KeyboardEvent('keydown', { code: 'Enter', key: 'Enter' }));
+  } else {
+    doc.querySelector('.mode[data-mode="training"]').click();
+    await until(() => doc.getElementById('pickBtn')); doc.getElementById('pickBtn').click();
+  }
+  await until(() => win.__bb && win.__bb().length > 1);
+  if (!defaults) {
+    defaults = JSON.parse(JSON.stringify(win.__bbPadSizes()));
+    const last = await fetch('/submitted.json').then(r => r.json()).catch(() => null);
+    sizes = JSON.parse(JSON.stringify(defaults));
+    if (last) { for (const l of LAYOUTS) Object.assign(sizes[l.key], last[l.key]); $('status').textContent = 'Loaded your last submission.'; }
+    showVals();
+  }
+  for (const l of LAYOUTS) win.__bbPadSizes(l.key, sizes[l.key]);
+  f.ready = true;
+}
+// Play seats User A and User B (the split frames); the frames share this page's storage
+try { localStorage.setItem('botbattle.seats', JSON.stringify([{ kind: 'so', ctrl: 'A' }, { kind: 'claude', ctrl: 'B' }])); } catch {}
+for (const l of LAYOUTS) {
+  const fig = document.createElement('figure'), box = document.createElement('div'), ifr = document.createElement('iframe');
+  box.className = 'phone';
+  ifr.width = l.w; ifr.height = l.h; ifr.src = '/games/botbattle/?dev=padtune';
+  ifr.title = `Bot Battle, ${l.name}`;
+  box.append(ifr);
+  const cap = document.createElement('figcaption'); cap.textContent = `${l.name} · ${l.w} × ${l.h}`;
+  fig.append(cap, box);
+  const f = { l, fig, box, ifr, ready: false, win: () => ifr.contentWindow };
+  cap.addEventListener('click', () => select(l.key));
+  ifr.addEventListener('load', () => start(f).catch(err => { cap.textContent = `${l.name}: didn't start (${err.message})`; }));
+  frames.push(f);
+  $('frames').append(fig);
+  addOverlay(f);
+}
+layoutFrames();
+select('upright');
+</script>
+</body>
+</html>

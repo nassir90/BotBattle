@@ -264,36 +264,32 @@ body.two-players .corner { left: 50%; right: auto; transform: translateX(-50%); 
   .corner { right: max(calc(env(safe-area-inset-right, 0px) + 12px), 20px); bottom: auto; top: max(calc(env(safe-area-inset-top, 0px) + 10px), 20px); }
   .corner button { padding: 7px 10px; font-size: 11px; }
   .topstack { top: calc(env(safe-area-inset-top, 0px) + 92px); }
+  /* every size here comes from the variables the code sets for the way the phone is held (PAD_SIZES) */
   .touch {
-    position: fixed; left: max(calc(env(safe-area-inset-left, 0px) + 12px), 20px); right: max(calc(env(safe-area-inset-right, 0px) + 12px), 20px);
-    bottom: max(calc(env(safe-area-inset-bottom, 0px) + 12px), 20px);
+    position: fixed; left: max(calc(env(safe-area-inset-left, 0px) + 12px), var(--edge, 20px)); right: max(calc(env(safe-area-inset-right, 0px) + 12px), var(--edge, 20px));
+    bottom: max(calc(env(safe-area-inset-bottom, 0px) + 12px), var(--edge, 20px));
     display: flex; justify-content: space-between; align-items: flex-end; gap: 10px; pointer-events: none;
   }
   /* the d-pad: ◀ and ▶ tall either side of a full-height ▼, and a crouch-walk under each, cut along the tall
      buttons' diagonals. Each piece is drawn (and touched) as its own shape: the button is only a box round it, and
      only the shape takes a finger. A thumb sliding across the pad presses whichever piece it's on */
-  .pad { position: relative; width: 138px; height: 150px; pointer-events: auto; touch-action: none; }
+  .pad { position: relative; width: var(--pad-w, 138px); height: var(--pad-h, 150px); flex-shrink: 0; pointer-events: auto; touch-action: none; }   /* (the size it's given, always) */
   .touch .pad .dir { position: absolute; padding: 0; border: 0; background: none; box-shadow: none; overflow: visible; pointer-events: none; transform: none; }
   .pad .dir .shape { position: absolute; pointer-events: none; }
   .pad .dir .shape { inset: 0; width: 100%; height: 100%; overflow: visible; filter: drop-shadow(3px 3px 0 var(--ink)); }
   .pad .dir .face { fill: var(--paper); stroke: var(--ink); stroke-width: 2px; stroke-linejoin: round; vector-effect: non-scaling-stroke; pointer-events: all; }
-  .pad .dir .g { position: absolute; width: 30px; height: 30px; left: var(--gx); top: var(--gy); transform: translate(-50%, -50%); pointer-events: none; }
+  .pad .dir .g { position: absolute; width: var(--arrow, 30px); height: var(--arrow, 30px); left: var(--gx); top: var(--gy); transform: translate(-50%, -50%); pointer-events: none; }
   .pad .dir.on .shape, .pad .dir.on .g { translate: 2px 2px; }
   .pad .dir.on .shape { filter: none; }
-  .pad .left { left: 1%; top: 3%; width: 30%; height: 71%; --gx: 50%; --gy: 45%; }
-  .pad .down { left: 35%; top: 3%; width: 30%; height: 94%; --gx: 50%; --gy: 50%; }
-  .pad .right { left: 69%; top: 3%; width: 30%; height: 71%; --gx: 50%; --gy: 45%; }
-  .pad .dl { left: 1%; top: 65%; width: 30%; height: 32%; --gx: 50%; --gy: 67%; }
-  .pad .dr { left: 69%; top: 65%; width: 30%; height: 32%; --gx: 50%; --gy: 67%; }
-  .acts { display: grid; grid-template-columns: repeat(4, 46px); gap: 6px; pointer-events: auto; }
+  .acts { display: grid; grid-template-columns: repeat(4, var(--act, 46px)); gap: var(--act-gap, 6px); pointer-events: auto; }
   .acts button[data-slot] { grid-row: 1; }          /* the fighter's own moves along the top row */
   .acts .basic { grid-row: 2; }                     /* the shield, punch and grab everyone has, underneath */
   .touch button {
     touch-action: none; width: 56px; height: 56px; padding: 4px; font-size: 10px; line-height: 1.1;
     text-transform: none; letter-spacing: 0; position: relative; overflow: hidden;
   }
-  .acts button { width: 46px; height: 46px; font-size: 9.5px; }
-  .touch .basic .ico { width: 34px; height: 34px; display: block; margin: auto; pointer-events: none; }
+  .acts button { width: var(--act, 46px); height: var(--act, 46px); font-size: 9.5px; }
+  .touch .basic .ico { width: var(--icon, 34px); height: var(--icon, 34px); display: block; margin: auto; pointer-events: none; }
   .touch .ico:not([src]) { visibility: hidden; }
   .touch .strike .boot, .touch .strike.kick .fist { display: none; }
   .touch .strike.kick .boot { display: block; }
@@ -305,11 +301,8 @@ body.two-players .corner { left: 50%; right: auto; transform: translateX(-50%); 
      own ends, and the menu button sits at the middle's edge */
   body.split .hud { top: calc(50% + 14px); }
   body.split .hud-b { top: auto; bottom: calc(50% + 14px); transform: rotate(180deg); }
-  body.split .touch-b { top: max(calc(env(safe-area-inset-top, 0px) + 12px), 20px); bottom: auto; transform: rotate(180deg); }
-  body.split .touch button { width: 44px; height: 44px; font-size: 9px; padding: 3px; }
-  body.split .touch .basic .ico { width: 30px; height: 30px; }
-  body.split .pad { width: 120px; height: 136px; }
-  body.split .acts { grid-template-columns: repeat(4, 44px); gap: 6px; }
+  body.split .touch-b { top: max(calc(env(safe-area-inset-top, 0px) + 12px), var(--edge, 20px)); bottom: auto; transform: rotate(180deg); }
+  body.split .touch button { font-size: 9px; padding: 3px; }
   @media (orientation: landscape) {      /* on its side the halves are short: the plates go to the outer edges, between the pads */
     body.split .hud { top: auto; bottom: max(env(safe-area-inset-bottom, 0px), 6px); }
     body.split .hud-b { bottom: auto; top: max(env(safe-area-inset-top, 0px), 6px); }
@@ -321,10 +314,6 @@ body.two-players .corner { left: 50%; right: auto; transform: translateX(-50%); 
   .hud { top: calc(env(safe-area-inset-top, 0px) + 6px); }
   .plate { --sq: 42px; }
   .topstack { top: calc(env(safe-area-inset-top, 0px) + 72px); }
-  .acts { grid-template-columns: repeat(4, 50px); gap: 6px; }
-  .touch button { width: 50px; height: 50px; }
-  .pad, body.split .pad { width: 176px; height: 122px; }    /* wider and shorter */
-  .pad .dir .g { width: 24px; height: 24px; }
   .overlay { padding: 10px 16px; }
   .panel h1 { font-size: 24px; }
   .mode { padding: 9px 14px; }
@@ -3475,6 +3464,50 @@ import ReconnectingWebSocket from 'partysocket/ws';
     document.querySelectorAll('.touch img[data-icon]').forEach(img => { img.src = pics[img.dataset.icon]; });
   }
   drawPadIcons();
+
+  // ---------- the touch pad's sizes ----------
+  // one set for each way the phone is held (upright, on its side, and each shared across a table between two
+  // players), chosen with tools/padtune (a local page with the game in phone-sized frames and sliders)
+  const PAD_SIZES = {
+    upright:   { padW: 138, padH: 150, mid: 30, gap: 4, cut: 60, drop: 14, arrow: 30, act: 46, actGap: 6, icon: 34, edge: 20 },
+    side:      { padW: 176, padH: 122, mid: 30, gap: 4, cut: 60, drop: 14, arrow: 24, act: 50, actGap: 6, icon: 34, edge: 20 },
+    split:     { padW: 120, padH: 136, mid: 30, gap: 4, cut: 60, drop: 14, arrow: 26, act: 44, actGap: 6, icon: 30, edge: 20 },
+    splitSide: { padW: 176, padH: 122, mid: 30, gap: 4, cut: 60, drop: 14, arrow: 24, act: 44, actGap: 6, icon: 30, edge: 20 },
+  };
+  const sideMq = matchMedia('(orientation: landscape) and (max-height: 540px)');
+  const padLayout = () => (document.body.classList.contains('split') ? 'split' : 'upright') + (sideMq.matches ? 'Side' : '');
+  const layoutKey = () => ({ uprightSide: 'side' })[padLayout()] || padLayout();
+  const padSizes = (key = layoutKey()) => PAD_SIZES[key];
+  // the d-pad's pieces, in the pad's own 100 x 100 (stretched to its box)
+  function padPieces(z) {
+    const S = (98 - z.mid - 2 * z.gap) / 2, gy = z.gap * z.padW / z.padH;
+    const cut = Math.min(z.cut, 90 - z.drop - gy), m0 = 1 + S + z.gap, m1 = m0 + z.mid;
+    return {
+      left: [[1, 3], [1 + S, 3], [1 + S, cut], [1, cut + z.drop]],
+      down: [[m0, 3], [m1, 3], [m1, 97], [m0, 97]],
+      right: [[99 - S, 3], [99, 3], [99, cut + z.drop], [99 - S, cut]],
+      dl: [[1, cut + z.drop + gy], [1 + S, cut + gy], [1 + S, 97], [1, 97]],
+      dr: [[99 - S, cut + gy], [99, cut + z.drop + gy], [99, 97], [99 - S, 97]],
+    };
+  }
+  function applyPadSizes() {
+    const z = padSizes(), root = document.documentElement.style;
+    for (const [k, v] of [['--pad-w', z.padW], ['--pad-h', z.padH], ['--arrow', z.arrow], ['--act', z.act], ['--act-gap', z.actGap], ['--icon', z.icon], ['--edge', z.edge]])
+      root.setProperty(k, v + 'px');
+    const pieces = padPieces(z);
+    document.querySelectorAll('.touch .pad .dir').forEach(btn => {
+      const name = [...btn.classList].find(c => pieces[c]), poly = pieces[name];
+      const xs = poly.map(q => q[0]), ys = poly.map(q => q[1]);
+      const bx = Math.min(...xs), by = Math.min(...ys), bw = Math.max(...xs) - bx, bh = Math.max(...ys) - by;
+      const cx = xs.reduce((a, b) => a + b) / 4, cy = ys.reduce((a, b) => a + b) / 4 + (name === 'dl' || name === 'dr' ? 2 : 0);
+      Object.assign(btn.style, { left: bx + '%', top: by + '%', width: bw + '%', height: bh + '%' });
+      btn.style.setProperty('--gx', (cx - bx) / bw * 100 + '%'); btn.style.setProperty('--gy', (cy - by) / bh * 100 + '%');
+      btn.querySelector('.shape').setAttribute('viewBox', `${bx} ${by} ${bw} ${bh}`);
+      btn.querySelector('.face').setAttribute('points', poly.map(q => q.join(',')).join(' '));
+    });
+  }
+  addEventListener('resize', applyPadSizes);
+  applyPadSizes();
   // with two players on one phone, each pad's buttons stand for its own player's keys: the button's action, in that
   // player's scheme (SCHEMES A and B). User B sees the arena turned round, so their right is the arena's left
   const PAD_ACTIONS = { ArrowLeft: 'left', ArrowRight: 'right', ArrowDown: 'down', Space: 'jump', KeyJ: 'a1', KeyK: 'a2', KeyL: 'a3', KeyI: 'a4', Backspace: 'parry', ParryUp: 'up', KeyH: 'strike', KeyN: 'grab' };
@@ -3937,6 +3970,7 @@ import ReconnectingWebSocket from 'partysocket/ws';
     split = !!player2 && matchMedia('(pointer: coarse)').matches;
     document.body.classList.toggle('split', split);
     touchB.hidden = !split;
+    applyPadSizes();          // (shared across a table, the pads have sizes of their own)
     resize();
     matchOver = false; attractTimer = 0; camSnap = true; trainDamage = 0;
     buildHud();
@@ -5078,6 +5112,7 @@ import ReconnectingWebSocket from 'partysocket/ws';
   }
   // local testing only (?dev=<name> on localhost): where everyone is, as this browser sees it
   if (DEV_USER) {
+    window.__bbPadSizes = (key, z) => { if (z) { Object.assign(PAD_SIZES[key], z); applyPadSizes(); } return key ? PAD_SIZES[key] : PAD_SIZES; };
     window.__bb = () => fighters.map(f => ({ id: f.netId, kind: f.kind, x: f.x, y: f.y, z: f.z || 0, face: f.face.rotation.y, hp: f.hp, dead: f.dead, out: !!f.out, stocks: f.stocks, versus: !!versus,
       vx: f.vx, crouch: f.crouch || 0, stumble: f.stumble || 0, facing: f.facing, variant: f.kit.variant,
       grab: f.grab ? f.grab.phase : null, held: !!f.heldBy, guard: !!f.guard, busy: f.busy || 0, ledge: !!f.ledge, crouch: (f.crouch || 0) > 0.5, guardDir: f.guard ? f.guard.dir : null, limp: f.ragFly ? (f.ragFly.rise !== undefined ? 'rising' : 'down') : null }));
