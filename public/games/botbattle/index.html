@@ -278,21 +278,18 @@ body.two-players .corner { left: 50%; right: auto; transform: translateX(-50%); 
   }
   /* the joypad: one box. Where the thumb is from its middle is the direction (left, right, down, or down and to a
      side to crouch-walk; up is nothing, and so is a small middle), and it holds while the thumb is down, even off the
-     box or the screen. A dot follows the thumb and the direction it's pressing lights up on the rim */
+     box or the screen. A right-angled triangle sits in each corner: the top two are left and right, the bottom two
+     crouch-walk (straight down crouches, and grows both of those halfway). A triangle grows as the thumb nears it,
+     its long side pushing in and its short sides stretching along the box's edges; the pressed one grows all the
+     way */
   .pad {
-    position: relative; box-sizing: border-box; width: var(--pad-w, 150px); height: var(--pad-h, 150px); flex-shrink: 0; pointer-events: auto; touch-action: none;
+    position: relative; box-sizing: border-box; width: var(--pad-w, 112px); height: var(--pad-h, 112px); flex-shrink: 0; pointer-events: auto; touch-action: none;
     background: var(--paper); border: 2px solid var(--ink); box-shadow: 3px 3px 0 var(--ink);      /* square, like every button */
   }
-  .pad .mark { position: absolute; display: grid; place-items: center; width: calc(var(--arrow, 30px) + 12px); height: calc(var(--arrow, 30px) + 12px);
-    border-radius: 50%; transform: translate(-50%, -50%); pointer-events: none; }
-  .pad .mark .g { width: var(--arrow, 30px); height: var(--arrow, 30px); pointer-events: none; }
-  .pad .mark.on { background: var(--ink); }
-  .pad .left { left: 15%; top: 50%; } .pad .right { left: 85%; top: 50%; } .pad .down { left: 50%; top: 85%; }
-  .pad .dl { left: 25%; top: 75%; } .pad .dr { left: 75%; top: 75%; }
-  .pad .knob { position: absolute; width: 26px; height: 26px; margin: -13px 0 0 -13px; border-radius: 50%; border: 2px solid var(--ink);
-    background: rgba(20, 20, 20, 0.18); pointer-events: none; visibility: hidden; }
-  .pad.held .knob { visibility: visible; }
-  .pad .dead { position: absolute; left: 50%; top: 50%; width: var(--dead, 30px); height: var(--dead, 30px); border: 1.5px dashed rgba(20, 20, 20, 0.3); border-radius: 50%; transform: translate(-50%, -50%); pointer-events: none; }
+  .pad .joy { position: absolute; inset: 0; width: 100%; height: 100%; overflow: visible; pointer-events: none; }
+  .pad .joy .sh { fill: var(--ink); }
+  .pad .joy .face { fill: #8f8e8a; stroke: var(--ink); stroke-width: 2px; stroke-linejoin: round; }
+  .pad .joy .face.on { fill: #5f5f5c; }
   .acts { display: grid; grid-template-columns: repeat(4, var(--act, 46px)); gap: var(--act-gap, 6px); pointer-events: auto; }
   .acts button[data-slot] { grid-row: 1; }          /* the fighter's own moves along the top row */
   .acts .basic { grid-row: 2; }                     /* the shield, punch and grab everyone has, underneath */
@@ -472,12 +469,7 @@ body.two-players .corner { left: 50%; right: auto; transform: translateX(-50%); 
 
 <div class="touch" id="touch" hidden>   <!-- (shown once a match starts: none of it flashes up over the menu while the page loads) -->
   <div class="pad" role="group" aria-label="Move: hold and slide your thumb; down crouches, down and to a side crouch-walks">
-    <i class="mark left" data-key="ArrowLeft" aria-label="Move left"><img class="g ico" data-icon="left" alt=""></i>
-    <i class="mark right" data-key="ArrowRight" aria-label="Move right"><img class="g ico" data-icon="right" alt=""></i>
-    <i class="mark down" data-key="ArrowDown" aria-label="Crouch"><img class="g ico" data-icon="down" alt=""></i>
-    <i class="mark dl" data-key="ArrowDown ArrowLeft" aria-label="Crouch and move left"><img class="g ico" data-icon="dl" alt=""></i>
-    <i class="mark dr" data-key="ArrowDown ArrowRight" aria-label="Crouch and move right"><img class="g ico" data-icon="dr" alt=""></i>
-    <i class="dead" aria-hidden="true"></i><i class="knob" aria-hidden="true"></i>
+    <svg class="joy" aria-hidden="true"></svg>
   </div>
   <div class="acts" id="acts">
     <button type="button" data-key="KeyJ" data-slot="a1"><span></span><i class="cool"></i></button>
@@ -1029,8 +1021,7 @@ import ReconnectingWebSocket from 'partysocket/ws';
   // none is read as a hole in another)
   const rr = (x, y, w, h, r) => `M${x + r} ${y}h${w - 2 * r}a${r} ${r} 0 0 1 ${r} ${r}v${h - 2 * r}a${r} ${r} 0 0 1 ${-r} ${r}h${2 * r - w}a${r} ${r} 0 0 1 ${-r} ${-r}v${2 * r - h}a${r} ${r} 0 0 1 ${r} ${-r}z`;
   const PAD_ICONS = {
-    left: ['M3 12L18 3.5V20.5Z'], right: ['M21 12L6 3.5V20.5Z'], down: ['M12 21L3.5 6H20.5Z'], jump: ['M12 3L20.5 18H3.5Z'],
-    dl: ['M4 20H20L4 4Z'], dr: ['M20 20H4L20 4Z'],
+    jump: ['M12 3L20.5 18H3.5Z'],
     shield: ['M12 2.5l7.5 2.8v6c0 4.9-3.1 8.9-7.5 10.5-4.4-1.6-7.5-5.6-7.5-10.5v-6z'],
     fist: [rr(3.5, 4.5, 9, 15.5, 3.6), rr(9, 4.5, 11, 3.9, 1.95), rr(9, 8.5, 11.8, 3.9, 1.95), rr(9, 12.5, 11.4, 3.9, 1.95), rr(9, 16.4, 10, 3.6, 1.8),
       rr(4.5, 9, 10.5, 3.4, 1.7)],
@@ -3483,10 +3474,10 @@ import ReconnectingWebSocket from 'partysocket/ws';
   // one set for each way the phone is held (upright, on its side, and each shared across a table between two
   // players), chosen with tools/padtune (a local page with the game in phone-sized frames and sliders)
   const PAD_SIZES = {
-    upright:   { padW: 136, padH: 136, dead: 22, arrow: 30, act: 46, actGap: 6, icon: 34, edge: 20 },
-    side:      { padW: 170, padH: 130, dead: 22, arrow: 24, act: 50, actGap: 6, icon: 34, edge: 20 },
-    split:     { padW: 124, padH: 124, dead: 22, arrow: 26, act: 44, actGap: 6, icon: 30, edge: 20 },
-    splitSide: { padW: 160, padH: 120, dead: 22, arrow: 24, act: 44, actGap: 6, icon: 30, edge: 20 },
+    upright:   { padW: 112, padH: 112, dead: 22, arrow: 30, corner: 30, grow: 70, inset: 4, act: 46, actGap: 6, icon: 34, edge: 20 },
+    side:      { padW: 124, padH: 100, dead: 22, arrow: 30, corner: 30, grow: 70, inset: 4, act: 50, actGap: 6, icon: 34, edge: 20 },
+    split:     { padW: 104, padH: 104, dead: 22, arrow: 30, corner: 30, grow: 70, inset: 4, act: 44, actGap: 6, icon: 30, edge: 20 },
+    splitSide: { padW: 120, padH: 96, dead: 22, arrow: 30, corner: 30, grow: 70, inset: 4, act: 44, actGap: 6, icon: 30, edge: 20 },
   };
   const sideMq = matchMedia('(orientation: landscape) and (max-height: 540px)');
   const padLayout = () => (document.body.classList.contains('split') ? 'split' : 'upright') + (sideMq.matches ? 'Side' : '');
@@ -3496,7 +3487,32 @@ import ReconnectingWebSocket from 'partysocket/ws';
     const z = padSizes(), root = document.documentElement.style;
     for (const [k, v] of [['--pad-w', z.padW], ['--pad-h', z.padH], ['--arrow', z.arrow], ['--act', z.act], ['--act-gap', z.actGap], ['--icon', z.icon], ['--edge', z.edge]])
       root.setProperty(k, v + 'px');
-    root.setProperty('--dead', Math.min(z.padW, z.padH) * z.dead / 100 + 'px');       // (a share of the box's half: its diameter)
+    document.querySelectorAll('.touch .pad').forEach(pad => drawJoy(pad));
+  }
+  // the joypad's triangles, one in each corner with its right angle there: legs `arrow` long for the top two (left
+  // and right), `corner` for the bottom two (crouch-walk), `inset` in from the box's edge; thumb is where the thumb
+  // is from the middle (none: no thumb), dir the direction it's pressing
+  const JOY_AT = { ul: [-1, -1, 'left'], ur: [1, -1, 'right'], dl: [-1, 1, 'dl'], dr: [1, 1, 'dr'] };
+  const JOY_DIRS = { left: 'ArrowLeft', right: 'ArrowRight', down: 'ArrowDown', dl: 'ArrowDown ArrowLeft', dr: 'ArrowDown ArrowRight' };
+  function joyTriangles(W, H, z, thumb, dir) {
+    return Object.entries(JOY_AT).map(([name, [ux, uy, means]]) => {
+      const ax = ux < 0 ? z.inset : W - z.inset, ay = uy < 0 ? z.inset : H - z.inset;
+      const near = means === dir ? 1 : dir === 'down' && uy > 0 ? 0.5
+        : thumb ? Math.max(0, 1 - Math.hypot(W / 2 + thumb[0] - ax, H / 2 + thumb[1] - ay) / (0.9 * Math.min(W, H))) * 0.6 : 0;
+      const s = (uy < 0 ? z.arrow : z.corner) * (1 + z.grow / 100 * near);
+      return { name, means, pts: [[ax, ay], [ax - ux * s, ay], [ax, ay - uy * s]] };
+    });
+  }
+  function drawJoy(pad, thumb = null, dir = null) {
+    const z = padSizes(), svg = pad.querySelector('.joy'), W = z.padW - 4, H = z.padH - 4;      // (inside its border; measured from its sizes, so it draws while hidden too)
+    if (!svg.firstChild) svg.innerHTML = Object.entries(JOY_AT).map(([n, [, , means]]) =>
+      `<polygon class="sh ${n}"/><polygon class="face ${n}" data-key="${JOY_DIRS[means]}"/>`).join('');
+    svg.setAttribute('viewBox', `0 0 ${W} ${H}`);
+    for (const { name, means, pts } of joyTriangles(W, H, z, thumb, dir)) {
+      svg.querySelector('.face.' + name).setAttribute('points', pts.map(q => q.join(',')).join(' '));
+      svg.querySelector('.sh.' + name).setAttribute('points', pts.map(([x, y]) => `${x + 2},${y + 2}`).join(' '));
+      svg.querySelector('.face.' + name).classList.toggle('on', means === dir);
+    }
   }
   addEventListener('resize', applyPadSizes);
   applyPadSizes();
@@ -3511,7 +3527,6 @@ import ReconnectingWebSocket from 'partysocket/ws';
   // the joypad: the thumb's direction from the box's middle, in eight slices: left and right (with up-left and
   // up-right), down, and down and to a side (crouch-walk); straight up, and the dead middle, are nothing. It's
   // measured from the middle wherever the thumb goes, so sliding off the box or the screen keeps the direction
-  const JOY_DIRS = { left: 'ArrowLeft', right: 'ArrowRight', down: 'ArrowDown', dl: 'ArrowDown ArrowLeft', dr: 'ArrowDown ArrowRight' };
   function joyDir(dx, dy, dead) {
     if (Math.hypot(dx, dy) < dead) return null;
     const a = Math.atan2(dy, dx) * 180 / Math.PI;          // 0 right, 90 down
@@ -3523,22 +3538,19 @@ import ReconnectingWebSocket from 'partysocket/ws';
     return null;                                            // up
   }
   document.querySelectorAll('.touch .pad').forEach(pad => {
-    const mine = pad.closest('.touch-b') ? 'B' : 'A', knob = pad.querySelector('.knob');
+    const mine = pad.closest('.touch-b') ? 'B' : 'A';
     let id = null, dir = null, codes = [];
     const aim = e => {
       // in the pad's own turn (User B's is upside down): its middle, and the thumb from there
       const r = pad.getBoundingClientRect(), half = Math.min(r.width, r.height) / 2, flip = mine === 'B' ? -1 : 1;
       const dx = (e.clientX - (r.left + r.width / 2)) * flip, dy = (e.clientY - (r.top + r.height / 2)) * flip;
-      const k = Math.min(1, half * 0.95 / Math.hypot(dx, dy) || 1);
-      knob.style.left = 50 + dx * k / r.width * 100 + '%'; knob.style.top = 50 + dy * k / r.height * 100 + '%';
       const next = joyDir(dx, dy, half * padSizes().dead / 100);
+      drawJoy(pad, [dx, dy], next);
       if (next === dir) return;
       for (const c of codes) keys.delete(c);
-      pad.querySelector('.mark.on')?.classList.remove('on');
       codes = next ? padCodes(JOY_DIRS[next], mine) : [];
       for (const c of codes) { keys.add(c); pressed.add(c); }
       if (!dir && codes.length === 1) noteTap(codes[0]);       // out from the middle (or a fresh touch) twice: a dash
-      if (next) pad.querySelector('.mark.' + next).classList.add('on');
       dir = next;
     };
     pad.addEventListener('pointerdown', e => {
@@ -3551,7 +3563,7 @@ import ReconnectingWebSocket from 'partysocket/ws';
       if (e.pointerId !== id) return;
       e.preventDefault();
       for (const c of codes) keys.delete(c);
-      pad.querySelector('.mark.on')?.classList.remove('on'); pad.classList.remove('held');
+      pad.classList.remove('held'); drawJoy(pad);
       id = null; dir = null; codes = [];
     };
     pad.addEventListener('pointerup', up);

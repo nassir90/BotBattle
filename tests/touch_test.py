@@ -1,6 +1,6 @@
 # The touch pad on a phone held upright, with real fingers (DevTools touch events): nothing of it shows over the menu
-# while the page loads; the icons are drawn (little 3D cutouts); the ▲ at the bottom right jumps; the joypad's down
-# and to a side crouches and walks that way; a thumb sliding across it changes direction, keeps it when it slides off
+# while the page loads; the icons are drawn (little 3D cutouts); the ▲ at the bottom right jumps; the joypad's bottom
+# corners crouch and walk that way; a thumb sliding across it changes direction, keeps it when it slides off
 # the box, and its middle is nothing; the shield parries to the side when tapped and overhead when swiped up from; the
 # punch button shows a boot while crouched (it kicks); the hand grabs. Then the layout: everything on screen, nothing
 # overlapping, the actions in two rows (the fighter's moves, then the shield, punch, grab and jump).
@@ -85,7 +85,7 @@ async def main():
         await frames(pg, 60)
 
         # crouched, the punch button shows a boot (a low kick)
-        dx, dy = await centre(pg, "ArrowDown")
+        dx, dy = await pg.evaluate("(() => { const r = document.querySelector('#touch .pad').getBoundingClientRect(); return [r.left + r.width / 2, r.bottom - 8]; })()")    # straight down
         await touch(cdp, "touchStart", dx, dy); await frames(pg, 12)
         kick = await pg.evaluate("document.querySelector('#touch .strike').classList.contains('kick') && getComputedStyle(document.querySelector('#touch .strike .boot')).display !== 'none'")
         await touch(cdp, "touchEnd", 0, 0); await frames(pg, 12)

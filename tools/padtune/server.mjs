@@ -1,5 +1,5 @@
-// Tuning the touch pad: a local page with the real game in four phone-sized frames (upright, on its side, and each
-// shared across a table between two players) next to sliders for every size on the pad. Submit writes the sizes
+// Tuning the touch pad: a local page with the real game in a phone-sized frame (upright, on its side, or either of
+// those shared across a table between two players), whose controls you resize by dragging their edges. Submit writes the sizes
 // to tools/padtune/submitted.json, to be put into PAD_SIZES in game/stick-standoff.html.
 //
 //   npm run build:page && node tools/padtune/server.mjs     (then open http://localhost:5181)

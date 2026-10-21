@@ -29,7 +29,9 @@ button[aria-pressed="true"] { background: var(--ink); color: var(--paper); }
 .e { position: absolute; height: 12px; transform-origin: 0 50%; pointer-events: auto; touch-action: none; }
 .e::after { content: ''; position: absolute; left: 0; right: 0; top: 5px; height: 2px; background: #e8542f; opacity: 0; }
 .e:hover::after, .e.drag::after { opacity: 1; }
-.e.ew { cursor: ew-resize; } .e.ns { cursor: ns-resize; }
+.e.ew { cursor: ew-resize; } .e.ns { cursor: ns-resize; } .e.nesw { cursor: nesw-resize; } .e.nwse { cursor: nwse-resize; }
+.e.ghost::after { opacity: 1; background: none; border-top: 2px dashed #e8542f; height: 0; }
+.ibox.ring { border-radius: 50%; border-style: dashed; }
 .ibox { position: absolute; border: 1px dotted rgba(20, 20, 20, 0.45); }
 .tip { position: absolute; transform: translate(12px, -130%); background: var(--ink); color: var(--paper); font-size: 11px; padding: 3px 6px; white-space: nowrap; pointer-events: none; }
 .foot { display: grid; gap: 8px; margin-top: auto; }
@@ -54,7 +56,7 @@ figure.on .phone { outline: 3px solid var(--ink); outline-offset: 4px; }
   <aside>
     <div>
       <h1>Touch pad sizes</h1>
-      <p class="sub">The real game, as a phone sees it. Grab an edge of the controls and drag it to stretch or shrink that part (hovering an edge lights it and says what it sets); click the buttons themselves to try them. Each way of holding the phone has its own sizes.</p>
+      <p class="sub">The real game, as a phone sees it. Grab an edge of the controls and drag it to stretch or shrink that part (hovering an edge lights it and says what it sets); click the buttons themselves to try them. Each way of holding the phone has its own sizes: pick one above to see it.</p>
     </div>
     <div class="tabs" id="tabs"></div>
     <dl class="vals" id="vals"></dl>
@@ -79,8 +81,10 @@ const LAYOUTS = [
 ];
 // [setting, label, min, max, unit]
 const KNOBS = [
-  ['padW', 'Joypad width', 70, 300, 'px'], ['padH', 'Joypad height', 60, 300, 'px'],
-  ['dead', 'Dead middle', 0, 70, '%'], ['arrow', 'Arrow size', 10, 64, 'px'],
+  ['padW', 'Joypad width', 60, 300, 'px'], ['padH', 'Joypad height', 50, 300, 'px'],
+  ['arrow', 'Top triangles (move)', 6, 90, 'px'], ['corner', 'Bottom triangles (crouch-walk)', 6, 90, 'px'],
+  ['grow', 'Growth near the thumb', 0, 200, '%'], ['inset', 'Triangles in from the edge', 0, 40, 'px'],
+  ['dead', 'Dead middle', 0, 70, '%'],
   ['act', 'Action button size', 28, 90, 'px'], ['actGap', 'Gap between actions', 0, 24, 'px'],
   ['icon', 'Icon size', 10, 72, 'px'], ['edge', 'Distance from the edges', 4, 90, 'px'],
 ];
@@ -91,10 +95,13 @@ const frames = [];
 
 // which frame's values the list shows (the last one touched, or picked from the tabs)
 $('tabs').innerHTML = LAYOUTS.map(l => `<button type="button" data-key="${l.key}">${l.name}</button>`).join('');
+// one phone at a time (each copy of the game takes several WebGL contexts, and a page gets only so many): picking a
+// way of holding it loads the game afresh in that shape
 function select(key) {
   current = key;
   document.querySelectorAll('#tabs button').forEach(b => b.setAttribute('aria-pressed', b.dataset.key === key));
-  frames.forEach(f => f.fig.classList.toggle('on', f.l.key === key));
+  const f = frames[0];
+  if (f && f.l.key !== key) load(f, LAYOUTS.find(l => l.key === key));
   showVals();
 }
 function showVals() {
@@ -132,8 +139,11 @@ const EDGES = [
   { tip: 'Distance from the edges', dir: 'ew', seg: b => [b.pad.left, b.pad.top, b.pad.left, b.pad.bottom], set: (key, z, dx) => set(key, 'edge', z.edge + dx) },
   { tip: 'Distance from the edges', dir: 'ns', seg: b => [b.pad.left, b.pad.bottom, b.pad.right, b.pad.bottom], set: (key, z, dx, dy) => set(key, 'edge', z.edge - dy) },
   { tip: 'Dead middle', dir: 'ew', seg: b => [b.dead.right, b.dead.top, b.dead.right, b.dead.bottom], set: (key, z, dx) => set(key, 'dead', z.dead + 2 * dx / Math.min(z.padW, z.padH) * 100) },
-  { tip: 'Arrow size', dir: 'ew', seg: b => [b.arrow.right, b.arrow.top, b.arrow.right, b.arrow.bottom], set: (key, z, dx) => set(key, 'arrow', z.arrow + 2 * dx), box: 'arrow' },
-  { tip: 'Arrow size', dir: 'ns', seg: b => [b.arrow.left, b.arrow.bottom, b.arrow.right, b.arrow.bottom], set: (key, z, dx, dy) => set(key, 'arrow', z.arrow + 2 * dy) },
+  { tip: 'Top triangles (move)', dir: 'nwse', seg: b => [b.tUL.right, b.tUL.top, b.tUL.left, b.tUL.bottom], set: (key, z, dx, dy) => set(key, 'arrow', z.arrow + dx + dy) },
+  { tip: 'Growth near the thumb', dir: 'nwse', ghost: true, seg: b => { const g = b.z.arrow * (1 + b.z.grow / 100) * b.k; return [b.tUL.left + g, b.tUL.top, b.tUL.left, b.tUL.top + g]; },
+    set: (key, z, dx, dy) => set(key, 'grow', z.grow + (dx + dy) / z.arrow * 100) },
+  { tip: 'Bottom triangles (crouch-walk)', dir: 'nesw', seg: b => [b.tDL.left, b.tDL.top, b.tDL.right, b.tDL.bottom], set: (key, z, dx, dy) => set(key, 'corner', z.corner + dx - dy) },
+  { tip: 'Triangles in from the edge', dir: 'ns', seg: b => [b.tUR.left, b.tUR.top, b.tUR.right, b.tUR.top], set: (key, z, dx, dy) => set(key, 'inset', z.inset + dy) },
   { tip: 'Action button size', dir: 'ns', seg: b => [b.acts.left, b.acts.top, b.acts.right, b.acts.top], set: (key, z, dx, dy) => set(key, 'act', z.act - dy / 2) },
   { tip: 'Action button size', dir: 'ew', seg: b => [b.acts.left, b.acts.top, b.acts.left, b.acts.bottom], set: (key, z, dx) => set(key, 'act', z.act - dx / 4) },
   { tip: 'Distance from the edges', dir: 'ew', seg: b => [b.acts.right, b.acts.top, b.acts.right, b.acts.bottom], set: (key, z, dx) => set(key, 'edge', z.edge - dx) },
@@ -143,25 +153,29 @@ const EDGES = [
   { tip: 'Icon size', dir: 'ew', seg: b => [b.icon.right, b.icon.top, b.icon.right, b.icon.bottom], set: (key, z, dx) => set(key, 'icon', z.icon + 2 * dx), box: 'icon' },
   { tip: 'Icon size', dir: 'ns', seg: b => [b.icon.left, b.icon.bottom, b.icon.right, b.icon.bottom], set: (key, z, dx, dy) => set(key, 'icon', z.icon + 2 * dy) },
 ];
-const VALUE_OF = { 'Joypad height': 'padH', 'Joypad width': 'padW', 'Distance from the edges': 'edge', 'Dead middle': 'dead', 'Arrow size': 'arrow', 'Action button size': 'act', 'Gap between actions': 'actGap', 'Icon size': 'icon' };
+const VALUE_OF = { 'Joypad height': 'padH', 'Joypad width': 'padW', 'Distance from the edges': 'edge', 'Dead middle': 'dead', 'Top triangles (move)': 'arrow',
+  'Growth near the thumb': 'grow', 'Bottom triangles (crouch-walk)': 'corner', 'Triangles in from the edge': 'inset', 'Action button size': 'act', 'Gap between actions': 'actGap', 'Icon size': 'icon' };
 // the controls' boxes in one frame, in phone px (User A's pad: in a shared frame User B's mirrors it)
 function boxes(f) {
   const d = f.win().document, r = sel => d.querySelector(sel)?.getBoundingClientRect();
-  const b = { z: sizes[f.l.key], pad: r('#touch .pad'), acts: r('#touch .acts'), dead: r('#touch .pad .dead'),
-    arrow: r('#touch .pad .left .g'), act: r('#touch .acts button[data-slot="a1"]'), act2: r('#touch .acts button[data-slot="a2"]'),
+  const b = { z: sizes[f.l.key], pad: r('#touch .pad'), acts: r('#touch .acts'),
+    tUL: r('#touch .pad .face.ul'), tUR: r('#touch .pad .face.ur'), tDL: r('#touch .pad .face.dl'), k: 1, act: r('#touch .acts button[data-slot="a1"]'), act2: r('#touch .acts button[data-slot="a2"]'),
     shield: r('#touch .acts .shield'), icon: r('#touch .acts .shield .ico') };
-  return Object.values(b).every(Boolean) ? b : null;
+  if (!Object.values(b).every(Boolean)) return null;
+  const dd = Math.min(b.pad.width, b.pad.height) * b.z.dead / 100, cx = b.pad.left + b.pad.width / 2, cy = b.pad.top + b.pad.height / 2;
+  b.dead = { left: cx - dd / 2, top: cy - dd / 2, right: cx + dd / 2, bottom: cy + dd / 2, width: dd, height: dd };
+  return b;
 }
 function addOverlay(f) {
   const ov = document.createElement('div'); ov.className = 'overlay';
-  const padBox = document.createElement('div'), actsBox = document.createElement('div'), arrowBox = document.createElement('div'), iconBox = document.createElement('div');
-  padBox.className = actsBox.className = 'box'; arrowBox.className = iconBox.className = 'ibox';
+  const padBox = document.createElement('div'), actsBox = document.createElement('div'), deadBox = document.createElement('div'), iconBox = document.createElement('div');
+  padBox.className = actsBox.className = 'box'; deadBox.className = 'ibox ring'; iconBox.className = 'ibox';
   const tip = document.createElement('div'); tip.className = 'tip'; tip.hidden = true;
-  ov.append(padBox, actsBox, arrowBox, iconBox);
+  ov.append(padBox, actsBox, deadBox, iconBox);
   let tipAt = null;
   const es = EDGES.map(h => {
     const el = document.createElement('div'), k = VALUE_OF[h.tip];
-    el.className = 'e ' + h.dir;
+    el.className = 'e ' + h.dir + (h.ghost ? ' ghost' : '');
     const say = () => { tip.hidden = false; tip.textContent = `${h.tip}: ${sizes[f.l.key][k]}${KNOB[k][4]}`; };
     el.addEventListener('pointerenter', e => { if (!sizes) return; tipAt = [e.clientX, e.clientY]; say(); });
     el.addEventListener('pointerleave', () => { if (!el.classList.contains('drag')) tip.hidden = true; });
@@ -185,7 +199,7 @@ function addOverlay(f) {
     const b = f.ready && sizes && boxes(f);
     ov.hidden = !b;
     if (b) {
-      box(padBox, b.pad); box(actsBox, b.acts); box(arrowBox, b.arrow); box(iconBox, b.icon);
+      box(padBox, b.pad); box(actsBox, b.acts); box(deadBox, b.dead); box(iconBox, b.icon);
       for (const { h, el } of es) {
         const [x1, y1, x2, y2] = h.seg(b).map(v => v * zoom()), len = Math.max(6, Math.hypot(x2 - x1, y2 - y1));
         Object.assign(el.style, { left: x1 + 'px', top: y1 - 6 + 'px', width: len + 'px', transform: `rotate(${Math.atan2(y2 - y1, x2 - x1)}rad)` });
@@ -209,7 +223,7 @@ function layoutFrames() {
 $('zoom').addEventListener('input', layoutFrames);
 const until = async (test, ms = 30000) => { const t0 = performance.now(); while (!test()) { if (performance.now() - t0 > ms) throw new Error('timed out'); await new Promise(r => setTimeout(r, 100)); } };
 async function start(f) {
-  const win = f.win(), doc = win.document;
+  const win = f.win(), doc = win.document, run = f.run;
   await until(() => doc.querySelector('.mode[data-mode="training"]') && win.__bbPadSizes);
   await new Promise(r => setTimeout(r, 300));
   if (f.l.split) {
@@ -231,26 +245,28 @@ async function start(f) {
     showVals();
   })());
   for (const l of LAYOUTS) win.__bbPadSizes(l.key, sizes[l.key]);
-  f.ready = true;
+  if (run === f.run) f.ready = true;
 }
 // Play seats User A and User B (the split frames); the frames share this page's storage
 try { localStorage.setItem('botbattle.seats', JSON.stringify([{ kind: 'so', ctrl: 'A' }, { kind: 'claude', ctrl: 'B' }])); } catch {}
-for (const l of LAYOUTS) {
-  const fig = document.createElement('figure'), box = document.createElement('div'), ifr = document.createElement('iframe');
-  box.className = 'phone';
-  ifr.width = l.w; ifr.height = l.h; ifr.src = '/games/botbattle/?dev=padtune';
-  ifr.title = `Bot Battle, ${l.name}`;
-  box.append(ifr);
-  const cap = document.createElement('figcaption'); cap.textContent = `${l.name} · ${l.w} × ${l.h}`;
-  fig.append(cap, box);
-  const f = { l, fig, box, ifr, ready: false, win: () => ifr.contentWindow };
-  cap.addEventListener('click', () => select(l.key));
-  ifr.addEventListener('load', () => start(f).catch(err => { cap.textContent = `${l.name}: didn't start (${err.message})`; }));
+function load(f, l) {
+  f.l = l; f.ready = false; f.run = (f.run || 0) + 1;
+  f.ifr.width = l.w; f.ifr.height = l.h; f.ifr.title = `Bot Battle, ${l.name}`;
+  f.cap.textContent = `${l.name} · ${l.w} × ${l.h}`;
+  f.ifr.src = '/games/botbattle/?dev=padtune&run=' + f.run;
+  layoutFrames();
+}
+{
+  const fig = document.createElement('figure'), box = document.createElement('div'), ifr = document.createElement('iframe'), cap = document.createElement('figcaption');
+  box.className = 'phone'; fig.className = 'on';
+  box.append(ifr); fig.append(cap, box);
+  const f = { l: null, fig, box, ifr, cap, ready: false, win: () => ifr.contentWindow };
+  ifr.addEventListener('load', () => { const run = f.run, l = f.l; start(f).catch(err => { if (run === f.run) cap.textContent = `${l.name}: didn't start (${err.message})`; }); });
   frames.push(f);
   $('frames').append(fig);
   addOverlay(f);
+  load(f, LAYOUTS[0]);
 }
-layoutFrames();
 select('upright');
 </script>
 </body>
