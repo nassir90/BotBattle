@@ -57,19 +57,19 @@ async def main():
         for k in range(1, 9): await touch(cdp, "touchMove", lx + (rx - lx) * k / 8, ly + (ry - ly) * k / 8)
         await frames(pg, 30); xr = (await bb(pg))[0]["x"]
         await touch(cdp, "touchMove", cx, cy); await frames(pg, 20); f = await bb(pg)
-        on = await pg.evaluate("[...document.querySelectorAll('#touch .pad .on')].map(b => b.dataset.key)")
+        on = await pg.evaluate("document.querySelector('#touch .pad').dataset.dir")
         # off the box (out to the right and below it, still on screen): still down and to the right
         pr = await pg.evaluate("(() => { const r = document.querySelector('#touch .pad').getBoundingClientRect(); return [r.right, r.bottom]; })()")
         await touch(cdp, "touchMove", pr[0] + 60, min(pr[1] + 60, 840)); await frames(pg, 6)
-        off = await pg.evaluate("[...document.querySelectorAll('#touch .pad .on')].map(b => b.dataset.key)")
+        off = await pg.evaluate("document.querySelector('#touch .pad').dataset.dir")
         # back to the middle: nothing
         mx, my = await pg.evaluate("(() => { const r = document.querySelector('#touch .pad').getBoundingClientRect(); return [r.left + r.width / 2, r.top + r.height / 2]; })()")
         await touch(cdp, "touchMove", mx, my); await frames(pg, 6)
-        mid = await pg.evaluate("[...document.querySelectorAll('#touch .pad .on')].length")
+        mid = await pg.evaluate("document.querySelector('#touch .pad').dataset.dir")
         await touch(cdp, "touchEnd", 0, 0); await frames(pg, 6)
-        left = await pg.evaluate("document.querySelectorAll('#touch .pad .on').length")
+        left = await pg.evaluate("document.querySelector('#touch .pad').dataset.dir")
         check("one thumb sliding across the joypad: walks left, then right, then crouch-walks, keeps it off the box, nothing in the middle, and lets go at the end",
-              xl < x0 - 0.2 and xr > xl + 0.2 and f[0]["crouch"] and on == off == ["ArrowDown ArrowRight"] and mid == 0 and left == 0,
+              xl < x0 - 0.2 and xr > xl + 0.2 and f[0]["crouch"] and on == off == "dr" and mid == "" and left == "",
               (round(xl - x0, 2), round(xr - xl, 2), f[0]["crouch"], on, off, mid, left))
         await frames(pg, 20)
 
