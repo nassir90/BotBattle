@@ -86,7 +86,7 @@ const KNOBS = [
   ['grow', 'Growth near the thumb', 0, 200, '%'], ['inset', 'Triangles in from the edge', 0, 40, 'px'],
   ['dead', 'Dead middle', 0, 70, '%'],
   ['act', 'Action button size', 28, 90, 'px'], ['actGap', 'Gap between actions', 0, 24, 'px'],
-  ['icon', 'Icon size', 10, 72, 'px'], ['edge', 'Distance from the edges', 4, 90, 'px'],
+  ['icon', 'Icon size', 10, 72, 'px'], ['edgeX', 'Distance from the side', 0, 90, 'px'], ['edgeY', 'Distance from the bottom', 0, 90, 'px'],
 ];
 const KNOB = Object.fromEntries(KNOBS.map(k => [k[0], k]));
 const $ = id => document.getElementById(id);
@@ -136,8 +136,8 @@ $('submit').addEventListener('click', async () => {
 const EDGES = [
   { tip: 'Joypad height', dir: 'ns', seg: b => [b.pad.left, b.pad.top, b.pad.right, b.pad.top], set: (key, z, dx, dy) => set(key, 'padH', z.padH - dy) },
   { tip: 'Joypad width', dir: 'ew', seg: b => [b.pad.right, b.pad.top, b.pad.right, b.pad.bottom], set: (key, z, dx) => set(key, 'padW', z.padW + dx) },
-  { tip: 'Distance from the edges', dir: 'ew', seg: b => [b.pad.left, b.pad.top, b.pad.left, b.pad.bottom], set: (key, z, dx) => set(key, 'edge', z.edge + dx) },
-  { tip: 'Distance from the edges', dir: 'ns', seg: b => [b.pad.left, b.pad.bottom, b.pad.right, b.pad.bottom], set: (key, z, dx, dy) => set(key, 'edge', z.edge - dy) },
+  { tip: 'Distance from the side', dir: 'ew', seg: b => [b.pad.left, b.pad.top, b.pad.left, b.pad.bottom], set: (key, z, dx) => set(key, 'edgeX', z.edgeX + dx) },
+  { tip: 'Distance from the bottom', dir: 'ns', seg: b => [b.pad.left, b.pad.bottom, b.pad.right, b.pad.bottom], set: (key, z, dx, dy) => set(key, 'edgeY', z.edgeY - dy) },
   { tip: 'Dead middle', dir: 'ew', seg: b => [b.dead.right, b.dead.top, b.dead.right, b.dead.bottom], set: (key, z, dx) => set(key, 'dead', z.dead + 2 * dx / Math.min(z.padW, z.padH) * 100) },
   { tip: 'Top triangles (move)', dir: 'nwse', seg: b => [b.tUL.right, b.tUL.top, b.tUL.left, b.tUL.bottom], set: (key, z, dx, dy) => set(key, 'arrow', z.arrow + dx + dy) },
   { tip: 'Growth near the thumb', dir: 'nwse', ghost: true, seg: b => { const g = b.z.arrow * (1 + b.z.grow / 100) * b.k; return [b.tUL.left + g, b.tUL.top, b.tUL.left, b.tUL.top + g]; },
@@ -146,14 +146,14 @@ const EDGES = [
   { tip: 'Triangles in from the edge', dir: 'ns', seg: b => [b.tUR.left, b.tUR.top, b.tUR.right, b.tUR.top], set: (key, z, dx, dy) => set(key, 'inset', z.inset + dy) },
   { tip: 'Action button size', dir: 'ns', seg: b => [b.acts.left, b.acts.top, b.acts.right, b.acts.top], set: (key, z, dx, dy) => set(key, 'act', z.act - dy / 2) },
   { tip: 'Action button size', dir: 'ew', seg: b => [b.acts.left, b.acts.top, b.acts.left, b.acts.bottom], set: (key, z, dx) => set(key, 'act', z.act - dx / 4) },
-  { tip: 'Distance from the edges', dir: 'ew', seg: b => [b.acts.right, b.acts.top, b.acts.right, b.acts.bottom], set: (key, z, dx) => set(key, 'edge', z.edge - dx) },
-  { tip: 'Distance from the edges', dir: 'ns', seg: b => [b.acts.left, b.acts.bottom, b.acts.right, b.acts.bottom], set: (key, z, dx, dy) => set(key, 'edge', z.edge - dy) },
+  { tip: 'Distance from the side', dir: 'ew', seg: b => [b.acts.right, b.acts.top, b.acts.right, b.acts.bottom], set: (key, z, dx) => set(key, 'edgeX', z.edgeX - dx) },
+  { tip: 'Distance from the bottom', dir: 'ns', seg: b => [b.acts.left, b.acts.bottom, b.acts.right, b.acts.bottom], set: (key, z, dx, dy) => set(key, 'edgeY', z.edgeY - dy) },
   { tip: 'Gap between actions', dir: 'ew', seg: b => { const x = (b.act.right + b.act2.left) / 2; return [x, b.acts.top, x, b.acts.bottom]; }, set: (key, z, dx) => set(key, 'actGap', z.actGap - dx / 2.5) },
   { tip: 'Gap between actions', dir: 'ns', seg: b => { const y = (b.act.bottom + b.shield.top) / 2; return [b.acts.left, y, b.acts.right, y]; }, set: (key, z, dx, dy) => set(key, 'actGap', z.actGap - 2 * dy) },
   { tip: 'Icon size', dir: 'ew', seg: b => [b.icon.right, b.icon.top, b.icon.right, b.icon.bottom], set: (key, z, dx) => set(key, 'icon', z.icon + 2 * dx), box: 'icon' },
   { tip: 'Icon size', dir: 'ns', seg: b => [b.icon.left, b.icon.bottom, b.icon.right, b.icon.bottom], set: (key, z, dx, dy) => set(key, 'icon', z.icon + 2 * dy) },
 ];
-const VALUE_OF = { 'Joypad height': 'padH', 'Joypad width': 'padW', 'Distance from the edges': 'edge', 'Dead middle': 'dead', 'Top triangles (move)': 'arrow',
+const VALUE_OF = { 'Joypad height': 'padH', 'Joypad width': 'padW', 'Distance from the side': 'edgeX', 'Distance from the bottom': 'edgeY', 'Dead middle': 'dead', 'Top triangles (move)': 'arrow',
   'Growth near the thumb': 'grow', 'Bottom triangles (crouch-walk)': 'corner', 'Triangles in from the edge': 'inset', 'Action button size': 'act', 'Gap between actions': 'actGap', 'Icon size': 'icon' };
 // the controls' boxes in one frame, in phone px (User A's pad: in a shared frame User B's mirrors it)
 function boxes(f) {

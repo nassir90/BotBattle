@@ -266,15 +266,18 @@ body.two-players .corner { left: 50%; right: auto; transform: translateX(-50%); 
   .topstack { top: calc(env(safe-area-inset-top, 0px) + 92px); }
   /* every size here comes from the variables the code sets for the way the phone is held (PAD_SIZES) */
   .touch {
-    position: fixed; left: max(calc(env(safe-area-inset-left, 0px) + 12px), var(--edge, 20px)); right: max(calc(env(safe-area-inset-right, 0px) + 12px), var(--edge, 20px));
-    bottom: max(calc(env(safe-area-inset-bottom, 0px) + 12px), var(--edge, 20px));
+    /* in from the sides by --edge-x and up from the bottom by --edge-y: close to the sides, and high enough that the
+       blocks' outer corners clear a phone screen's rounded corner (55px: (55 - x)² + (55 - y)² <= 55²) */
+    position: fixed; left: max(calc(env(safe-area-inset-left, 0px) + 4px), var(--edge-x, 8px)); right: max(calc(env(safe-area-inset-right, 0px) + 4px), var(--edge-x, 8px));
+    bottom: max(calc(env(safe-area-inset-bottom, 0px) + 4px), var(--edge-y, 28px));
     display: flex; justify-content: space-between; align-items: flex-end; gap: 10px; pointer-events: none;
   }
   /* the joypad: one box. Where the thumb is from its middle is the direction (left, right, down, or down and to a
      side to crouch-walk; up is nothing, and so is a small middle), and it holds while the thumb is down, even off the
      box or the screen. A right-angled triangle sits in each corner: the top two are left and right, the bottom two
      crouch-walk (straight down crouches). A triangle grows the nearer the thumb is to it, its long side pushing in
-     and its short sides stretching along the box's edges. The box is as tall as the two rows of buttons beside it */
+     and its short sides stretching along the box's edges. The box is as tall as the two rows of buttons beside it,
+     and wider */
   .pad {
     position: relative; box-sizing: border-box; width: var(--pad-w, 112px); height: var(--pad-h, 112px); flex-shrink: 0; pointer-events: auto; touch-action: none;
     background: var(--paper); border: 2px solid var(--ink); box-shadow: 3px 3px 0 var(--ink);      /* square, like every button */
@@ -302,7 +305,7 @@ body.two-players .corner { left: 50%; right: auto; transform: translateX(-50%); 
      own ends, and the menu button sits at the middle's edge */
   body.split .hud { top: calc(50% + 14px); }
   body.split .hud-b { top: auto; bottom: calc(50% + 14px); transform: rotate(180deg); }
-  body.split .touch-b { top: max(calc(env(safe-area-inset-top, 0px) + 12px), var(--edge, 20px)); bottom: auto; transform: rotate(180deg); }
+  body.split .touch-b { top: max(calc(env(safe-area-inset-top, 0px) + 4px), var(--edge-y, 28px)); bottom: auto; transform: rotate(180deg); }
   body.split .touch button { font-size: 9px; padding: 3px; }
   @media (orientation: landscape) {      /* on its side the halves are short: the plates go to the outer edges, between the pads */
     body.split .hud { top: auto; bottom: max(env(safe-area-inset-bottom, 0px), 6px); }
@@ -3465,10 +3468,10 @@ import ReconnectingWebSocket from 'partysocket/ws';
   // one set for each way the phone is held (upright, on its side, and each shared across a table between two
   // players), chosen with tools/padtune (a local page with the game in phone-sized frames and sliders)
   const PAD_SIZES = {
-    upright:   { padW: 98, padH: 98, dead: 22, arrow: 16, corner: 16, grow: 50, inset: 4, act: 46, actGap: 6, icon: 34, edge: 20 },
-    side:      { padW: 106, padH: 106, dead: 22, arrow: 16, corner: 16, grow: 50, inset: 4, act: 50, actGap: 6, icon: 34, edge: 20 },
-    split:     { padW: 94, padH: 94, dead: 22, arrow: 16, corner: 16, grow: 50, inset: 4, act: 44, actGap: 6, icon: 30, edge: 20 },
-    splitSide: { padW: 94, padH: 94, dead: 22, arrow: 16, corner: 16, grow: 50, inset: 4, act: 44, actGap: 6, icon: 30, edge: 20 },
+    upright:   { padW: 138, padH: 98, dead: 22, arrow: 16, corner: 16, grow: 50, inset: 4, act: 46, actGap: 6, icon: 34, edgeX: 8, edgeY: 28 },
+    side:      { padW: 170, padH: 106, dead: 22, arrow: 16, corner: 16, grow: 50, inset: 4, act: 50, actGap: 6, icon: 34, edgeX: 8, edgeY: 28 },
+    split:     { padW: 140, padH: 94, dead: 22, arrow: 16, corner: 16, grow: 50, inset: 4, act: 44, actGap: 6, icon: 30, edgeX: 8, edgeY: 28 },
+    splitSide: { padW: 170, padH: 94, dead: 22, arrow: 16, corner: 16, grow: 50, inset: 4, act: 44, actGap: 6, icon: 30, edgeX: 8, edgeY: 28 },
   };
   const sideMq = matchMedia('(orientation: landscape) and (max-height: 540px)');
   const padLayout = () => (document.body.classList.contains('split') ? 'split' : 'upright') + (sideMq.matches ? 'Side' : '');
@@ -3476,7 +3479,7 @@ import ReconnectingWebSocket from 'partysocket/ws';
   const padSizes = (key = layoutKey()) => PAD_SIZES[key];
   function applyPadSizes() {
     const z = padSizes(), root = document.documentElement.style;
-    for (const [k, v] of [['--pad-w', z.padW], ['--pad-h', z.padH], ['--arrow', z.arrow], ['--act', z.act], ['--act-gap', z.actGap], ['--icon', z.icon], ['--edge', z.edge]])
+    for (const [k, v] of [['--pad-w', z.padW], ['--pad-h', z.padH], ['--arrow', z.arrow], ['--act', z.act], ['--act-gap', z.actGap], ['--icon', z.icon], ['--edge-x', z.edgeX], ['--edge-y', z.edgeY]])
       root.setProperty(k, v + 'px');
     document.querySelectorAll('.touch .pad').forEach(pad => drawJoy(pad));
   }
