@@ -276,17 +276,23 @@ body.two-players .corner { left: 50%; right: auto; transform: translateX(-50%); 
     bottom: max(calc(env(safe-area-inset-bottom, 0px) + 12px), var(--edge, 20px));
     display: flex; justify-content: space-between; align-items: flex-end; gap: 10px; pointer-events: none;
   }
-  /* the d-pad, a U: ◀ and ▶ tall either side of a lower ▼, and a crouch-walk under each, cut along the tall
-     buttons' diagonals. Each piece is drawn (and touched) as its own shape: the button is only a box round it, and
-     only the shape takes a finger. A thumb sliding across the pad presses whichever piece it's on */
-  .pad { position: relative; width: var(--pad-w, 138px); height: var(--pad-h, 150px); flex-shrink: 0; pointer-events: auto; touch-action: none; }   /* (the size it's given, always) */
-  .touch .pad .dir { position: absolute; padding: 0; border: 0; background: none; box-shadow: none; overflow: visible; pointer-events: none; transform: none; }
-  .pad .dir .shape { position: absolute; pointer-events: none; }
-  .pad .dir .shape { inset: 0; width: 100%; height: 100%; overflow: visible; filter: drop-shadow(3px 3px 0 var(--ink)); }
-  .pad .dir .face { fill: var(--paper); stroke: var(--ink); stroke-width: 2px; stroke-linejoin: round; vector-effect: non-scaling-stroke; pointer-events: all; }
-  .pad .dir .g { position: absolute; width: var(--arrow, 30px); height: var(--arrow, 30px); left: var(--gx); top: var(--gy); transform: translate(-50%, -50%); pointer-events: none; }
-  .pad .dir.on .shape, .pad .dir.on .g { translate: 2px 2px; }
-  .pad .dir.on .shape { filter: none; }
+  /* the joypad: one box. Where the thumb is from its middle is the direction (left, right, down, or down and to a
+     side to crouch-walk; up is nothing, and so is a small middle), and it holds while the thumb is down, even off the
+     box or the screen. A dot follows the thumb and the direction it's pressing lights up on the rim */
+  .pad {
+    position: relative; box-sizing: border-box; width: var(--pad-w, 150px); height: var(--pad-h, 150px); flex-shrink: 0; pointer-events: auto; touch-action: none;
+    background: var(--paper); border: 2px solid var(--ink); box-shadow: 3px 3px 0 var(--ink);      /* square, like every button */
+  }
+  .pad .mark { position: absolute; display: grid; place-items: center; width: calc(var(--arrow, 30px) + 12px); height: calc(var(--arrow, 30px) + 12px);
+    border-radius: 50%; transform: translate(-50%, -50%); pointer-events: none; }
+  .pad .mark .g { width: var(--arrow, 30px); height: var(--arrow, 30px); pointer-events: none; }
+  .pad .mark.on { background: var(--ink); }
+  .pad .left { left: 15%; top: 50%; } .pad .right { left: 85%; top: 50%; } .pad .down { left: 50%; top: 85%; }
+  .pad .dl { left: 25%; top: 75%; } .pad .dr { left: 75%; top: 75%; }
+  .pad .knob { position: absolute; width: 26px; height: 26px; margin: -13px 0 0 -13px; border-radius: 50%; border: 2px solid var(--ink);
+    background: rgba(20, 20, 20, 0.18); pointer-events: none; visibility: hidden; }
+  .pad.held .knob { visibility: visible; }
+  .pad .dead { position: absolute; left: 50%; top: 50%; width: var(--dead, 30px); height: var(--dead, 30px); border: 1.5px dashed rgba(20, 20, 20, 0.3); border-radius: 50%; transform: translate(-50%, -50%); pointer-events: none; }
   .acts { display: grid; grid-template-columns: repeat(4, var(--act, 46px)); gap: var(--act-gap, 6px); pointer-events: auto; }
   .acts button[data-slot] { grid-row: 1; }          /* the fighter's own moves along the top row */
   .acts .basic { grid-row: 2; }                     /* the shield, punch and grab everyone has, underneath */
@@ -465,12 +471,13 @@ body.two-players .corner { left: 50%; right: auto; transform: translateX(-50%); 
 <div class="flash" id="flash"></div>
 
 <div class="touch" id="touch" hidden>   <!-- (shown once a match starts: none of it flashes up over the menu while the page loads) -->
-  <div class="pad">
-    <button class="dir left" type="button" data-key="ArrowLeft" aria-label="Move left"><svg class="shape" viewBox="1 3 30 71" preserveAspectRatio="none" aria-hidden="true"><polygon class="face" points="1,3 31,3 31,60 1,74"/></svg><img class="g ico" data-icon="left" alt=""></button>
-    <button class="dir down" type="button" data-key="ArrowDown" aria-label="Crouch"><svg class="shape" viewBox="35 3 30 94" preserveAspectRatio="none" aria-hidden="true"><polygon class="face" points="35,3 65,3 65,97 35,97"/></svg><img class="g ico" data-icon="down" alt=""></button>
-    <button class="dir right" type="button" data-key="ArrowRight" aria-label="Move right"><svg class="shape" viewBox="69 3 30 71" preserveAspectRatio="none" aria-hidden="true"><polygon class="face" points="69,3 99,3 99,74 69,60"/></svg><img class="g ico" data-icon="right" alt=""></button>
-    <button class="dir dl" type="button" data-key="ArrowDown ArrowLeft" aria-label="Crouch and move left"><svg class="shape" viewBox="1 65 30 32" preserveAspectRatio="none" aria-hidden="true"><polygon class="face" points="1,79 31,65 31,97 1,97"/></svg><img class="g ico" data-icon="dl" alt=""></button>
-    <button class="dir dr" type="button" data-key="ArrowDown ArrowRight" aria-label="Crouch and move right"><svg class="shape" viewBox="69 65 30 32" preserveAspectRatio="none" aria-hidden="true"><polygon class="face" points="69,65 99,79 99,97 69,97"/></svg><img class="g ico" data-icon="dr" alt=""></button>
+  <div class="pad" role="group" aria-label="Move: hold and slide your thumb; down crouches, down and to a side crouch-walks">
+    <i class="mark left" data-key="ArrowLeft" aria-label="Move left"><img class="g ico" data-icon="left" alt=""></i>
+    <i class="mark right" data-key="ArrowRight" aria-label="Move right"><img class="g ico" data-icon="right" alt=""></i>
+    <i class="mark down" data-key="ArrowDown" aria-label="Crouch"><img class="g ico" data-icon="down" alt=""></i>
+    <i class="mark dl" data-key="ArrowDown ArrowLeft" aria-label="Crouch and move left"><img class="g ico" data-icon="dl" alt=""></i>
+    <i class="mark dr" data-key="ArrowDown ArrowRight" aria-label="Crouch and move right"><img class="g ico" data-icon="dr" alt=""></i>
+    <i class="dead" aria-hidden="true"></i><i class="knob" aria-hidden="true"></i>
   </div>
   <div class="acts" id="acts">
     <button type="button" data-key="KeyJ" data-slot="a1"><span></span><i class="cool"></i></button>
@@ -3476,42 +3483,20 @@ import ReconnectingWebSocket from 'partysocket/ws';
   // one set for each way the phone is held (upright, on its side, and each shared across a table between two
   // players), chosen with tools/padtune (a local page with the game in phone-sized frames and sliders)
   const PAD_SIZES = {
-    upright:   { padW: 138, padH: 150, mid: 30, midTop: 32, gap: 4, cut: 60, drop: 14, arrow: 30, act: 46, actGap: 6, icon: 34, edge: 20 },
-    side:      { padW: 176, padH: 122, mid: 30, midTop: 32, gap: 4, cut: 60, drop: 14, arrow: 24, act: 50, actGap: 6, icon: 34, edge: 20 },
-    split:     { padW: 120, padH: 136, mid: 30, midTop: 32, gap: 4, cut: 60, drop: 14, arrow: 26, act: 44, actGap: 6, icon: 30, edge: 20 },
-    splitSide: { padW: 176, padH: 122, mid: 30, midTop: 32, gap: 4, cut: 60, drop: 14, arrow: 24, act: 44, actGap: 6, icon: 30, edge: 20 },
+    upright:   { padW: 136, padH: 136, dead: 22, arrow: 30, act: 46, actGap: 6, icon: 34, edge: 20 },
+    side:      { padW: 170, padH: 130, dead: 22, arrow: 24, act: 50, actGap: 6, icon: 34, edge: 20 },
+    split:     { padW: 124, padH: 124, dead: 22, arrow: 26, act: 44, actGap: 6, icon: 30, edge: 20 },
+    splitSide: { padW: 160, padH: 120, dead: 22, arrow: 24, act: 44, actGap: 6, icon: 30, edge: 20 },
   };
   const sideMq = matchMedia('(orientation: landscape) and (max-height: 540px)');
   const padLayout = () => (document.body.classList.contains('split') ? 'split' : 'upright') + (sideMq.matches ? 'Side' : '');
   const layoutKey = () => ({ uprightSide: 'side' })[padLayout()] || padLayout();
   const padSizes = (key = layoutKey()) => PAD_SIZES[key];
-  // the d-pad's pieces, in the pad's own 100 x 100 (stretched to its box)
-  function padPieces(z) {
-    const S = (98 - z.mid - 2 * z.gap) / 2, gy = z.gap * z.padW / z.padH;
-    const cut = Math.min(z.cut, 90 - z.drop - gy), m0 = 1 + S + z.gap, m1 = m0 + z.mid;
-    return {
-      left: [[1, 3], [1 + S, 3], [1 + S, cut], [1, cut + z.drop]],
-      down: [[m0, z.midTop], [m1, z.midTop], [m1, 97], [m0, 97]],      // lower than ◀ ▶: the pad is a U
-      right: [[99 - S, 3], [99, 3], [99, cut + z.drop], [99 - S, cut]],
-      dl: [[1, cut + z.drop + gy], [1 + S, cut + gy], [1 + S, 97], [1, 97]],
-      dr: [[99 - S, cut + gy], [99, cut + z.drop + gy], [99, 97], [99 - S, 97]],
-    };
-  }
   function applyPadSizes() {
     const z = padSizes(), root = document.documentElement.style;
     for (const [k, v] of [['--pad-w', z.padW], ['--pad-h', z.padH], ['--arrow', z.arrow], ['--act', z.act], ['--act-gap', z.actGap], ['--icon', z.icon], ['--edge', z.edge]])
       root.setProperty(k, v + 'px');
-    const pieces = padPieces(z);
-    document.querySelectorAll('.touch .pad .dir').forEach(btn => {
-      const name = [...btn.classList].find(c => pieces[c]), poly = pieces[name];
-      const xs = poly.map(q => q[0]), ys = poly.map(q => q[1]);
-      const bx = Math.min(...xs), by = Math.min(...ys), bw = Math.max(...xs) - bx, bh = Math.max(...ys) - by;
-      const cx = xs.reduce((a, b) => a + b) / 4, cy = ys.reduce((a, b) => a + b) / 4 + (name === 'dl' || name === 'dr' ? 2 : 0);
-      Object.assign(btn.style, { left: bx + '%', top: by + '%', width: bw + '%', height: bh + '%' });
-      btn.style.setProperty('--gx', (cx - bx) / bw * 100 + '%'); btn.style.setProperty('--gy', (cy - by) / bh * 100 + '%');
-      btn.querySelector('.shape').setAttribute('viewBox', `${bx} ${by} ${bw} ${bh}`);
-      btn.querySelector('.face').setAttribute('points', poly.map(q => q.join(',')).join(' '));
-    });
+    root.setProperty('--dead', Math.min(z.padW, z.padH) * z.dead / 100 + 'px');       // (a share of the box's half: its diameter)
   }
   addEventListener('resize', applyPadSizes);
   applyPadSizes();
@@ -3522,39 +3507,61 @@ import ReconnectingWebSocket from 'partysocket/ws';
     const a = PAD_ACTIONS[key], turned = who === 'B' && { left: 'right', right: 'left' }[a];
     return SCHEMES[who][turned || a][0];
   };
-  const padCodes = (btn, mine) => btn.dataset.key.split(' ').map(k => mine === 'B' ? padKey('B', k) : player2 ? padKey('A', k) : k);
-  // the d-pad: a thumb presses the piece it lands on, and sliding onto another piece lets go of that one and presses
-  // the new one (across a gap between pieces, the last one stays pressed)
+  const padCodes = (key, mine) => key.split(' ').map(k => mine === 'B' ? padKey('B', k) : player2 ? padKey('A', k) : k);
+  // the joypad: the thumb's direction from the box's middle, in eight slices: left and right (with up-left and
+  // up-right), down, and down and to a side (crouch-walk); straight up, and the dead middle, are nothing. It's
+  // measured from the middle wherever the thumb goes, so sliding off the box or the screen keeps the direction
+  const JOY_DIRS = { left: 'ArrowLeft', right: 'ArrowRight', down: 'ArrowDown', dl: 'ArrowDown ArrowLeft', dr: 'ArrowDown ArrowRight' };
+  function joyDir(dx, dy, dead) {
+    if (Math.hypot(dx, dy) < dead) return null;
+    const a = Math.atan2(dy, dx) * 180 / Math.PI;          // 0 right, 90 down
+    if (a > -67.5 && a <= 22.5) return 'right';
+    if (a > 22.5 && a <= 67.5) return 'dr';
+    if (a > 67.5 && a <= 112.5) return 'down';
+    if (a > 112.5 && a < 157.5) return 'dl';
+    if (a >= 157.5 || a < -112.5) return 'left';
+    return null;                                            // up
+  }
   document.querySelectorAll('.touch .pad').forEach(pad => {
-    const mine = pad.closest('.touch-b') ? 'B' : 'A', held = new Map();
-    const release = id => { const h = held.get(id); if (!h) return; for (const c of h.codes) keys.delete(c); h.btn.classList.remove('on'); held.delete(id); };
-    const press = (id, btn, first) => {
-      if (held.get(id)?.btn === btn) return;
-      release(id);
-      const codes = padCodes(btn, mine);
+    const mine = pad.closest('.touch-b') ? 'B' : 'A', knob = pad.querySelector('.knob');
+    let id = null, dir = null, codes = [];
+    const aim = e => {
+      // in the pad's own turn (User B's is upside down): its middle, and the thumb from there
+      const r = pad.getBoundingClientRect(), half = Math.min(r.width, r.height) / 2, flip = mine === 'B' ? -1 : 1;
+      const dx = (e.clientX - (r.left + r.width / 2)) * flip, dy = (e.clientY - (r.top + r.height / 2)) * flip;
+      const k = Math.min(1, half * 0.95 / Math.hypot(dx, dy) || 1);
+      knob.style.left = 50 + dx * k / r.width * 100 + '%'; knob.style.top = 50 + dy * k / r.height * 100 + '%';
+      const next = joyDir(dx, dy, half * padSizes().dead / 100);
+      if (next === dir) return;
+      for (const c of codes) keys.delete(c);
+      pad.querySelector('.mark.on')?.classList.remove('on');
+      codes = next ? padCodes(JOY_DIRS[next], mine) : [];
       for (const c of codes) { keys.add(c); pressed.add(c); }
-      if (first && codes.length === 1) noteTap(codes[0]);     // a double tap dashes; sliding across doesn't
-      btn.classList.add('on'); held.set(id, { btn, codes });
+      if (!dir && codes.length === 1) noteTap(codes[0]);       // out from the middle (or a fresh touch) twice: a dash
+      if (next) pad.querySelector('.mark.' + next).classList.add('on');
+      dir = next;
     };
     pad.addEventListener('pointerdown', e => {
       e.preventDefault();
-      const btn = e.target.closest?.('.dir');
-      if (!btn) return;
-      pad.setPointerCapture?.(e.pointerId); press(e.pointerId, btn, true);
+      if (id !== null) return;
+      id = e.pointerId; pad.setPointerCapture?.(id); pad.classList.add('held'); aim(e);
     });
-    pad.addEventListener('pointermove', e => {
-      if (!held.has(e.pointerId)) return;
-      const btn = document.elementFromPoint(e.clientX, e.clientY)?.closest('.dir');
-      if (btn && pad.contains(btn)) press(e.pointerId, btn, false);
-    });
-    const up = e => { e.preventDefault(); release(e.pointerId); };
+    pad.addEventListener('pointermove', e => { if (e.pointerId === id) aim(e); });
+    const up = e => {
+      if (e.pointerId !== id) return;
+      e.preventDefault();
+      for (const c of codes) keys.delete(c);
+      pad.querySelector('.mark.on')?.classList.remove('on'); pad.classList.remove('held');
+      id = null; dir = null; codes = [];
+    };
     pad.addEventListener('pointerup', up);
     pad.addEventListener('pointercancel', up);
+    pad.addEventListener('lostpointercapture', up);
     pad.addEventListener('contextmenu', e => e.preventDefault());
   });
   document.querySelectorAll('.touch .acts button').forEach(btn => {
     const mine = btn.closest('.touch-b') ? 'B' : 'A';
-    const codesOf = () => padCodes(btn, mine);
+    const codesOf = () => padCodes(btn.dataset.key, mine);
     let codes = [];
     let startY = null, upCode = null;
     const down = e => {

@@ -6,7 +6,7 @@ from bb import BASE as B, OUT, check, summary, launch, frames
 async def hold(pg, cdp, sel, key, n=15):
     # a real finger on the button (through the DevTools protocol), held for n game frames
     r = await pg.evaluate("s => { const r = document.querySelector(s).getBoundingClientRect(); return [r.left + r.width / 2, r.top + r.height / 2]; }",
-                          f'{sel} button[data-key="{key}"]')
+                          f'{sel} [data-key="{key}"]')
     await cdp.send("Input.dispatchTouchEvent", {"type": "touchStart", "touchPoints": [{"x": r[0], "y": r[1], "id": 1}]})
     await frames(pg, n, 400)
     await cdp.send("Input.dispatchTouchEvent", {"type": "touchEnd", "touchPoints": []})

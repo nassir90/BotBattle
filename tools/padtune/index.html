@@ -79,12 +79,10 @@ const LAYOUTS = [
 ];
 // [setting, label, min, max, unit]
 const KNOBS = [
-  ['padW', 'D-pad width', 70, 300, 'px'], ['padH', 'D-pad height', 60, 300, 'px'],
-  ['mid', 'Middle (▼) width', 10, 60, '%'], ['midTop', 'Where ▼ starts', 3, 85, '%'], ['gap', 'Gap between pieces', 0, 12, '%'],
-  ['cut', 'Where ◀ ▶ end', 25, 85, '%'], ['drop', 'Slope of their cut', 0, 35, '%'],
-  ['arrow', 'Arrow size', 10, 64, 'px'], ['act', 'Action button size', 28, 90, 'px'],
-  ['actGap', 'Gap between actions', 0, 24, 'px'], ['icon', 'Icon size', 10, 72, 'px'],
-  ['edge', 'Distance from the edges', 4, 90, 'px'],
+  ['padW', 'Joypad width', 70, 300, 'px'], ['padH', 'Joypad height', 60, 300, 'px'],
+  ['dead', 'Dead middle', 0, 70, '%'], ['arrow', 'Arrow size', 10, 64, 'px'],
+  ['act', 'Action button size', 28, 90, 'px'], ['actGap', 'Gap between actions', 0, 24, 'px'],
+  ['icon', 'Icon size', 10, 72, 'px'], ['edge', 'Distance from the edges', 4, 90, 'px'],
 ];
 const KNOB = Object.fromEntries(KNOBS.map(k => [k[0], k]));
 const $ = id => document.getElementById(id);
@@ -128,25 +126,12 @@ $('submit').addEventListener('click', async () => {
 // the drag (dx, dy in phone px since it began, z0 the sizes then). The pad is pinned at the bottom left and the
 // actions at the bottom right, so the edges away from the pins stretch them, and those on the pins move them in
 // from the screen's edges. Each value tracks the edge under the pointer.
-const dia = (b, side, t0, t1) => {        // part of a tall piece's diagonal cut (t 0 = its inner end, 1 = outer)
-  const P = b.pad, inX = side < 0 ? b.left.right : b.right.left, outX = side < 0 ? P.left : P.right;
-  const inY = P.top + P.height * b.z.cut / 100, outY = P.top + P.height * (b.z.cut + b.z.drop) / 100;
-  return [inX + (outX - inX) * t0, inY + (outY - inY) * t0, inX + (outX - inX) * t1, inY + (outY - inY) * t1];
-};
 const EDGES = [
-  { tip: 'D-pad height', dir: 'ns', seg: b => [b.pad.left, b.pad.top, b.pad.right, b.pad.top], set: (key, z, dx, dy) => set(key, 'padH', z.padH - dy) },
-  { tip: 'D-pad width', dir: 'ew', seg: b => [b.pad.right, b.pad.top, b.pad.right, b.pad.bottom], set: (key, z, dx) => set(key, 'padW', z.padW + dx) },
+  { tip: 'Joypad height', dir: 'ns', seg: b => [b.pad.left, b.pad.top, b.pad.right, b.pad.top], set: (key, z, dx, dy) => set(key, 'padH', z.padH - dy) },
+  { tip: 'Joypad width', dir: 'ew', seg: b => [b.pad.right, b.pad.top, b.pad.right, b.pad.bottom], set: (key, z, dx) => set(key, 'padW', z.padW + dx) },
   { tip: 'Distance from the edges', dir: 'ew', seg: b => [b.pad.left, b.pad.top, b.pad.left, b.pad.bottom], set: (key, z, dx) => set(key, 'edge', z.edge + dx) },
   { tip: 'Distance from the edges', dir: 'ns', seg: b => [b.pad.left, b.pad.bottom, b.pad.right, b.pad.bottom], set: (key, z, dx, dy) => set(key, 'edge', z.edge - dy) },
-  { tip: 'Where ▼ starts', dir: 'ns', seg: b => [b.down.left, b.down.top, b.down.right, b.down.top], set: (key, z, dx, dy) => set(key, 'midTop', z.midTop + dy / z.padH * 100) },
-  { tip: 'Middle (▼) width', dir: 'ew', seg: b => [b.down.left + 3, b.down.top + 6, b.down.left + 3, b.down.bottom - 6], set: (key, z, dx) => set(key, 'mid', z.mid - 2 * dx / z.padW * 100) },
-  { tip: 'Middle (▼) width', dir: 'ew', seg: b => [b.down.right - 3, b.down.top + 6, b.down.right - 3, b.down.bottom - 6], set: (key, z, dx) => set(key, 'mid', z.mid + 2 * dx / z.padW * 100) },
-  { tip: 'Gap between pieces', dir: 'ew', seg: b => [b.left.right - 3, b.left.top + 6, b.left.right - 3, dia(b, -1, 0, 0)[1] - 6], set: (key, z, dx) => set(key, 'gap', z.gap - dx / z.padW * 100) },
-  { tip: 'Gap between pieces', dir: 'ew', seg: b => [b.right.left + 3, b.right.top + 6, b.right.left + 3, dia(b, 1, 0, 0)[1] - 6], set: (key, z, dx) => set(key, 'gap', z.gap + dx / z.padW * 100) },
-  { tip: 'Where ◀ ▶ end (the cut)', dir: 'ns', seg: b => dia(b, -1, 0.05, 0.62), set: (key, z, dx, dy) => set(key, 'cut', z.cut + dy / z.padH * 100) },
-  { tip: 'Where ◀ ▶ end (the cut)', dir: 'ns', seg: b => dia(b, 1, 0.05, 0.62), set: (key, z, dx, dy) => set(key, 'cut', z.cut + dy / z.padH * 100) },
-  { tip: 'Slope of the cut (its outer end)', dir: 'ns', seg: b => dia(b, -1, 0.66, 1), set: (key, z, dx, dy) => set(key, 'drop', z.drop + dy / z.padH * 100) },
-  { tip: 'Slope of the cut (its outer end)', dir: 'ns', seg: b => dia(b, 1, 0.66, 1), set: (key, z, dx, dy) => set(key, 'drop', z.drop + dy / z.padH * 100) },
+  { tip: 'Dead middle', dir: 'ew', seg: b => [b.dead.right, b.dead.top, b.dead.right, b.dead.bottom], set: (key, z, dx) => set(key, 'dead', z.dead + 2 * dx / Math.min(z.padW, z.padH) * 100) },
   { tip: 'Arrow size', dir: 'ew', seg: b => [b.arrow.right, b.arrow.top, b.arrow.right, b.arrow.bottom], set: (key, z, dx) => set(key, 'arrow', z.arrow + 2 * dx), box: 'arrow' },
   { tip: 'Arrow size', dir: 'ns', seg: b => [b.arrow.left, b.arrow.bottom, b.arrow.right, b.arrow.bottom], set: (key, z, dx, dy) => set(key, 'arrow', z.arrow + 2 * dy) },
   { tip: 'Action button size', dir: 'ns', seg: b => [b.acts.left, b.acts.top, b.acts.right, b.acts.top], set: (key, z, dx, dy) => set(key, 'act', z.act - dy / 2) },
@@ -158,12 +143,11 @@ const EDGES = [
   { tip: 'Icon size', dir: 'ew', seg: b => [b.icon.right, b.icon.top, b.icon.right, b.icon.bottom], set: (key, z, dx) => set(key, 'icon', z.icon + 2 * dx), box: 'icon' },
   { tip: 'Icon size', dir: 'ns', seg: b => [b.icon.left, b.icon.bottom, b.icon.right, b.icon.bottom], set: (key, z, dx, dy) => set(key, 'icon', z.icon + 2 * dy) },
 ];
-const VALUE_OF = { 'D-pad height': 'padH', 'D-pad width': 'padW', 'Distance from the edges': 'edge', 'Middle (▼) width': 'mid', 'Where ▼ starts': 'midTop', 'Gap between pieces': 'gap',
-  'Where ◀ ▶ end (the cut)': 'cut', 'Slope of the cut (its outer end)': 'drop', 'Arrow size': 'arrow', 'Action button size': 'act', 'Gap between actions': 'actGap', 'Icon size': 'icon' };
+const VALUE_OF = { 'Joypad height': 'padH', 'Joypad width': 'padW', 'Distance from the edges': 'edge', 'Dead middle': 'dead', 'Arrow size': 'arrow', 'Action button size': 'act', 'Gap between actions': 'actGap', 'Icon size': 'icon' };
 // the controls' boxes in one frame, in phone px (User A's pad: in a shared frame User B's mirrors it)
 function boxes(f) {
   const d = f.win().document, r = sel => d.querySelector(sel)?.getBoundingClientRect();
-  const b = { z: sizes[f.l.key], pad: r('#touch .pad'), acts: r('#touch .acts'), left: r('#touch .pad .left'), right: r('#touch .pad .right'), down: r('#touch .pad .down'),
+  const b = { z: sizes[f.l.key], pad: r('#touch .pad'), acts: r('#touch .acts'), dead: r('#touch .pad .dead'),
     arrow: r('#touch .pad .left .g'), act: r('#touch .acts button[data-slot="a1"]'), act2: r('#touch .acts button[data-slot="a2"]'),
     shield: r('#touch .acts .shield'), icon: r('#touch .acts .shield .ico') };
   return Object.values(b).every(Boolean) ? b : null;

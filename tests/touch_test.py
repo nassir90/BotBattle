@@ -1,16 +1,16 @@
 # The touch pad on a phone held upright, with real fingers (DevTools touch events): nothing of it shows over the menu
-# while the page loads; the icons are drawn (little 3D cutouts); the ▲ at the bottom right jumps; the d-pad's bottom
-# corners crouch and walk that way, and a thumb sliding across the d-pad presses whichever piece it's on; the shield parries to the side when tapped and overhead when swiped up from; the punch button shows a boot
-# while crouched (it kicks); the hand grabs. Then the layout: every button on screen, each piece of the d-pad taking the finger at its own centre,
-# the rest not overlapping, in two rows of
-# actions (the fighter's moves, then the shield, punch and grab).
+# while the page loads; the icons are drawn (little 3D cutouts); the ▲ at the bottom right jumps; the joypad's down
+# and to a side crouches and walks that way; a thumb sliding across it changes direction, keeps it when it slides off
+# the box, and its middle is nothing; the shield parries to the side when tapped and overhead when swiped up from; the
+# punch button shows a boot while crouched (it kicks); the hand grabs. Then the layout: everything on screen, nothing
+# overlapping, the actions in two rows (the fighter's moves, then the shield, punch, grab and jump).
 import asyncio
 from playwright.async_api import async_playwright
 from bb import BASE as B, check, summary, launch, frames, bb
 
 async def centre(pg, key):
-    # (where its glyph is, inside its shape for the d-pad's cut pieces)
-    return await pg.evaluate("k => { const b = document.querySelector('#touch button[data-key=\"' + k + '\"]'), r = (b.querySelector('.g') || b).getBoundingClientRect(); return [r.left + r.width / 2, r.top + r.height / 2]; }", key)
+    # (a button's middle, or on the joypad the mark for that direction)
+    return await pg.evaluate("k => { const r = document.querySelector('#touch [data-key=\"' + k + '\"]').getBoundingClientRect(); return [r.left + r.width / 2, r.top + r.height / 2]; }", key)
 async def touch(cdp, kind, x, y):
     await cdp.send("Input.dispatchTouchEvent", {"type": kind, "touchPoints": [] if kind == "touchEnd" else [{"x": x, "y": y, "id": 1}]})
 
@@ -46,7 +46,7 @@ async def main():
             x0 = (await bb(pg))[0]["x"]; x, y = await centre(pg, key)
             await touch(cdp, "touchStart", x, y); await frames(pg, 30); f = await bb(pg); await touch(cdp, "touchEnd", 0, 0)
             side = 'left' if way < 0 else 'right'
-            check(f"the bottom {side} piece crouches and walks {side}", f[0]["crouch"] and (f[0]["x"] - x0) * way > 0.3, (f[0]["crouch"], round(f[0]["x"] - x0, 2)))
+            check(f"down and to the {side} on the joypad crouches and walks {side}", f[0]["crouch"] and (f[0]["x"] - x0) * way > 0.3, (f[0]["crouch"], round(f[0]["x"] - x0, 2)))
             await frames(pg, 20)
 
         # sliding: from ◀ across to ▶ walks left then right, then down onto the bottom right corner crouches
@@ -58,10 +58,19 @@ async def main():
         await frames(pg, 30); xr = (await bb(pg))[0]["x"]
         await touch(cdp, "touchMove", cx, cy); await frames(pg, 20); f = await bb(pg)
         on = await pg.evaluate("[...document.querySelectorAll('#touch .pad .on')].map(b => b.dataset.key)")
+        # off the box (out to the right and below it, still on screen): still down and to the right
+        pr = await pg.evaluate("(() => { const r = document.querySelector('#touch .pad').getBoundingClientRect(); return [r.right, r.bottom]; })()")
+        await touch(cdp, "touchMove", pr[0] + 60, min(pr[1] + 60, 840)); await frames(pg, 6)
+        off = await pg.evaluate("[...document.querySelectorAll('#touch .pad .on')].map(b => b.dataset.key)")
+        # back to the middle: nothing
+        mx, my = await pg.evaluate("(() => { const r = document.querySelector('#touch .pad').getBoundingClientRect(); return [r.left + r.width / 2, r.top + r.height / 2]; })()")
+        await touch(cdp, "touchMove", mx, my); await frames(pg, 6)
+        mid = await pg.evaluate("[...document.querySelectorAll('#touch .pad .on')].length")
         await touch(cdp, "touchEnd", 0, 0); await frames(pg, 6)
         left = await pg.evaluate("document.querySelectorAll('#touch .pad .on').length")
-        check("one thumb sliding across the d-pad: walks left, then right, then crouch-walks, and lets go at the end",
-              xl < x0 - 0.2 and xr > xl + 0.2 and f[0]["crouch"] and on == ["ArrowDown ArrowRight"] and left == 0, (round(xl - x0, 2), round(xr - xl, 2), f[0]["crouch"], on, left))
+        check("one thumb sliding across the joypad: walks left, then right, then crouch-walks, keeps it off the box, nothing in the middle, and lets go at the end",
+              xl < x0 - 0.2 and xr > xl + 0.2 and f[0]["crouch"] and on == off == ["ArrowDown ArrowRight"] and mid == 0 and left == 0,
+              (round(xl - x0, 2), round(xr - xl, 2), f[0]["crouch"], on, off, mid, left))
         await frames(pg, 20)
 
         # the shield: a tap parries to the side, a swipe up parries overhead
@@ -94,9 +103,7 @@ async def main():
         # in the row under it
         lay = await pg.evaluate("""(() => {
           const bs = [...document.querySelectorAll('#touch button')].filter(b => !b.hidden).map(b => ({ k: b.dataset.key, slot: !!b.dataset.slot, r: b.getBoundingClientRect() }));
-          const pad = [...document.querySelectorAll('#touch .pad .dir')];
-          const missed = pad.filter(b => { const r = b.querySelector('.g').getBoundingClientRect(); return document.elementFromPoint(r.left + r.width / 2, r.top + r.height / 2)?.closest('button') !== b; }).map(b => b.dataset.key);
-          bs.splice(0, bs.length, ...bs.filter(b => !pad.some(d => d.dataset.key === b.k)), { k: 'pad', r: document.querySelector('#touch .pad').getBoundingClientRect() });
+          bs.push({ k: 'pad', r: document.querySelector('#touch .pad').getBoundingClientRect() });
           let over = 0;
           for (let i = 0; i < bs.length; i++) for (let j = i + 1; j < bs.length; j++) {
             const a = bs[i].r, c = bs[j].r;
@@ -104,10 +111,10 @@ async def main():
           }
           const off = bs.filter(b => b.r.left < 0 || b.r.right > innerWidth || b.r.bottom > innerHeight).length;
           const tops = s => [...new Set(bs.filter(b => b.k !== 'pad' && b.slot === s).map(b => Math.round(b.r.top)))];
-          return { n: bs.length, over, off, missed, pieces: pad.length, moves: tops(true), basics: tops(false) };
+          return { n: bs.length, over, off, moves: tops(true), basics: tops(false) };
         })()""")
-        check("every button on screen, each d-pad piece taking its own centre, none overlapping, in two rows: the fighter's moves above the shield, punch and grab",
-              lay["over"] == 0 and lay["off"] == 0 and not lay["missed"] and lay["pieces"] == 5 and len(lay["moves"]) == 1 and len(lay["basics"]) == 1 and lay["moves"][0] < lay["basics"][0], lay)
+        check("the joypad and every button on screen, none overlapping, the actions in two rows: the fighter's moves above the shield, punch, grab and jump",
+              lay["over"] == 0 and lay["off"] == 0 and len(lay["moves"]) == 1 and len(lay["basics"]) == 1 and lay["moves"][0] < lay["basics"][0], lay)
         check("no page errors", not errs, errs[:3])
         await b.close()
     summary()
