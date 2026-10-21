@@ -26,10 +26,11 @@ button[aria-pressed="true"] { background: var(--ink); color: var(--paper); }
 .vals .hot { color: var(--ink); font-weight: 600; }
 .overlay { position: absolute; inset: 0; pointer-events: none; }
 .box { position: absolute; border: 1.5px dashed rgba(20, 20, 20, 0.55); }
-.h { position: absolute; width: 14px; height: 14px; margin: -7px 0 0 -7px; border-radius: 50%; background: #e8542f; border: 2px solid var(--paper);
-  box-shadow: 0 0 0 1.5px var(--ink); pointer-events: auto; touch-action: none; }
-.h.ew { cursor: ew-resize; } .h.ns { cursor: ns-resize; } .h.nesw { cursor: nesw-resize; } .h.nwse { cursor: nwse-resize; } .h.move { cursor: move; border-radius: 3px; }
-.h:hover, .h.drag { background: var(--ink); }
+.e { position: absolute; height: 12px; transform-origin: 0 50%; pointer-events: auto; touch-action: none; }
+.e::after { content: ''; position: absolute; left: 0; right: 0; top: 5px; height: 2px; background: #e8542f; opacity: 0; }
+.e:hover::after, .e.drag::after { opacity: 1; }
+.e.ew { cursor: ew-resize; } .e.ns { cursor: ns-resize; }
+.ibox { position: absolute; border: 1px dotted rgba(20, 20, 20, 0.45); }
 .tip { position: absolute; transform: translate(12px, -130%); background: var(--ink); color: var(--paper); font-size: 11px; padding: 3px 6px; white-space: nowrap; pointer-events: none; }
 .foot { display: grid; gap: 8px; margin-top: auto; }
 .row { display: flex; gap: 8px; }
@@ -53,7 +54,7 @@ figure.on .phone { outline: 3px solid var(--ink); outline-offset: 4px; }
   <aside>
     <div>
       <h1>Touch pad sizes</h1>
-      <p class="sub">The real game, as a phone sees it. Drag the orange handles on the controls to resize them (hover one to see what it sets); click the buttons themselves to try them. Each way of holding the phone has its own sizes.</p>
+      <p class="sub">The real game, as a phone sees it. Grab an edge of the controls and drag it to stretch or shrink that part (hovering an edge lights it and says what it sets); click the buttons themselves to try them. Each way of holding the phone has its own sizes.</p>
     </div>
     <div class="tabs" id="tabs"></div>
     <dl class="vals" id="vals"></dl>
@@ -79,7 +80,7 @@ const LAYOUTS = [
 // [setting, label, min, max, unit]
 const KNOBS = [
   ['padW', 'D-pad width', 70, 300, 'px'], ['padH', 'D-pad height', 60, 300, 'px'],
-  ['mid', 'Middle (▼) width', 10, 60, '%'], ['gap', 'Gap between pieces', 0, 12, '%'],
+  ['mid', 'Middle (▼) width', 10, 60, '%'], ['midTop', 'Where ▼ starts', 3, 85, '%'], ['gap', 'Gap between pieces', 0, 12, '%'],
   ['cut', 'Where ◀ ▶ end', 25, 85, '%'], ['drop', 'Slope of their cut', 0, 35, '%'],
   ['arrow', 'Arrow size', 10, 64, 'px'], ['act', 'Action button size', 28, 90, 'px'],
   ['actGap', 'Gap between actions', 0, 24, 'px'], ['icon', 'Icon size', 10, 72, 'px'],
@@ -87,7 +88,7 @@ const KNOBS = [
 ];
 const KNOB = Object.fromEntries(KNOBS.map(k => [k[0], k]));
 const $ = id => document.getElementById(id);
-let current = 'upright', defaults = null, sizes = null, hot = null;
+let current = 'upright', defaults = null, sizes = null, hot = null, setup = null;
 const frames = [];
 
 // which frame's values the list shows (the last one touched, or picked from the tabs)
@@ -122,75 +123,90 @@ $('submit').addEventListener('click', async () => {
   } catch (err) { $('status').textContent = 'Not sent: ' + err.message; }
 });
 
-// ---------- handles: each sits on a part of the controls and sets one size as it's dragged ----------
-// where: the handle's spot in the phone (CSS px) from the controls' boxes; set: the new value from the drag
-// (dx, dy in phone px since the drag began, z0 the sizes then). The pad is pinned bottom left and the
-// actions bottom right, so a corner that moves with the size is the one away from the pin.
-const HANDLES = [
-  { k: 'padW', also: 'padH', tip: 'D-pad size', cls: 'nesw', where: b => [b.pad.right, b.pad.top],
-    set: (key, z0, dx, dy) => { set(key, 'padW', z0.padW + dx); set(key, 'padH', z0.padH - dy); } },
-  { k: 'edge', tip: 'Distance from the edges', cls: 'move', where: b => [b.pad.left, b.pad.bottom],
-    set: (key, z0, dx, dy) => set(key, 'edge', z0.edge + (Math.abs(dx) > Math.abs(dy) ? dx : -dy)) },
-  { k: 'mid', tip: 'Middle (▼) width', cls: 'ew', where: b => [b.down.right, b.down.top + b.down.height * 0.5],
-    set: (key, z0, dx) => set(key, 'mid', z0.mid + 2 * dx / z0.padW * 100) },
-  { k: 'gap', tip: 'Gap between pieces', cls: 'ew', where: b => [b.left.right, b.left.top + b.left.height * 0.2],
-    set: (key, z0, dx) => set(key, 'gap', z0.gap - dx / z0.padW * 100) },
-  { k: 'cut', tip: 'Where ◀ ▶ end', cls: 'ns', where: b => [b.left.right, b.pad.top + b.pad.height * b.z.cut / 100],
-    set: (key, z0, dx, dy) => set(key, 'cut', z0.cut + dy / z0.padH * 100) },
-  { k: 'drop', tip: 'Slope of their cut', cls: 'ns', where: b => [b.left.left, b.pad.top + b.pad.height * (b.z.cut + b.z.drop) / 100],
-    set: (key, z0, dx, dy) => set(key, 'drop', z0.drop + dy / z0.padH * 100) },
-  { k: 'arrow', tip: 'Arrow size', cls: 'nwse', where: b => [b.arrow.right, b.arrow.bottom],
-    set: (key, z0, dx, dy) => set(key, 'arrow', z0.arrow + dx + dy) },
-  { k: 'act', tip: 'Action button size', cls: 'nwse', where: b => [b.act.left, b.act.top],
-    set: (key, z0, dx, dy) => set(key, 'act', z0.act + (Math.abs(dx / 4) > Math.abs(dy / 2) ? -dx / 4 : -dy / 2)) },
-  { k: 'actGap', tip: 'Gap between actions', cls: 'ew', where: b => [(b.act.right + b.act2.left) / 2, b.act.top + b.act.height / 2],
-    set: (key, z0, dx) => set(key, 'actGap', z0.actGap - dx / 2.5) },
-  { k: 'icon', tip: 'Icon size', cls: 'nwse', where: b => [b.icon.right, b.icon.bottom],
-    set: (key, z0, dx, dy) => set(key, 'icon', z0.icon + dx + dy) },
+// ---------- edges: grab one and drag it to stretch or shrink that part ----------
+// seg: the edge in the phone (CSS px, from the controls' boxes); dir: which way it drags; set: the new value from
+// the drag (dx, dy in phone px since it began, z0 the sizes then). The pad is pinned at the bottom left and the
+// actions at the bottom right, so the edges away from the pins stretch them, and those on the pins move them in
+// from the screen's edges. Each value tracks the edge under the pointer.
+const dia = (b, side, t0, t1) => {        // part of a tall piece's diagonal cut (t 0 = its inner end, 1 = outer)
+  const P = b.pad, inX = side < 0 ? b.left.right : b.right.left, outX = side < 0 ? P.left : P.right;
+  const inY = P.top + P.height * b.z.cut / 100, outY = P.top + P.height * (b.z.cut + b.z.drop) / 100;
+  return [inX + (outX - inX) * t0, inY + (outY - inY) * t0, inX + (outX - inX) * t1, inY + (outY - inY) * t1];
+};
+const EDGES = [
+  { tip: 'D-pad height', dir: 'ns', seg: b => [b.pad.left, b.pad.top, b.pad.right, b.pad.top], set: (key, z, dx, dy) => set(key, 'padH', z.padH - dy) },
+  { tip: 'D-pad width', dir: 'ew', seg: b => [b.pad.right, b.pad.top, b.pad.right, b.pad.bottom], set: (key, z, dx) => set(key, 'padW', z.padW + dx) },
+  { tip: 'Distance from the edges', dir: 'ew', seg: b => [b.pad.left, b.pad.top, b.pad.left, b.pad.bottom], set: (key, z, dx) => set(key, 'edge', z.edge + dx) },
+  { tip: 'Distance from the edges', dir: 'ns', seg: b => [b.pad.left, b.pad.bottom, b.pad.right, b.pad.bottom], set: (key, z, dx, dy) => set(key, 'edge', z.edge - dy) },
+  { tip: 'Where ▼ starts', dir: 'ns', seg: b => [b.down.left, b.down.top, b.down.right, b.down.top], set: (key, z, dx, dy) => set(key, 'midTop', z.midTop + dy / z.padH * 100) },
+  { tip: 'Middle (▼) width', dir: 'ew', seg: b => [b.down.left + 3, b.down.top + 6, b.down.left + 3, b.down.bottom - 6], set: (key, z, dx) => set(key, 'mid', z.mid - 2 * dx / z.padW * 100) },
+  { tip: 'Middle (▼) width', dir: 'ew', seg: b => [b.down.right - 3, b.down.top + 6, b.down.right - 3, b.down.bottom - 6], set: (key, z, dx) => set(key, 'mid', z.mid + 2 * dx / z.padW * 100) },
+  { tip: 'Gap between pieces', dir: 'ew', seg: b => [b.left.right - 3, b.left.top + 6, b.left.right - 3, dia(b, -1, 0, 0)[1] - 6], set: (key, z, dx) => set(key, 'gap', z.gap - dx / z.padW * 100) },
+  { tip: 'Gap between pieces', dir: 'ew', seg: b => [b.right.left + 3, b.right.top + 6, b.right.left + 3, dia(b, 1, 0, 0)[1] - 6], set: (key, z, dx) => set(key, 'gap', z.gap + dx / z.padW * 100) },
+  { tip: 'Where ◀ ▶ end (the cut)', dir: 'ns', seg: b => dia(b, -1, 0.05, 0.62), set: (key, z, dx, dy) => set(key, 'cut', z.cut + dy / z.padH * 100) },
+  { tip: 'Where ◀ ▶ end (the cut)', dir: 'ns', seg: b => dia(b, 1, 0.05, 0.62), set: (key, z, dx, dy) => set(key, 'cut', z.cut + dy / z.padH * 100) },
+  { tip: 'Slope of the cut (its outer end)', dir: 'ns', seg: b => dia(b, -1, 0.66, 1), set: (key, z, dx, dy) => set(key, 'drop', z.drop + dy / z.padH * 100) },
+  { tip: 'Slope of the cut (its outer end)', dir: 'ns', seg: b => dia(b, 1, 0.66, 1), set: (key, z, dx, dy) => set(key, 'drop', z.drop + dy / z.padH * 100) },
+  { tip: 'Arrow size', dir: 'ew', seg: b => [b.arrow.right, b.arrow.top, b.arrow.right, b.arrow.bottom], set: (key, z, dx) => set(key, 'arrow', z.arrow + 2 * dx), box: 'arrow' },
+  { tip: 'Arrow size', dir: 'ns', seg: b => [b.arrow.left, b.arrow.bottom, b.arrow.right, b.arrow.bottom], set: (key, z, dx, dy) => set(key, 'arrow', z.arrow + 2 * dy) },
+  { tip: 'Action button size', dir: 'ns', seg: b => [b.acts.left, b.acts.top, b.acts.right, b.acts.top], set: (key, z, dx, dy) => set(key, 'act', z.act - dy / 2) },
+  { tip: 'Action button size', dir: 'ew', seg: b => [b.acts.left, b.acts.top, b.acts.left, b.acts.bottom], set: (key, z, dx) => set(key, 'act', z.act - dx / 4) },
+  { tip: 'Distance from the edges', dir: 'ew', seg: b => [b.acts.right, b.acts.top, b.acts.right, b.acts.bottom], set: (key, z, dx) => set(key, 'edge', z.edge - dx) },
+  { tip: 'Distance from the edges', dir: 'ns', seg: b => [b.acts.left, b.acts.bottom, b.acts.right, b.acts.bottom], set: (key, z, dx, dy) => set(key, 'edge', z.edge - dy) },
+  { tip: 'Gap between actions', dir: 'ew', seg: b => { const x = (b.act.right + b.act2.left) / 2; return [x, b.acts.top, x, b.acts.bottom]; }, set: (key, z, dx) => set(key, 'actGap', z.actGap - dx / 2.5) },
+  { tip: 'Gap between actions', dir: 'ns', seg: b => { const y = (b.act.bottom + b.shield.top) / 2; return [b.acts.left, y, b.acts.right, y]; }, set: (key, z, dx, dy) => set(key, 'actGap', z.actGap - 2 * dy) },
+  { tip: 'Icon size', dir: 'ew', seg: b => [b.icon.right, b.icon.top, b.icon.right, b.icon.bottom], set: (key, z, dx) => set(key, 'icon', z.icon + 2 * dx), box: 'icon' },
+  { tip: 'Icon size', dir: 'ns', seg: b => [b.icon.left, b.icon.bottom, b.icon.right, b.icon.bottom], set: (key, z, dx, dy) => set(key, 'icon', z.icon + 2 * dy) },
 ];
+const VALUE_OF = { 'D-pad height': 'padH', 'D-pad width': 'padW', 'Distance from the edges': 'edge', 'Middle (▼) width': 'mid', 'Where ▼ starts': 'midTop', 'Gap between pieces': 'gap',
+  'Where ◀ ▶ end (the cut)': 'cut', 'Slope of the cut (its outer end)': 'drop', 'Arrow size': 'arrow', 'Action button size': 'act', 'Gap between actions': 'actGap', 'Icon size': 'icon' };
 // the controls' boxes in one frame, in phone px (User A's pad: in a shared frame User B's mirrors it)
 function boxes(f) {
   const d = f.win().document, r = sel => d.querySelector(sel)?.getBoundingClientRect();
-  const b = { z: sizes[f.l.key], pad: r('#touch .pad'), acts: r('#touch .acts'), left: r('#touch .pad .left'), down: r('#touch .pad .down'),
-    arrow: r('#touch .pad .left .g'), act: r('#touch .acts button[data-slot="a1"]'), act2: r('#touch .acts button[data-slot="a2"]'), icon: r('#touch .acts .shield .ico') };
+  const b = { z: sizes[f.l.key], pad: r('#touch .pad'), acts: r('#touch .acts'), left: r('#touch .pad .left'), right: r('#touch .pad .right'), down: r('#touch .pad .down'),
+    arrow: r('#touch .pad .left .g'), act: r('#touch .acts button[data-slot="a1"]'), act2: r('#touch .acts button[data-slot="a2"]'),
+    shield: r('#touch .acts .shield'), icon: r('#touch .acts .shield .ico') };
   return Object.values(b).every(Boolean) ? b : null;
 }
 function addOverlay(f) {
   const ov = document.createElement('div'); ov.className = 'overlay';
-  const padBox = document.createElement('div'), actsBox = document.createElement('div');
-  padBox.className = actsBox.className = 'box';
+  const padBox = document.createElement('div'), actsBox = document.createElement('div'), arrowBox = document.createElement('div'), iconBox = document.createElement('div');
+  padBox.className = actsBox.className = 'box'; arrowBox.className = iconBox.className = 'ibox';
   const tip = document.createElement('div'); tip.className = 'tip'; tip.hidden = true;
-  ov.append(padBox, actsBox, tip);
-  const hs = HANDLES.map(h => {
-    const el = document.createElement('div');
-    el.className = 'h ' + h.cls; el.title = h.tip;
+  ov.append(padBox, actsBox, arrowBox, iconBox);
+  let tipAt = null;
+  const es = EDGES.map(h => {
+    const el = document.createElement('div'), k = VALUE_OF[h.tip];
+    el.className = 'e ' + h.dir;
+    const say = () => { tip.hidden = false; tip.textContent = `${h.tip}: ${sizes[f.l.key][k]}${KNOB[k][4]}`; };
+    el.addEventListener('pointerenter', e => { if (!sizes) return; tipAt = [e.clientX, e.clientY]; say(); });
+    el.addEventListener('pointerleave', () => { if (!el.classList.contains('drag')) tip.hidden = true; });
     el.addEventListener('pointerdown', e => {
       if (!f.ready || !sizes) return;
       e.preventDefault(); el.setPointerCapture(e.pointerId); el.classList.add('drag');
       const x0 = e.clientX, y0 = e.clientY, z0 = { ...sizes[f.l.key] };
-      select(f.l.key); hot = h.k; showVals();
-      const move = ev => {
-        h.set(f.l.key, z0, (ev.clientX - x0) / zoom(), (ev.clientY - y0) / zoom());
-        tip.hidden = false; tip.textContent = `${h.tip}: ${h.also ? `${sizes[f.l.key][h.k]} × ${sizes[f.l.key][h.also]}px` : sizes[f.l.key][h.k] + KNOB[h.k][4]}`;
-        showVals();
-      };
+      select(f.l.key); hot = k; showVals();
+      const move = ev => { h.set(f.l.key, z0, (ev.clientX - x0) / zoom(), (ev.clientY - y0) / zoom()); tipAt = [ev.clientX, ev.clientY]; say(); showVals(); };
       const up = () => { el.classList.remove('drag'); tip.hidden = true; hot = null; showVals(); el.removeEventListener('pointermove', move); el.removeEventListener('pointerup', up); el.removeEventListener('pointercancel', up); };
       el.addEventListener('pointermove', move); el.addEventListener('pointerup', up); el.addEventListener('pointercancel', up);
     });
     ov.append(el);
     return { h, el };
   });
+  ov.append(tip);
   f.box.append(ov);
   // follow the controls every frame (they move as sizes change)
-  const place = (el, x, y) => { el.style.left = x * zoom() + 'px'; el.style.top = y * zoom() + 'px'; };
+  const box = (el, r) => Object.assign(el.style, { left: r.left * zoom() + 'px', top: r.top * zoom() + 'px', width: r.width * zoom() + 'px', height: r.height * zoom() + 'px' });
   const frame = () => {
     const b = f.ready && sizes && boxes(f);
     ov.hidden = !b;
     if (b) {
-      for (const [el, r] of [[padBox, b.pad], [actsBox, b.acts]]) {
-        place(el, r.left, r.top); el.style.width = r.width * zoom() + 'px'; el.style.height = r.height * zoom() + 'px';
+      box(padBox, b.pad); box(actsBox, b.acts); box(arrowBox, b.arrow); box(iconBox, b.icon);
+      for (const { h, el } of es) {
+        const [x1, y1, x2, y2] = h.seg(b).map(v => v * zoom()), len = Math.max(6, Math.hypot(x2 - x1, y2 - y1));
+        Object.assign(el.style, { left: x1 + 'px', top: y1 - 6 + 'px', width: len + 'px', transform: `rotate(${Math.atan2(y2 - y1, x2 - x1)}rad)` });
       }
-      for (const { h, el } of hs) { const [x, y] = h.where(b); place(el, x, y); if (el.classList.contains('drag')) place(tip, x, y); }
+      if (tipAt) { const o = f.box.getBoundingClientRect(); tip.style.left = tipAt[0] - o.left + 'px'; tip.style.top = tipAt[1] - o.top + 'px'; }
     }
     requestAnimationFrame(frame);
   };
@@ -223,13 +239,13 @@ async function start(f) {
     await until(() => doc.getElementById('pickBtn')); doc.getElementById('pickBtn').click();
   }
   await until(() => win.__bb && win.__bb().length > 1);
-  if (!defaults) {
+  await (setup ||= (async () => {      // once, by whichever frame is first: the game's sizes, then your last submission
     defaults = JSON.parse(JSON.stringify(win.__bbPadSizes()));
     const last = await fetch('/submitted.json').then(r => r.json()).catch(() => null);
     sizes = JSON.parse(JSON.stringify(defaults));
     if (last) { for (const l of LAYOUTS) Object.assign(sizes[l.key], last[l.key]); $('status').textContent = 'Loaded your last submission.'; }
     showVals();
-  }
+  })());
   for (const l of LAYOUTS) win.__bbPadSizes(l.key, sizes[l.key]);
   f.ready = true;
 }

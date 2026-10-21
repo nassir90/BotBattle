@@ -270,7 +270,7 @@ body.two-players .corner { left: 50%; right: auto; transform: translateX(-50%); 
     bottom: max(calc(env(safe-area-inset-bottom, 0px) + 12px), var(--edge, 20px));
     display: flex; justify-content: space-between; align-items: flex-end; gap: 10px; pointer-events: none;
   }
-  /* the d-pad: ◀ and ▶ tall either side of a full-height ▼, and a crouch-walk under each, cut along the tall
+  /* the d-pad, a U: ◀ and ▶ tall either side of a lower ▼, and a crouch-walk under each, cut along the tall
      buttons' diagonals. Each piece is drawn (and touched) as its own shape: the button is only a box round it, and
      only the shape takes a finger. A thumb sliding across the pad presses whichever piece it's on */
   .pad { position: relative; width: var(--pad-w, 138px); height: var(--pad-h, 150px); flex-shrink: 0; pointer-events: auto; touch-action: none; }   /* (the size it's given, always) */
@@ -3469,10 +3469,10 @@ import ReconnectingWebSocket from 'partysocket/ws';
   // one set for each way the phone is held (upright, on its side, and each shared across a table between two
   // players), chosen with tools/padtune (a local page with the game in phone-sized frames and sliders)
   const PAD_SIZES = {
-    upright:   { padW: 138, padH: 150, mid: 30, gap: 4, cut: 60, drop: 14, arrow: 30, act: 46, actGap: 6, icon: 34, edge: 20 },
-    side:      { padW: 176, padH: 122, mid: 30, gap: 4, cut: 60, drop: 14, arrow: 24, act: 50, actGap: 6, icon: 34, edge: 20 },
-    split:     { padW: 120, padH: 136, mid: 30, gap: 4, cut: 60, drop: 14, arrow: 26, act: 44, actGap: 6, icon: 30, edge: 20 },
-    splitSide: { padW: 176, padH: 122, mid: 30, gap: 4, cut: 60, drop: 14, arrow: 24, act: 44, actGap: 6, icon: 30, edge: 20 },
+    upright:   { padW: 138, padH: 150, mid: 30, midTop: 32, gap: 4, cut: 60, drop: 14, arrow: 30, act: 46, actGap: 6, icon: 34, edge: 20 },
+    side:      { padW: 176, padH: 122, mid: 30, midTop: 32, gap: 4, cut: 60, drop: 14, arrow: 24, act: 50, actGap: 6, icon: 34, edge: 20 },
+    split:     { padW: 120, padH: 136, mid: 30, midTop: 32, gap: 4, cut: 60, drop: 14, arrow: 26, act: 44, actGap: 6, icon: 30, edge: 20 },
+    splitSide: { padW: 176, padH: 122, mid: 30, midTop: 32, gap: 4, cut: 60, drop: 14, arrow: 24, act: 44, actGap: 6, icon: 30, edge: 20 },
   };
   const sideMq = matchMedia('(orientation: landscape) and (max-height: 540px)');
   const padLayout = () => (document.body.classList.contains('split') ? 'split' : 'upright') + (sideMq.matches ? 'Side' : '');
@@ -3484,7 +3484,7 @@ import ReconnectingWebSocket from 'partysocket/ws';
     const cut = Math.min(z.cut, 90 - z.drop - gy), m0 = 1 + S + z.gap, m1 = m0 + z.mid;
     return {
       left: [[1, 3], [1 + S, 3], [1 + S, cut], [1, cut + z.drop]],
-      down: [[m0, 3], [m1, 3], [m1, 97], [m0, 97]],
+      down: [[m0, z.midTop], [m1, z.midTop], [m1, 97], [m0, 97]],      // lower than ◀ ▶: the pad is a U
       right: [[99 - S, 3], [99, 3], [99, cut + z.drop], [99 - S, cut]],
       dl: [[1, cut + z.drop + gy], [1 + S, cut + gy], [1 + S, 97], [1, 97]],
       dr: [[99 - S, cut + gy], [99, cut + z.drop + gy], [99, 97], [99 - S, 97]],
