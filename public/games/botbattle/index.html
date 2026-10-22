@@ -31,10 +31,10 @@ body { margin: 0; background: var(--paper); color: var(--ink); font-family: var(
 button {
   font: 600 12px/1 var(--mono); letter-spacing: 0.04em; text-transform: uppercase;
   background: var(--paper); color: var(--ink); border: 2px solid var(--ink);
-  padding: 10px 14px; cursor: pointer; box-shadow: 3px 3px 0 var(--ink);
+  padding: 10px 14px; cursor: pointer;
 }
-button:hover { transform: translate(-1px, -1px); box-shadow: 4px 4px 0 var(--ink); }
-button:active { transform: translate(2px, 2px); box-shadow: 1px 1px 0 var(--ink); }
+button:hover { transform: translate(-1px, -1px); }
+button:active { transform: translate(2px, 2px); }
 button:focus-visible { outline: 3px solid var(--so); outline-offset: 2px; }
 button[aria-pressed="true"] { background: var(--ink); color: var(--paper); }
 
@@ -45,7 +45,7 @@ button[aria-pressed="true"] { background: var(--ink); color: var(--paper); }
   position: fixed; top: calc(env(safe-area-inset-top, 0px) + 12px); left: 16px; right: 16px;
   display: grid; grid-template-columns: repeat(var(--n, 3), minmax(0, 250px)); justify-content: center; gap: 14px; pointer-events: none;
 }
-.plate { --sq: 60px; display: grid; grid-template-columns: var(--sq) minmax(0, 1fr); min-width: 0; border: 2px solid var(--ink); box-shadow: 3px 3px 0 var(--ink); }
+.plate { --sq: 60px; display: grid; grid-template-columns: var(--sq) minmax(0, 1fr); min-width: 0; border: 2px solid var(--ink); }
 .plate-logo { height: var(--sq); border-right: 2px solid var(--ink); position: relative; }
 .plate.out .plate-logo::after { content: "OUT"; position: absolute; inset: 0; display: grid; place-items: center; font-family: var(--display); font-size: 12px; color: var(--ink-soft); }
 .plate .badge { display: none; }
@@ -97,7 +97,7 @@ body.two-players .corner { left: 50%; right: auto; transform: translateX(-50%); 
   display: flex; flex-wrap: wrap; gap: 6px; align-items: center; justify-content: center; pointer-events: auto;
   font-size: 11px; color: var(--ink-soft); background: var(--paper); padding: 4px 8px;
 }
-.trainbar button { padding: 6px 9px; font-size: 11px; box-shadow: 2px 2px 0 var(--ink); }
+.trainbar button { padding: 6px 9px; font-size: 11px; }
 .trainbar .label { font-family: var(--display); color: var(--ink); margin-right: 2px; }
 .trainbar .stat { font-variant-numeric: tabular-nums; margin-left: 6px; }
 
@@ -113,7 +113,6 @@ body.two-players .corner { left: 50%; right: auto; transform: translateX(-50%); 
 .bubble {
   position: absolute; transform: translate(-50%, -100%); max-width: 230px; width: max-content;
   background: var(--paper); border: 2px solid var(--ink); padding: 8px 10px; font-size: 12px; line-height: 1.35;
-  box-shadow: 3px 3px 0 var(--ink);
 }
 .bubble b { font-family: var(--display); font-weight: 400; display: block; font-size: 11px; color: var(--so); margin-bottom: 2px; }
 .bubble::after {
@@ -162,7 +161,7 @@ body.two-players .corner { left: 50%; right: auto; transform: translateX(-50%); 
   position: absolute; left: 50%; top: 16px; width: var(--cw); margin-left: calc(var(--cw) / -2);   /* room above for a hop */
   transition: transform 0.38s cubic-bezier(.2,.8,.2,1), opacity 0.38s; will-change: transform;
 }
-.carousel .card { width: 100%; box-sizing: border-box; padding-top: 0; border: 2px solid var(--ink); box-shadow: 3px 3px 0 var(--ink); }   /* exactly the slot's width, so it's centred where the layout puts it */
+.carousel .card { width: 100%; box-sizing: border-box; padding-top: 0; border: 2px solid var(--ink); }   /* exactly the slot's width, so it's centred where the layout puts it */
 .carousel .card .pedestal { overflow: hidden; }
 /* a click on a card makes it hop */
 @keyframes jiggle {
@@ -181,11 +180,11 @@ body.two-players .corner { left: 50%; right: auto; transform: translateX(-50%); 
 .pickrow { display: flex; gap: 12px; align-items: center; flex-wrap: wrap; }
 .pickrow .hint { font-size: 11px; color: var(--ink-soft); }
 .lives { display: flex; gap: 5px; align-items: center; font-size: 11px; color: var(--ink-soft); }
-.lives button { padding: 6px 9px; font-size: 11px; box-shadow: 2px 2px 0 var(--ink); }
+.lives button { padding: 6px 9px; font-size: 11px; }
 /* the move the fighter on the card is showing right now */
 .card li { padding: 2px 4px; margin: 0 -4px; transition: background 0.15s, box-shadow 0.15s; }
 .card li.now { background: color-mix(in srgb, var(--c) 18%, var(--paper)); box-shadow: inset 3px 0 0 var(--c); }
-.say { position: absolute; right: 14px; top: 12px; max-width: 58%; background: var(--paper); border: 2px solid var(--ink); padding: 6px 8px; font-size: 11px; line-height: 1.35; box-shadow: 2px 2px 0 var(--ink); }
+.say { position: absolute; right: 14px; top: 12px; max-width: 58%; background: var(--paper); border: 2px solid var(--ink); padding: 6px 8px; font-size: 11px; line-height: 1.35; }
 .say b { font-family: var(--display); font-weight: 400; display: block; font-size: 10px; color: var(--so); }
 .ringdots { display: flex; gap: 6px; }
 .ringdots i { width: 9px; height: 9px; border: 1.5px solid var(--ink); }
@@ -201,7 +200,7 @@ body.two-players .corner { left: 50%; right: auto; transform: translateX(-50%); 
 .card li { display: grid; grid-template-columns: 34px 1fr; gap: 6px; }
 .card li kbd { font: 600 11px/1.4 var(--mono); }
 .card .pick { font-family: var(--display); font-size: 12px; margin-top: 2px; }
-.card:disabled { opacity: 0.35; cursor: default; transform: none; box-shadow: 3px 3px 0 var(--ink); }
+.card:disabled { opacity: 0.35; cursor: default; transform: none; }
 .toprow { display: flex; gap: 10px; align-items: center; }
 .keys { font-size: 12px; color: var(--ink-soft); line-height: 1.9; }
 .keys kbd { font: 600 11px var(--mono); color: var(--ink); border: 1.5px solid var(--ink); padding: 1px 5px; background: var(--paper); }
@@ -260,7 +259,7 @@ body.two-players .corner { left: 50%; right: auto; transform: translateX(-50%); 
   .moves, .keys { display: none; }
   .hud { top: calc(env(safe-area-inset-top, 0px) + 10px); left: 12px; right: 12px; gap: 18px; grid-template-columns: repeat(var(--n, 3), 52px); }
   .plate { --sq: 52px; display: block; border: none; box-shadow: none; }
-  .plate-logo { width: var(--sq); box-sizing: border-box; border: 2px solid var(--ink); box-shadow: 2px 2px 0 var(--ink); }
+  .plate-logo { width: var(--sq); box-sizing: border-box; border: 2px solid var(--ink); }
   .plate .badge {
     display: block; position: absolute; top: -8px; right: -12px; z-index: 1;
     font: 400 12px/1 var(--display); padding: 2px 3px; background: var(--paper); border: 1.5px solid var(--ink);
@@ -290,7 +289,7 @@ body.two-players .corner { left: 50%; right: auto; transform: translateX(-50%); 
      and wider */
   .pad {
     position: relative; box-sizing: border-box; width: var(--pad-w, 112px); height: var(--pad-h, 112px); flex-shrink: 0; pointer-events: auto; touch-action: none;
-    background: var(--paper); border: 2px solid var(--ink); box-shadow: 3px 3px 0 var(--ink);      /* square, like every button */
+    background: var(--paper); border: 2px solid var(--ink);      /* square, like every button */
   }
   .pad .joy { position: absolute; inset: 0; width: 100%; height: 100%; overflow: visible; pointer-events: none; }
   .pad .joy .sh { fill: var(--ink); }
@@ -377,7 +376,7 @@ body.two-players .corner { left: 50%; right: auto; transform: translateX(-50%); 
 .play-keys { margin: 0; font-size: 12px; color: var(--ink-soft); line-height: 2; }
 .play-keys kbd, .moves-b kbd { font: 600 11px var(--mono); color: var(--ink); border: 1.5px solid var(--ink); padding: 1px 5px; margin-right: 2px; background: var(--paper); }
 .variants { display: flex; gap: 6px; align-items: center; }
-.variants button { width: 30px; height: 30px; padding: 0; background: var(--sw); box-shadow: 2px 2px 0 var(--ink); }
+.variants button { width: 30px; height: 30px; padding: 0; background: var(--sw); }
 .variants button[aria-pressed="true"] { outline: 3px solid var(--ink); outline-offset: 2px; }
 @media (max-width: 640px) { .seat { flex: 0 0 calc(50% - 9px); box-sizing: border-box; max-width: none; min-height: 230px; }   /* half a row each: one alone on a row doesn't grow */ .seat-logo, .seat-q { width: 72px; height: 72px; font-size: 64px; line-height: 72px; } }
 
@@ -386,28 +385,28 @@ body.two-players .corner { left: 50%; right: auto; transform: translateX(-50%); 
 .online.panel, .board.panel { width: min(860px, 100%); }
 .online .toprow, .board .toprow { display: flex; align-items: center; gap: 12px; flex-wrap: wrap; }
 .who { margin-left: auto; font-size: 12px; color: var(--ink-soft); display: flex; gap: 8px; align-items: center; }
-.who button { padding: 6px 10px; box-shadow: 2px 2px 0 var(--ink); }
+.who button { padding: 6px 10px; }
 #clerkSignIn { min-height: 200px; }        /* Clerk's sign-in form (it sets its own class on this element) */
 #clerkSignIn h1 { font: 400 20px/1.2 var(--display); }
 #clerkSignIn button { text-transform: none; letter-spacing: 0; box-shadow: none; }
 #clerkSignIn button:hover { transform: none; box-shadow: none; }
 /* the form's card is drawn like a fighter card: an ink border with a hard offset shadow, square, on paper */
-#clerkSignIn .cl-cardBox { border: 2px solid var(--ink); border-radius: 0; box-shadow: 3px 3px 0 var(--ink); background: var(--paper); }
+#clerkSignIn .cl-cardBox { border: 2px solid var(--ink); border-radius: 0; background: var(--paper); }
 #clerkSignIn .cl-card { border: 0; border-radius: 0; box-shadow: none; background: var(--paper); }
 #clerkSignIn .cl-footer { background: var(--paper); border-top: 2px solid var(--ink); }
 #clerkSignIn .cl-formFieldInput { border: 2px solid var(--ink); border-radius: 0; box-shadow: none; background: var(--paper); }
-#clerkSignIn .cl-socialButtonsBlockButton { border: 2px solid var(--ink); border-radius: 0; box-shadow: 3px 3px 0 var(--ink); background: var(--paper); }
-#clerkSignIn .cl-formButtonPrimary { border: 2px solid var(--ink); border-radius: 0; box-shadow: 3px 3px 0 var(--ink); background: var(--ink); background-image: none; }
+#clerkSignIn .cl-socialButtonsBlockButton { border: 2px solid var(--ink); border-radius: 0; background: var(--paper); }
+#clerkSignIn .cl-formButtonPrimary { border: 2px solid var(--ink); border-radius: 0; background: var(--ink); background-image: none; }
 .online .sub.err { color: var(--hurt); }
 .rooms { display: grid; grid-template-columns: repeat(auto-fit, minmax(260px, 1fr)); gap: 16px; }
-.roomform { display: grid; gap: 10px; align-content: start; border: 2px solid var(--ink); padding: 16px; background: var(--paper); box-shadow: 4px 4px 0 var(--ink); }
+.roomform { display: grid; gap: 10px; align-content: start; border: 2px solid var(--ink); padding: 16px; background: var(--paper); }
 .roomform h2, .lobby h2 { margin: 0; font: 400 16px var(--display); }
 .roomform label { display: grid; gap: 4px; font-size: 12px; color: var(--ink-soft); }
 .roomform input { font: 500 15px var(--mono); color: var(--ink); background: var(--paper); border: 2px solid var(--ink); padding: 8px 10px; min-width: 0; }
 .roomform input:focus { outline: 3px solid color-mix(in srgb, var(--gpt) 50%, transparent); outline-offset: 1px; }
 .roomform button { justify-self: start; }
 .netbanner { position: fixed; top: max(env(safe-area-inset-top, 0px), 10px); left: 50%; transform: translateX(-50%); z-index: 60;
-  padding: 8px 14px; background: var(--ink); color: var(--paper); font: 600 12px var(--mono); box-shadow: 3px 3px 0 color-mix(in srgb, var(--ink) 40%, transparent); }
+  padding: 8px 14px; background: var(--ink); color: var(--paper); font: 600 12px var(--mono); }
 .roomform.casual p { margin: 0; font-size: 13px; color: var(--ink-soft); }
 .lobby.casual .invite { display: none; }
 .lobby { display: grid; grid-template-columns: minmax(0, 1fr) auto; gap: 20px; align-items: start; }
@@ -428,7 +427,7 @@ body.two-players .corner { left: 50%; right: auto; transform: translateX(-50%); 
 .picks button { display: grid; justify-items: center; gap: 6px; padding: 10px 14px 9px; min-width: 112px; }
 .picks .pick-logo { width: 54px; height: 54px; }
 .picks button[aria-pressed="true"] { background: color-mix(in srgb, var(--c) 22%, var(--paper)); color: var(--ink); }
-.picks button:disabled, .lobby-actions button:disabled { opacity: .4; cursor: not-allowed; transform: none; box-shadow: 3px 3px 0 var(--ink); }
+.picks button:disabled, .lobby-actions button:disabled { opacity: .4; cursor: not-allowed; transform: none; }
 .lobby-actions { display: flex; gap: 10px; flex-wrap: wrap; align-items: center; }
 .lobby-note { font-size: 12px; color: var(--ink-soft); margin: 0; }
 .emote-row { display: flex; gap: 6px; flex-wrap: wrap; }
@@ -5973,7 +5972,7 @@ html.site body { overflow: hidden auto; }
 .roblox:hover { transform: translate(-1px, -1px); }
 .roblox:active { transform: translate(2px, 2px); }
 .roblox:focus-visible { outline: 3px solid var(--so); outline-offset: 3px; }
-.roblox .go { margin-top: 6px; border: 2px solid var(--ink); padding: 9px 13px; font-weight: 600; text-transform: uppercase; letter-spacing: 0.04em; font-size: 12px; box-shadow: 3px 3px 0 var(--ink); }
+.roblox .go { margin-top: 6px; border: 2px solid var(--ink); padding: 9px 13px; font-weight: 600; text-transform: uppercase; letter-spacing: 0.04em; font-size: 12px; }
 .site-foot { display: flex; flex-wrap: wrap; gap: 12px 20px; align-items: center; justify-content: space-between; font-size: 12px; color: var(--ink-soft); }
 @media (max-width: 720px) {
   #site { padding-top: 36px; }

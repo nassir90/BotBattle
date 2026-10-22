@@ -85,7 +85,7 @@ html.site body { overflow: hidden auto; }
 .roblox:hover { transform: translate(-1px, -1px); }
 .roblox:active { transform: translate(2px, 2px); }
 .roblox:focus-visible { outline: 3px solid var(--so); outline-offset: 3px; }
-.roblox .go { margin-top: 6px; border: 2px solid var(--ink); padding: 9px 13px; font-weight: 600; text-transform: uppercase; letter-spacing: 0.04em; font-size: 12px; box-shadow: 3px 3px 0 var(--ink); }
+.roblox .go { margin-top: 6px; border: 2px solid var(--ink); padding: 9px 13px; font-weight: 600; text-transform: uppercase; letter-spacing: 0.04em; font-size: 12px; }
 .site-foot { display: flex; flex-wrap: wrap; gap: 12px 20px; align-items: center; justify-content: space-between; font-size: 12px; color: var(--ink-soft); }
 @media (max-width: 720px) {
   #site { padding-top: 36px; }
