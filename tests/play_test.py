@@ -66,7 +66,8 @@ async def main():
         await pg.wait_for_function("document.querySelector('#boardTable table.bench') || /Nobody/.test(document.getElementById('boardMsg').textContent)", timeout=10000)
         await pg.wait_for_timeout(500); await pg.screenshot(path=f"{OUT}/play-6-leaderboard.png")
         if await pg.locator("#boardTable table.bench").count():
-            check("the leaderboard is a benchmark table (players as columns, the leader outlined)", await pg.locator("#boardTable thead th.win").count() == 1)
+            check("the leaderboard is a table with a row per player (the leader's outlined) and a column per score",
+                  await pg.locator("#boardTable tbody tr.lead").count() == 1 and await pg.locator("#boardTable thead th").count() == 6)
         else:
             check("an empty leaderboard says nobody has finished an online match yet", "Nobody" in await pg.text_content("#boardMsg"))
         check("no page errors", not errs, errs[:3])

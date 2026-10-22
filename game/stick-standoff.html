@@ -130,9 +130,7 @@ body.two-players .corner { left: 50%; right: auto; transform: translateX(-50%); 
 .panel h1 { margin: 0; font-family: var(--display); font-weight: 400; font-size: clamp(24px, 5vw, 44px); line-height: 1; text-wrap: balance; }
 .panel .sub { margin: 0; color: var(--ink-soft); font-size: 13px; max-width: 60ch; }
 .modes { display: grid; grid-template-columns: 1fr; gap: 10px; max-width: 760px; }
-.mode { grid-template-columns: 170px minmax(0, 1fr); align-items: center; gap: 16px; padding: 14px 18px; }
-.mode span { color: var(--ink-soft); }
-@media (max-width: 560px) { .mode { grid-template-columns: 1fr; gap: 6px; } }
+.mode { grid-template-columns: 1fr; align-items: center; padding: 14px 18px; }      /* just the mode's name */
 /* the menu: the title centred over the modes, with the three real sites' logos turning in a triangle beside them
    (below them on a narrow screen) */
 #menu:not([hidden]) { display: flex; flex-direction: column; align-items: center; }
@@ -223,6 +221,12 @@ body.two-players .corner { left: 50%; right: auto; transform: translateX(-50%); 
 .bench tbody tr:last-child .win { border-bottom: 2px solid var(--win); border-radius: 0 0 10px 10px; }
 .bench tbody tr:last-child th, .bench tbody tr:last-child td { border-bottom: none; }
 .bench-note { font-size: 11px; color: var(--ink-soft); margin: 0; }
+/* the leaderboard: the same table turned on its side, a row per player, the leader's row outlined */
+.board-table tbody th { white-space: nowrap; }
+.board-table .rank { display: inline-block; min-width: 2.2em; color: var(--ink-soft); font-weight: 400; }
+.board-table tbody tr.lead > * { border-top: 2px solid var(--win); border-bottom: 2px solid var(--win); }
+.board-table tbody tr.lead > :first-child { border-left: 2px solid var(--win); border-radius: 10px 0 0 10px; }
+.board-table tbody tr.lead > :last-child { border-right: 2px solid var(--win); border-radius: 0 10px 10px 0; }
 .bench .short { display: none; }
 /* narrow screens: short fighter names, no benchmark subtitles, tighter cells, so it fits without scrolling */
 @media (max-width: 560px) {
@@ -483,9 +487,9 @@ body.two-players .corner { left: 50%; right: auto; transform: translateX(-50%); 
     <h1>Bot Battle</h1>
     <div class="menu-body">
     <div class="modes">
-      <button type="button" class="mode" data-mode="play"><h2>Play</h2><span>Play with CPUs or with friends on the same computer</span></button>
-      <button type="button" class="mode" data-mode="training"><h2>Training</h2><span>Play-test one fighter against dummies. Health refills and knockouts respawn.</span></button>
-      <button type="button" class="mode" data-mode="online" hidden><h2>Online</h2><span>Fight your friends. Make a room, share its code, and play.</span></button>
+      <button type="button" class="mode" data-mode="play"><h2>Play</h2></button>
+      <button type="button" class="mode" data-mode="training"><h2>Training</h2></button>
+      <button type="button" class="mode" data-mode="online" hidden><h2>Online</h2></button>
     </div>
     <nav class="brands" id="brands" aria-label="The real ones">
       <canvas id="brandCanvas"></canvas>
@@ -585,7 +589,7 @@ body.two-players .corner { left: 50%; right: auto; transform: translateX(-50%); 
   <div class="panel board">
     <div class="toprow"><button type="button" id="boardBack">&larr; Back</button></div>
     <h1>Leaderboard</h1>
-    <p class="sub" id="boardMsg">Online wins, across every room.</p>
+    <p class="sub" id="boardMsg" hidden></p>
     <div class="bench-wrap" id="boardTable"></div>
   </div>
 </div>
@@ -1223,7 +1227,7 @@ import ReconnectingWebSocket from 'partysocket/ws';
   const KITS = {
     so: {
       name: 'Stack Overflow', short: 'SO', color: '#f48024', jumps: 1, range: 4,
-      blurb: 'Angry, well-sourced, and already closed your question.',
+      blurb: 'Just make sure your question isn\'t a duplicate.',
       abilities: {
         a1: { name: 'Block shot', short: 'Block', cd: 0.06, desc: 'Fires blocks from the top of your stack. Hold to keep firing.' },
         a2: { name: 'Block whip', short: 'Whip', cd: 0.8, desc: 'Lashes your stack forward. Hold W to lash upward. Grabs ledges.' },
@@ -1233,7 +1237,7 @@ import ReconnectingWebSocket from 'partysocket/ws';
     },
     gpt: {
       name: 'ChatGPT', short: 'GPT', color: GPT_GREEN, jumps: 2, range: 5.5,
-      blurb: 'Borrows your body, eats your attacks, and compacts you.',
+      blurb: 'Can make you a millionaire in 30 days',
       abilities: {
         a1: { name: 'Computer use', short: 'Cursor', cd: 0.8, desc: 'Fires a cursor that chases the nearest enemy.' },
         a2: { name: 'Inhale', short: 'Inhale', cd: 3.5, desc: 'Sucks in enemies and their attacks. Builds context.' },
@@ -1244,7 +1248,7 @@ import ReconnectingWebSocket from 'partysocket/ws';
     },
     claude: {
       name: 'Claude', short: 'Claude', color: '#d97757', jumps: 2, range: 3,
-      blurb: 'Thinks in threes and fours. Has rays to spare.',
+      blurb: 'Load bearing character you\'d be absolutely right to pick',
       abilities: {
         a1: { name: 'Shoot', short: 'Shoot', cd: 0.12, desc: 'Fires the rays of your logo. Hold to keep firing.' },
         a2: { name: 'Fling', short: 'Fling', cd: 0.9, desc: 'Jabs one ray forward. It grows back.' },
@@ -5091,28 +5095,27 @@ import ReconnectingWebSocket from 'partysocket/ws';
   async function openBoard() {
     showScreen(boardEl);
     const msg = document.getElementById('boardMsg'), table = document.getElementById('boardTable');
-    msg.textContent = 'Loading…'; table.innerHTML = '';
+    msg.hidden = false; msg.textContent = 'Loading…'; table.innerHTML = '';
     try {
       const { players } = await fetch(`${API_BASE}/leaderboard`).then(r => r.ok ? r.json() : Promise.reject(new Error(r.status)));
       if (!players.length) { msg.textContent = 'Nobody has finished an online match yet. Win one and you’re first.'; return; }
-      // laid out like the results table (and a model announcement's benchmarks): the top players are the columns,
-      // the leader's outlined, and the best score in each row is tinted
-      const top = players.slice(0, 6);
-      msg.textContent = top.length < players.length ? `The top ${top.length} of ${players.length} players, by online wins.` : 'Online wins, across every room.';
-      const rows = [
-        { label: 'Wins', sub: 'Arena-Wins, every room', get: p => p.wins },
-        { label: 'Matches', sub: 'Online matches finished', get: p => p.matches },
-        { label: 'Win rate', sub: 'Wins / matches', get: p => p.matches ? Math.round(100 * p.wins / p.matches) : 0, fmt: v => v + '%' },
-        { label: 'Knockouts', sub: 'KO-Eval, online', get: p => p.kos },
-        { label: 'Parries', sub: 'Parry-Bench, online', get: p => p.parries },
+      // a row per player (however many there are, the table grows down) and a column per score: the leader's row
+      // outlined, and the best in each column tinted, like the results table
+      msg.hidden = true;
+      const cols = [
+        { label: 'Wins', short: 'Wins', get: p => p.wins },
+        { label: 'Matches', short: 'Played', get: p => p.matches },
+        { label: 'Win rate', short: 'Win %', get: p => p.matches ? Math.round(100 * p.wins / p.matches) : 0, fmt: v => v + '%' },
+        { label: 'Knockouts', short: 'KOs', get: p => p.kos },
+        { label: 'Parries', short: 'Parries', get: p => p.parries },
       ];
-      const head = top.map((p, i) => `<th scope="col" class="${i === 0 ? 'win' : ''}"><span class="long">${esc(p.name)}</span><span class="short" aria-hidden="true">${esc(p.name.slice(0, 6))}</span><small>#${i + 1}${i === 0 ? ' \u00b7 leader' : ''}</small></th>`).join('');
-      const body = rows.map(row => {
-        const vals = top.map(row.get), best = Math.max(...vals);
-        return `<tr><th scope="row">${row.label}<small>${row.sub}</small></th>${vals.map((v, i) =>
-          `<td class="${[i === 0 ? 'win' : '', vals.length > 1 && v === best && best > 0 ? 'best' : ''].join(' ')}">${row.fmt ? row.fmt(v) : v}</td>`).join('')}</tr>`;
-      }).join('');
-      table.innerHTML = `<table class="bench"><thead><tr><th></th>${head}</tr></thead><tbody>${body}</tbody></table>`;
+      const best = cols.map(c => Math.max(...players.map(c.get)));
+      const head = cols.map(c => `<th scope="col"><span class="long">${c.label}</span><span class="short" aria-hidden="true">${c.short}</span></th>`).join('');
+      const body = players.map((p, i) => `<tr class="${i === 0 ? 'lead' : ''}"><th scope="row"><span class="rank">${i + 1}</span>${esc(p.name)}</th>${cols.map((c, k) => {
+        const v = c.get(p);
+        return `<td class="${players.length > 1 && v === best[k] && v > 0 ? 'best' : ''}">${c.fmt ? c.fmt(v) : v}</td>`;
+      }).join('')}</tr>`).join('');
+      table.innerHTML = `<table class="bench board-table"><thead><tr><th scope="col">Player</th>${head}</tr></thead><tbody>${body}</tbody></table>`;
     } catch { msg.textContent = 'The leaderboard didn’t load. Try again in a moment.'; }
   }
 
