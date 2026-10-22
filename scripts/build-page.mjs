@@ -71,7 +71,7 @@ html.site body { overflow: hidden auto; }
   .tiles { grid-template-columns: repeat(3, minmax(0, 1fr)); }
   .tile.wide .media { aspect-ratio: auto; height: calc((100cqw - 2 * var(--gap)) / 3); }
 }
-.tile { margin: 0; border: 2px solid var(--ink); box-shadow: 3px 3px 0 var(--ink); background: var(--paper); display: grid; grid-template-rows: auto 1fr; color: inherit; text-decoration: none; }
+.tile { margin: 0; border: 2px solid var(--ink); background: var(--paper); display: grid; grid-template-rows: auto 1fr; color: inherit; text-decoration: none; }
 .tile video, .tile .media { display: block; width: 100%; height: auto; aspect-ratio: 1; object-fit: cover; background: var(--paper-2); border-bottom: 2px solid var(--ink); }
 .tile video { cursor: pointer; }
 .tile.wide .media { aspect-ratio: 16 / 9; object-position: 50% 45%; }
@@ -82,8 +82,8 @@ html.site body { overflow: hidden auto; }
 .tile-who img:last-of-type { margin-right: 2px; }
 .tile h3 { margin: 0; font-family: var(--display); font-weight: 400; font-size: 17px; line-height: 1.15; }
 .tile p { margin: 0; font-size: 13px; line-height: 1.5; color: var(--ink-soft); }
-.roblox:hover { transform: translate(-1px, -1px); box-shadow: 4px 4px 0 var(--ink); }
-.roblox:active { transform: translate(2px, 2px); box-shadow: 1px 1px 0 var(--ink); }
+.roblox:hover { transform: translate(-1px, -1px); }
+.roblox:active { transform: translate(2px, 2px); }
 .roblox:focus-visible { outline: 3px solid var(--so); outline-offset: 3px; }
 .roblox .go { margin-top: 6px; border: 2px solid var(--ink); padding: 9px 13px; font-weight: 600; text-transform: uppercase; letter-spacing: 0.04em; font-size: 12px; box-shadow: 3px 3px 0 var(--ink); }
 .site-foot { display: flex; flex-wrap: wrap; gap: 12px 20px; align-items: center; justify-content: space-between; font-size: 12px; color: var(--ink-soft); }
