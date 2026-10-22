@@ -175,6 +175,32 @@ body.two-players .corner { left: 50%; right: auto; transform: translateX(-50%); 
 .pickrow .hint { font-size: 11px; color: var(--ink-soft); }
 .lives { display: flex; gap: 5px; align-items: center; font-size: 11px; color: var(--ink-soft); }
 .lives button { padding: 6px 9px; font-size: 11px; }
+.format { display: flex; gap: 0; }
+.format button { padding: 6px 10px; font-size: 11px; }
+.format button + button { border-left: 0; }
+/* a bracket: a column per round, each match a box of its two entrants, the later rounds centred between the
+   matches that feed them; the match up next outlined, winners in bold, the beaten faded */
+.bracket-wrap { width: 100%; overflow-x: auto; }
+.bracket { display: grid; grid-auto-flow: column; grid-auto-columns: minmax(170px, 1fr); gap: 0 28px; min-width: min-content; }
+.bracket .round { display: grid; grid-template-rows: auto 1fr; gap: 10px; }
+.bracket .round h3 { margin: 0; font: 400 12px var(--display); letter-spacing: 0.04em; }
+.bracket .ms { display: flex; flex-direction: column; justify-content: space-around; gap: 12px; }
+.bracket .bm { border: 2px solid var(--ink); background: var(--paper); }
+.bracket .bm.next { outline: 2px solid var(--win, #d97757); outline-offset: 2px; }
+.bracket .bm.bye { border-style: dashed; }
+.bracket .en { display: grid; grid-template-columns: 10px minmax(0, 1fr) auto; gap: 8px; align-items: center; padding: 6px 8px; font-size: 12px; min-height: 18px; }
+.bracket .en + .en { border-top: 2px solid var(--ink); }
+.bracket .en .sw { width: 10px; height: 10px; border: 2px solid var(--ink); background: var(--c, var(--paper)); box-sizing: border-box; }
+.bracket .en .nm { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.bracket .en small { color: var(--ink-soft); font-size: 10px; }
+.bracket .en.won { font-weight: 600; }
+.bracket .en.lost { opacity: 0.4; }
+.bracket .en.empty { color: var(--ink-soft); }
+.bracket .champ { align-self: center; border: 2px solid var(--ink); padding: 10px 12px; font: 400 14px var(--display); text-align: center; }
+.upnext { display: grid; gap: 10px; justify-items: start; }
+.upnext h2 { margin: 0; font: 400 18px var(--display); }
+.upnext p { margin: 0; color: var(--ink-soft); font-size: 12px; }
+.upnext .row { display: flex; gap: 10px; flex-wrap: wrap; }
 /* the move the fighter on the card is showing right now */
 .card li { padding: 2px 4px; margin: 0 -4px; transition: background 0.15s, box-shadow 0.15s; }
 .card li.now { background: color-mix(in srgb, var(--c) 18%, var(--paper)); box-shadow: inset 3px 0 0 var(--c); }
@@ -423,6 +449,8 @@ body.two-players .corner { left: 50%; right: auto; transform: translateX(-50%); 
 .picks button[aria-pressed="true"] { background: color-mix(in srgb, var(--c) 22%, var(--paper)); color: var(--ink); }
 .picks button:disabled, .lobby-actions button:disabled { opacity: .4; cursor: not-allowed; transform: none; }
 .lobby-actions { display: flex; gap: 10px; flex-wrap: wrap; align-items: center; }
+.lobby-bracket { display: grid; gap: 8px; }
+.lobby-bracket h2 { margin: 0; }
 .lobby-note { font-size: 12px; color: var(--ink-soft); margin: 0; }
 .emote-row { display: flex; gap: 6px; flex-wrap: wrap; }
 .emote-row button, .emote-tray button { font: 400 22px/1 system-ui, "Apple Color Emoji", "Segoe UI Emoji", sans-serif; padding: 6px 8px; text-transform: none; }
@@ -508,9 +536,19 @@ body.two-players .corner { left: 50%; right: auto; transform: translateX(-50%); 
     <div class="seats" id="seats"></div>
     <div class="pickrow">
       <button type="button" id="fightBtn">Fight</button>
+      <div class="format" id="playFormat" role="group" aria-label="Format"><button type="button" data-format="ffa">Free-for-all</button><button type="button" data-format="bracket">Bracket</button></div>
       <div class="lives" id="playLives" role="group" aria-label="Lives"><span>Lives</span><button type="button" data-lives="1">1</button><button type="button" data-lives="2">2</button><button type="button" data-lives="3">3</button><button type="button" data-lives="5">5</button></div>
     </div>
     <p class="play-keys" id="playKeys" hidden><b>User A</b> <kbd>W</kbd><kbd>A</kbd><kbd>S</kbd><kbd>D</kbd> <kbd>F</kbd><kbd>G</kbd><kbd>H</kbd><kbd>T</kbd> parry <kbd>Q</kbd> &middot; <b>User B</b> <kbd>&uarr;</kbd><kbd>&larr;</kbd><kbd>&darr;</kbd><kbd>&rarr;</kbd> <kbd>,</kbd><kbd>.</kbd><kbd>/</kbd><kbd>'</kbd> parry <kbd>right Shift</kbd></p>
+  </div>
+</div>
+
+<div class="overlay" id="bracket" hidden>
+  <div class="panel bracket-panel">
+    <div class="toprow"><button type="button" id="bracketBack">&larr; Modes</button></div>
+    <h1 id="bracketTitle">Bracket</h1>
+    <div class="bracket-wrap"><div class="bracket" id="bracketTree"></div></div>
+    <div class="upnext" id="upNext"></div>
   </div>
 </div>
 
@@ -564,12 +602,18 @@ body.two-players .corner { left: 50%; right: auto; transform: translateX(-50%); 
     <div class="lobby" id="lobby" hidden>
       <div class="lobby-main">
         <ul class="roster" id="roster"></ul>
+        <div class="lobby-bracket" id="lobbyBracket" hidden>
+          <h2 id="lobbyBracketTitle">Bracket</h2>
+          <div class="bracket-wrap"><div class="bracket" id="lobbyBracketTree"></div></div>
+        </div>
         <h2>Your fighter</h2>
         <div class="picks" id="picks"></div>
         <div class="variants" id="lobbyVariants" role="group" aria-label="Colour"></div>
         <div class="lobby-actions">
           <button type="button" id="readyBtn">Ready</button>
           <button type="button" id="startBtn" hidden>Start match</button>
+          <div class="format" id="lobbyFormat" role="group" aria-label="Format"><button type="button" data-format="ffa">Free-for-all</button><button type="button" data-format="bracket">Bracket</button></div>
+          <button type="button" id="endBracketBtn" hidden>End bracket</button>
           <div class="lives" id="lobbyLives" role="group" aria-label="Lives"><span>Lives</span><button type="button" data-lives="1">1</button><button type="button" data-lives="2">2</button><button type="button" data-lives="3">3</button><button type="button" data-lives="5">5</button></div>
           <button type="button" id="leaveBtn">Leave room</button>
         </div>
@@ -606,6 +650,7 @@ body.two-players .corner { left: 50%; right: auto; transform: translateX(-50%); 
     <p class="bench-note">Scores from this match. Best result in each row is highlighted.</p>
     <div class="row">
       <button type="button" id="roomBtn" hidden>Back to the room</button>
+      <button type="button" id="bracketBtn" hidden>Bracket</button>
       <button type="button" id="rematchBtn">Rematch</button>
       <button type="button" id="changeBtn">Change fighter</button>
       <button type="button" id="homeBtn">Main menu</button>
@@ -3932,7 +3977,8 @@ import ReconnectingWebSocket from 'partysocket/ws';
   const emoteTray = document.getElementById('emoteTray');
   // the full-screen panels, shown one at a time (none in a match, which has the corner's Menu button instead; the
   // results come up over a finished match, so they're not one of them)
-  const SCREENS = [menuEl, selectEl, onlineEl, boardEl, playEl];
+  const bracketEl = document.getElementById('bracket');
+  const SCREENS = [menuEl, selectEl, onlineEl, boardEl, playEl, bracketEl];
   function showScreen(el) {
     for (const s of SCREENS) s.hidden = s !== el;
     resultEl.hidden = true;
@@ -3972,7 +4018,7 @@ import ReconnectingWebSocket from 'partysocket/ws';
       placement = list.map((st, i) => [st.kind, xs[i], st.ctrl === 'A', null, st]);
     }
     else if (m.kind === 'online') {      // the room's players, in the order the room lists them
-      const xs = m.players.length === 2 ? [-4, 4] : [-6, 0.5, 6];
+      const xs = { 2: [-4, 4], 3: [-6, 0.5, 6], 4: [-7.5, -2.5, 2.5, 7.5] }[m.players.length];
       const list = resolveSeats(m.players.map(p => ({ kind: p.kind, variant: p.variant })));
       placement = m.players.map((p, i) => [list[i].kind, xs[i], p.id === net.me, p, { variant: list[i].variant }]);
     }
@@ -4066,16 +4112,22 @@ import ReconnectingWebSocket from 'partysocket/ws';
     const living = fighters.filter(f => !f.out);
     const winner = living.length === 1 ? living[0] : [...living].sort((a, b) => (b.stocks - a.stocks) || (b.hp - a.hp))[0] || null;
     renderBench(winner, living.length > 1);
-    const online = mode.kind === 'online';
+    const online = mode.kind === 'online', inBracket = mode.kind === 'play' && !!mode.bracket;
+    const outcome = inBracket ? bracketResult(living.length ? winner : null) : null;
+    const bracketBtn = document.getElementById('bracketBtn');
+    bracketBtn.hidden = !inBracket;
+    bracketBtn.textContent = outcome === 'replay' ? 'Replay the match' : outcome === 'game' ? `Game ${mode.bracket && localBracket.rounds[mode.bracket.r][mode.bracket.i].s.reduce((x, y) => x + y) + 1}`
+      : bracketChampion(localBracket || { rounds: [[{ w: null }]] }) !== null ? 'See the champion' : 'Next match';
+    if (outcome === 'replay' || outcome === 'game') bracketBtn.dataset.replay = '1'; else delete bracketBtn.dataset.replay;
     document.getElementById('roomBtn').hidden = !online;
-    document.getElementById('rematchBtn').hidden = online;
-    document.getElementById('changeBtn').hidden = online;
+    document.getElementById('rematchBtn').hidden = online || inBracket;
+    document.getElementById('changeBtn').hidden = online || inBracket;
     document.getElementById('homeBtn').textContent = online ? 'Leave room' : 'Main menu';
     emoteTray.hidden = true;
     setTimeout(() => {
       resultEl.hidden = false;
       document.getElementById('touch').hidden = true;     // the touch pad would show through under the buttons
-      document.getElementById(online ? 'roomBtn' : 'rematchBtn').focus();
+      document.getElementById(online ? 'roomBtn' : inBracket ? 'bracketBtn' : 'rematchBtn').focus();
     }, 1100);
   }
   function checkResult(dt) {
@@ -4839,6 +4891,8 @@ import ReconnectingWebSocket from 'partysocket/ws';
     if (me) sendNet({ t: 'ready', on: !me.ready });
   });
   document.getElementById('startBtn').addEventListener('click', () => sendNet({ t: 'start' }));
+  document.querySelectorAll('#lobbyFormat button').forEach(b => b.addEventListener('click', () => sendNet({ t: 'format', f: b.dataset.format })));
+  document.getElementById('endBracketBtn').addEventListener('click', () => sendNet({ t: 'endBracket' }));
   document.getElementById('leaveBtn').addEventListener('click', () => { leaveRoom(); showView('rooms'); say('You’ve left the room.'); });
   document.getElementById('lobbyLives').querySelectorAll('button').forEach(b =>
     b.addEventListener('click', () => sendNet({ t: 'lives', n: Number(b.dataset.lives) })));
@@ -4889,17 +4943,47 @@ import ReconnectingWebSocket from 'partysocket/ws';
       vEl.innerHTML = me && me.kind ? VARIANTS[me.kind].map(v => `<button type="button" data-v="${v.id}" style="--sw:${v.logo}" title="${v.name}"
         aria-label="${v.name}" aria-pressed="${me.variant === v.id}"${L.playing ? ' disabled' : ''}></button>`).join('') : '';
     }
+    // a bracket in this room: the tree, each entrant with the fighter they have now (they may change between matches)
+    const BR = L.bracket, running = !!BR && BR.champion === null, bracketMode = L.format === 'bracket';
+    const seatOf = id => L.players.find(p => p.id === id);
+    const entrantOnline = i => {
+      const e = BR.entrants[i], p = seatOf(e.id), kit = p && p.kind ? kitFor(p.kind, p.variant) : null;
+      return { name: e.name, sub: e.gone ? 'left' : kit ? kit.name : '', color: kit ? kit.color : 'var(--paper)' };
+    };
+    document.getElementById('lobbyBracket').hidden = !BR;
+    if (BR) {
+      renderBracket(document.getElementById('lobbyBracketTree'), { rounds: BR.rounds }, entrantOnline);
+      document.getElementById('lobbyBracketTitle').textContent = BR.champion !== null ? `${BR.entrants[BR.champion].name} wins the bracket`
+        : BR.next ? `Bracket · up next: ${BR.entrants[BR.rounds[BR.next[0]][BR.next[1]].a].name} vs ${BR.entrants[BR.rounds[BR.next[0]][BR.next[1]].b].name}` : 'Bracket';
+    }
+    const nextPair = running && BR.next ? [BR.rounds[BR.next[0]][BR.next[1]].a, BR.rounds[BR.next[0]][BR.next[1]].b].map(i => seatOf(BR.entrants[i].id)) : null;
+    const nextReady = !!nextPair && nextPair.every(p => p && p.kind && !p.away);
+    document.querySelectorAll('#lobbyFormat button').forEach(b => {
+      b.setAttribute('aria-pressed', String(b.dataset.format === L.format));
+      b.disabled = !host || L.playing || running;
+    });
+    document.getElementById('lobbyFormat').hidden = net.room.casual;
+    document.getElementById('endBracketBtn').hidden = !host || !running || L.playing;
     const ready = document.getElementById('readyBtn');
+    ready.hidden = running;               // (a running bracket's matches start when the host says)
     ready.disabled = L.playing || !me || !me.kind;
     ready.textContent = me && me.ready ? 'Not ready' : 'Ready';
     const start = document.getElementById('startBtn');
-    const allReady = L.players.length >= 2 && L.players.every(p => p.kind && p.ready);
-    start.hidden = !host || net.room.casual; start.disabled = !allReady || L.playing;     // casual matches start by themselves
+    const allReady = L.players.length >= (bracketMode ? 3 : 2) && (bracketMode || L.players.length <= 4) && L.players.every(p => p.kind && p.ready);
+    start.hidden = !host || net.room.casual;     // casual matches start by themselves
+    start.textContent = !bracketMode ? 'Start match' : running ? 'Start next match' : 'Start bracket';
+    start.disabled = L.playing || (running ? !nextReady : !allReady);
     const lives = document.getElementById('lobbyLives');
     lives.querySelectorAll('button').forEach(b => { b.disabled = !host || L.playing; });
     pressLives(lives, L.lives);
+    const amNext = !!nextPair && nextPair.some(p => p && p.id === net.me);
     document.getElementById('lobbyNote').textContent =
-      L.playing ? 'A match is on.' :
+      L.playing ? (running ? 'A bracket match is on. Everyone else in the room watches it.' : 'A match is on.') :
+      running ? (!nextReady ? 'Waiting for the next match’s players to pick a fighter (and to be connected).' :
+        amNext ? 'You’re up next. You can change your fighter before the match starts.' :
+        host ? 'Start the next match when you’re ready. Keep this tab open while you host.' : 'Waiting for the host to start the next match.') :
+      bracketMode && L.players.length < 3 ? 'A bracket needs three players or more (up to eight). Share the QR code or the link.' :
+      !bracketMode && L.players.length > 4 ? 'A free-for-all takes four players at most. With more, the host can switch to a bracket.' :
       net.room.casual && L.players.length < 2 ? 'Looking for another player… You’ll be matched with the next person who asks for a casual match.' :
       net.room.casual ? 'Matched! Pick a fighter and press Ready. The match starts when you’re both ready.' :
       L.players.length < 2 ? 'Waiting for someone to join. Share the QR code or the link.' :
@@ -5136,7 +5220,7 @@ import ReconnectingWebSocket from 'partysocket/ws';
     window.__bbPadSizes = (key, z) => { if (z) { Object.assign(PAD_SIZES[key], z); applyPadSizes(); } return key ? PAD_SIZES[key] : PAD_SIZES; };
     window.__bb = () => fighters.map(f => ({ id: f.netId, kind: f.kind, x: f.x, y: f.y, z: f.z || 0, face: f.face.rotation.y, hp: f.hp, dead: f.dead, out: !!f.out, stocks: f.stocks, versus: !!versus,
       vx: f.vx, crouch: f.crouch || 0, stumble: f.stumble || 0, facing: f.facing, variant: f.kit.variant,
-      grab: f.grab ? f.grab.phase : null, held: !!f.heldBy, guard: !!f.guard, busy: f.busy || 0, ledge: !!f.ledge, crouch: (f.crouch || 0) > 0.5, guardDir: f.guard ? f.guard.dir : null, limp: f.ragFly ? (f.ragFly.rise !== undefined ? 'rising' : 'down') : null }));
+      grab: f.grab ? f.grab.phase : null, held: !!f.heldBy, guard: !!f.guard, busy: f.busy || 0, ledge: !!f.ledge, crouch: (f.crouch || 0) > 0.5, mine: !!f.isPlayer, guardDir: f.guard ? f.guard.dir : null, limp: f.ragFly ? (f.ragFly.rise !== undefined ? 'rising' : 'down') : null }));
     // puts a fighter at x, standing, facing that way (tests that need somewhere in particular, like an edge)
     window.__bbPlace = (i, x, facing) => { const f = fighters[i]; if (!f) return; Object.assign(f, { x, y: 0, vx: 0, vy: 0, onGround: true, facing: facing || f.facing }); for (const ft of f.feet) { ft.x = x + f.facing * ft.s * FOOT_SPREAD; ft.y = 0; ft.stepping = false; } };
     window.__bbKO = i => { const f = fighters[i]; if (f && !f.dead) { f.hp = 0; die(f); } };   // knocks a fighter out, as this browser
@@ -5242,11 +5326,14 @@ import ReconnectingWebSocket from 'partysocket/ws';
   // Two seats make a duel, three a free-for-all; all CPU is a match to watch. A seat's fighter is picked on the
   // fighter cards (with its colour); "?" picks one at random when the match starts.
   const seatsEl = document.getElementById('seats');
+  const MAX_SEATS = 4, MAX_ENTRANTS = 8;           // in a free-for-all, and in a bracket
+  let playFormat = 'ffa';
+  try { if (localStorage.getItem('botbattle.format') === 'bracket') playFormat = 'bracket'; } catch (e) { /* storage blocked */ }
   const CTRL_LABEL = { A: 'User A', B: 'User B', cpu: 'CPU' };
   let seats = [{ kind: null, ctrl: 'A' }, { kind: null, ctrl: 'cpu' }, { kind: null, ctrl: 'cpu' }];
   try {
     const kept = JSON.parse(localStorage.getItem('botbattle.seats'));
-    if (Array.isArray(kept) && kept.length >= 2 && kept.length <= 4) seats = kept.map(st => ({
+    if (Array.isArray(kept) && kept.length >= 2 && kept.length <= MAX_ENTRANTS) seats = kept.map(st => ({
       kind: KITS[st.kind] ? st.kind : null, variant: st.variant, ctrl: ['A', 'B', 'cpu'].includes(st.ctrl) ? st.ctrl : 'cpu' }));
   } catch (e) { /* storage blocked, or nothing kept */ }
   const keepSeats = () => { try { localStorage.setItem('botbattle.seats', JSON.stringify(seats)); } catch (e) { /* storage blocked */ } };
@@ -5277,7 +5364,7 @@ import ReconnectingWebSocket from 'partysocket/ws';
       el.querySelector('.seat-remove')?.addEventListener('click', () => { seats.splice(i, 1); keepSeats(); renderSeats(); });
       seatsEl.appendChild(el);
     });
-    if (seats.length < 4) {
+    if (seats.length < (playFormat === 'bracket' ? MAX_ENTRANTS : MAX_SEATS)) {
       const add = document.createElement('button');
       add.type = 'button'; add.className = 'seat-add'; add.setAttribute('aria-label', 'Add a seat'); add.textContent = '+';
       add.addEventListener('click', () => { seats.push({ kind: null, ctrl: 'cpu' }); keepSeats(); renderSeats(); });
@@ -5285,7 +5372,17 @@ import ReconnectingWebSocket from 'partysocket/ws';
     }
     document.getElementById('playKeys').hidden = !seats.some(st => st.ctrl === 'B');
     pressLives(playLivesEl, livesSetting);
+    document.querySelectorAll('#playFormat button').forEach(b => b.setAttribute('aria-pressed', String(b.dataset.format === playFormat)));
+    document.getElementById('fightBtn').textContent = playFormat === 'bracket' ? 'Start bracket' : 'Fight';
   }
+  // the format: everyone in one match, or a bracket of one-on-one matches (three to eight entrants)
+  document.querySelectorAll('#playFormat button').forEach(b => b.addEventListener('click', () => {
+    playFormat = b.dataset.format;
+    try { localStorage.setItem('botbattle.format', playFormat); } catch (err) { /* storage blocked */ }
+    if (playFormat === 'ffa' && seats.length > MAX_SEATS) seats = seats.slice(0, MAX_SEATS);
+    while (playFormat === 'bracket' && seats.length < 3) seats.push({ kind: null, ctrl: 'cpu' });
+    keepSeats(); renderSeats();
+  }));
   const playLivesEl = document.getElementById('playLives');
   playLivesEl.querySelectorAll('button').forEach(b => b.addEventListener('click', () => {
     livesSetting = Number(b.dataset.lives);
@@ -5331,9 +5428,149 @@ import ReconnectingWebSocket from 'partysocket/ws';
     return out;
   }
   document.getElementById('fightBtn').addEventListener('click', () => {
+    if (playFormat === 'bracket') { startLocalBracket(); return; }
     showScreen(null);
     startMatch({ kind: 'play', seats: seats.map(st => ({ ...st })), lives: livesSetting });
   });
+
+  // ================= Brackets =================
+  // Single elimination, one-on-one, every match one game with the lives set beforehand, except the final: best of
+  // three (as Smash's tourney and most community brackets end; s holds its games won). Entrants are seeded at random;
+  // when there aren't a power of two of them, the top seeds get byes into round 2 (as start.gg and Challonge do). A
+  // bracket: { entrants, rounds: [[{ a, b, w }]] } with a, b and w entrant indexes (null: not known yet, or a bye).
+  // The room server builds online brackets the same way (src/index.ts).
+  function seedOrder(size) {        // the standard seeding: 1 meets the last seed, and 1 and 2 can only meet in the final
+    let order = [1];
+    while (order.length < size) order = order.flatMap(sd => [sd, order.length * 2 + 1 - sd]);
+    return order;
+  }
+  function makeBracket(n) {
+    let size = 2;
+    while (size < n) size *= 2;
+    const order = seedOrder(size), rounds = [];
+    rounds.push(Array.from({ length: size / 2 }, (_, i) => {
+      const a = order[2 * i] - 1, b = order[2 * i + 1] - 1;
+      return { a: a < n ? a : null, b: b < n ? b : null, w: null };
+    }));
+    for (let m = size / 4; m >= 1; m /= 2) rounds.push(Array.from({ length: m }, () => ({ a: null, b: null, w: null })));
+    Object.assign(rounds[rounds.length - 1][0], { bo: 3, s: [0, 0] });
+    advanceBracket({ rounds });
+    return rounds;
+  }
+  // winners into the next round's slots; a match against a bye goes through by itself
+  function advanceBracket(B) {
+    B.rounds.forEach((round, r) => round.forEach((m, i) => {
+      if (r === 0 && m.w === null && (m.a === null) !== (m.b === null)) m.w = m.a ?? m.b;
+      const next = B.rounds[r + 1];
+      if (next && m.w !== null) next[i >> 1][i % 2 ? 'b' : 'a'] = m.w;
+    }));
+  }
+  // the next match to play: the first, round by round, with both entrants known and no winner yet
+  function bracketNext(B) {
+    for (let r = 0; r < B.rounds.length; r++)
+      for (let i = 0; i < B.rounds[r].length; i++) { const m = B.rounds[r][i]; if (m.a !== null && m.b !== null && m.w === null) return { r, i, m }; }
+    return null;
+  }
+  const bracketChampion = B => B.rounds[B.rounds.length - 1][0].w;
+  // where everyone finished: the champion, the runner-up, then each earlier round's losers sharing a place
+  function bracketPlacings(B) {
+    const out = [[bracketChampion(B)]];
+    for (let r = B.rounds.length - 1; r >= 0; r--) {
+      const lost = B.rounds[r].filter(m => m.w !== null && m.a !== null && m.b !== null).map(m => m.w === m.a ? m.b : m.a);
+      if (lost.length) out.push(lost);
+    }
+    let place = 1;
+    return out.map(group => { const p = { place, who: group }; place += group.length; return p; });
+  }
+  const ordinal = n => n + (['th', 'st', 'nd', 'rd'][n % 100 > 10 && n % 100 < 14 ? 0 : Math.min(n % 10, 4) % 4] || 'th');
+  function roundName(B, r) {
+    const left = B.rounds.length - r;
+    return left === 1 ? 'Final' : left === 2 ? 'Semifinals' : left === 3 ? 'Quarterfinals' : `Round ${r + 1}`;
+  }
+  // the tree: entrant(i) gives an entrant's { name, sub, color }
+  function renderBracket(el, B, entrant) {
+    const nx = bracketNext(B), champ = bracketChampion(B);
+    const row = (i, m, r) => {         // (an empty slot: a bye in round 1, a winner still to come after)
+      if (i === null) return `<div class="en empty"><span></span><span class="nm">${r === 0 ? 'bye' : '…'}</span><span></span></div>`;
+      const e = entrant(i), cls = m.w === null ? '' : m.w === i ? 'won' : 'lost', games = m.bo ? ` · ${m.s[i === m.a ? 0 : 1]}` : '';
+      return `<div class="en ${cls}" style="--c:${e.color}"><span class="sw"></span><span class="nm">${esc(e.name)}</span><small>${esc(e.sub)}${games}</small></div>`;
+    };
+    el.innerHTML = B.rounds.map((round, r) => `<div class="round"><h3>${roundName(B, r)}${round[0].bo ? ' · best of 3' : ''}</h3><div class="ms">${round.map((m, i) => {
+      const bye = r === 0 && (m.a === null || m.b === null);
+      return `<div class="bm${nx && nx.r === r && nx.i === i ? ' next' : ''}${bye ? ' bye' : ''}">${row(m.a, m, r)}${row(m.b, m, r)}</div>`;
+    }).join('')}</div></div>`).join('') + (champ !== null ? `<div class="round"><h3>Champion</h3><div class="ms"><div class="champ">${esc(entrant(champ).name)}</div></div></div>` : '');
+  }
+
+  // ---------- a local bracket: the Play screen's seats are the entrants ----------
+  let localBracket = null;
+  const entrantLocal = i => {
+    const e = localBracket.entrants[i], kit = kitFor(e.kind, e.variant);
+    return { name: kit.name, sub: CTRL_LABEL[e.ctrl], color: kit.color };
+  };
+  function startLocalBracket() {
+    // the fighters fixed now ("?" resolved once, for the whole bracket), then shuffled into seeds
+    const list = resolveSeats(seats);
+    for (let i = list.length - 1; i > 0; i--) { const j = Math.floor(Math.random() * (i + 1)); [list[i], list[j]] = [list[j], list[i]]; }
+    localBracket = { entrants: list, lives: livesSetting };
+    localBracket.rounds = makeBracket(list.length);
+    startMatch({ kind: 'watch' });
+    showBracket();
+  }
+  function showBracket() {
+    const B = localBracket, nx = bracketNext(B), champ = bracketChampion(B);
+    showScreen(bracketEl);
+    document.getElementById('bracketTitle').textContent = champ !== null ? `${entrantLocal(champ).name} wins the bracket` : 'Bracket';
+    renderBracket(document.getElementById('bracketTree'), B, entrantLocal);
+    const up = document.getElementById('upNext');
+    if (champ !== null) {
+      const e = B.entrants[champ];
+      const places = bracketPlacings(B).map(p => `${ordinal(p.place)}: ${p.who.map(i => `${entrantLocal(i).name} (${entrantLocal(i).sub})`).join(', ')}`).join(' · ');
+      up.innerHTML = `<h2>Champion: ${esc(entrantLocal(champ).name)} (${esc(CTRL_LABEL[e.ctrl])})</h2><p>${esc(places)}</p>
+        <div class="row"><button type="button" data-act="again">New bracket</button><button type="button" data-act="seats">Change entrants</button></div>`;
+    } else {
+      const { m, r } = nx, a = entrantLocal(m.a), b = entrantLocal(m.b);
+      const cpuOnly = B.entrants[m.a].ctrl === 'cpu' && B.entrants[m.b].ctrl === 'cpu';
+      const games = m.bo ? ` · best of 3, game ${m.s[0] + m.s[1] + 1} (${m.s[0]}–${m.s[1]})` : '';
+      up.innerHTML = `<h2>Up next · ${roundName(B, r)}${games}</h2><p>${esc(a.name)} (${esc(a.sub)}) vs ${esc(b.name)} (${esc(b.sub)})</p>
+        <div class="row">${cpuOnly ? '<button type="button" data-act="fight">Watch</button><button type="button" data-act="skip">Skip</button>'
+          : '<button type="button" data-act="fight">Fight</button>'}</div>`;
+    }
+    up.querySelector('button')?.focus({ preventScroll: true });
+  }
+  document.getElementById('upNext').addEventListener('click', e => {
+    const act = e.target.closest('button')?.dataset.act, B = localBracket;
+    if (!act || !B) return;
+    if (act === 'again') { startLocalBracket(); return; }
+    if (act === 'seats') { localBracket = null; openPlay(); return; }
+    const nx = bracketNext(B);
+    if (!nx) return;
+    // two CPUs: skipped, the winner is drawn (as Smash's tourney mode does for computer-only matches)
+    if (act === 'skip') { nx.m.w = Math.random() < 0.5 ? nx.m.a : nx.m.b; if (nx.m.bo) nx.m.s = nx.m.w === nx.m.a ? [2, 0] : [0, 2]; advanceBracket(B); showBracket(); return; }
+    playBracketMatch(nx);
+  });
+  function playBracketMatch(nx) {
+    showScreen(null);
+    const B = localBracket, pair = [nx.m.a, nx.m.b];
+    startMatch({ kind: 'play', seats: pair.map(i => ({ ...B.entrants[i] })), lives: B.lives, bracket: { r: nx.r, i: nx.i, pair } });
+  }
+  // a bracket match ended: its winner goes through (a draw is played again)
+  function bracketResult(winner) {
+    const at = mode.bracket, B = localBracket;
+    if (!at || !B) return null;
+    const k = fighters.indexOf(winner), m = B.rounds[at.r][at.i];
+    if (k < 0) return 'replay';
+    if (m.bo) { m.s[k]++; if (m.s[k] < Math.ceil(m.bo / 2)) return 'game'; }      // the final: first to two games
+    m.w = at.pair[k];
+    advanceBracket(B);
+    return 'done';
+  }
+  document.getElementById('bracketBtn').addEventListener('click', e => {
+    resultEl.hidden = true;
+    if (e.currentTarget.dataset.replay) { const at = mode.bracket; playBracketMatch({ r: at.r, i: at.i, m: localBracket.rounds[at.r][at.i] }); return; }
+    startMatch({ kind: 'watch' });
+    showBracket();
+  });
+  document.getElementById('bracketBack').addEventListener('click', () => { localBracket = null; openMenu(); });
   document.getElementById('playBack').addEventListener('click', openMenu);
   const drawSeatLogos = logoLayer(seatsEl);
   function updateSeatLogos() { if (!playEl.hidden) drawSeatLogos(); }

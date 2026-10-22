@@ -23,7 +23,8 @@ const ORIGINS = new Set(["https://mpts.ie", "http://localhost:5173", "http://127
 const KINDS = ["so", "gpt", "claude"];
 // each fighter's colours, as on the fighter cards (the first is its own); two players may pick the same fighter
 const VARIANTS: Record<string, string[]> = { so: ["orange", "blue"], gpt: ["green", "white"], claude: ["orange", "black"] };
-const MAX_PLAYERS = 3, CASUAL_PLAYERS = 2;
+// a room holds up to eight (a bracket's worth); a free-for-all match takes four at most
+const MAX_PLAYERS = 8, MAX_FFA = 4, CASUAL_PLAYERS = 2;
 const IDLE_MS = 10 * 60 * 1000;          // an empty room is deleted this long after its last player leaves
 const profanity = new RegExpMatcher({ ...englishDataset.build(), ...englishRecommendedTransformers });
 
@@ -168,12 +169,55 @@ export default {
 type Info = { name: string; key: string; salt: string; hash: string | null; invite: string; created: number; casual?: boolean };
 // A seat in a room: a signed-in player, connected or (for a little while after their connection drops) not.
 type Seat = { id: string; name: string; kind: string | null; variant: string | null; ready: boolean; away: number | null };
-type Match = { id: string; players: string[]; names: [string, string][] };
-type State = { seats: Seat[]; host: string | null; lives: number; match: Match | null; emptySince: number | null };
+type Match = { id: string; players: string[]; names: [string, string][]; at?: [number, number] };
+// a bracket (single elimination, one-on-one), as the page builds its local ones: entrants seeded at random, the top
+// seeds given byes into round 2 when there aren't a power of two of them; a, b and w are entrant indexes
+type Entrant = { id: string; name: string; gone: boolean };
+type Bracket = { entrants: Entrant[]; rounds: { a: number | null; b: number | null; w: number | null; bo?: number; s?: number[] }[][] };
+type State = { seats: Seat[]; host: string | null; lives: number; match: Match | null; emptySince: number | null;
+	format?: "ffa" | "bracket"; bracket?: Bracket | null };
 // what each WebSocket carries through hibernation: whose it is, once they've signed in
 type Tag = { id?: string; local: boolean };
 const GRACE_MS = 30 * 1000;              // a dropped player keeps their seat (and their place in a match) this long
-const fresh = (): State => ({ seats: [], host: null, lives: 3, match: null, emptySince: null });
+const fresh = (): State => ({ seats: [], host: null, lives: 3, match: null, emptySince: null, format: "ffa", bracket: null });
+
+function seedOrder(size: number) {        // 1 meets the last seed; 1 and 2 can only meet in the final
+	let order = [1];
+	while (order.length < size) order = order.flatMap(sd => [sd, order.length * 2 + 1 - sd]);
+	return order;
+}
+function makeBracket(entrants: Entrant[]): Bracket {
+	const n = entrants.length;
+	let size = 2;
+	while (size < n) size *= 2;
+	const order = seedOrder(size), rounds: Bracket["rounds"] = [];
+	rounds.push(Array.from({ length: size / 2 }, (_, i) => {
+		const a = order[2 * i] - 1, b = order[2 * i + 1] - 1;
+		return { a: a < n ? a : null, b: b < n ? b : null, w: null };
+	}));
+	for (let m = size / 4; m >= 1; m /= 2) rounds.push(Array.from({ length: m }, () => ({ a: null, b: null, w: null })));
+	Object.assign(rounds[rounds.length - 1][0], { bo: 3, s: [0, 0] });          // the final: best of three
+	const B = { entrants, rounds };
+	advance(B);
+	return B;
+}
+// winners into the next round; a bye, or an entrant who left, gives the match to the other side
+function advance(B: Bracket) {
+	B.rounds.forEach((round, r) => round.forEach((m, i) => {
+		if (m.w === null) {
+			if (r === 0 && (m.a === null) !== (m.b === null)) m.w = m.a ?? m.b;
+			else if (m.a !== null && m.b !== null && (B.entrants[m.a].gone || B.entrants[m.b].gone)) m.w = B.entrants[m.a].gone ? m.b : m.a;
+		}
+		const next = B.rounds[r + 1];
+		if (next && m.w !== null) next[i >> 1][i % 2 ? "b" : "a"] = m.w;
+	}));
+}
+function nextMatch(B: Bracket) {
+	for (let r = 0; r < B.rounds.length; r++)
+		for (let i = 0; i < B.rounds[r].length; i++) { const m = B.rounds[r][i]; if (m.a !== null && m.b !== null && m.w === null) return { r, i, m }; }
+	return null;
+}
+const champion = (B: Bracket) => B.rounds[B.rounds.length - 1][0].w;
 // closes that mean the player is gone: the page went away (1001), they left (4100, the page's own code), or the room
 // refused them (other 4xxx). Anything else, 1000 included (a reconnecting socket gives up on a stalled attempt with
 // 1000), is a dropped connection, and they get GRACE_MS to come back.
@@ -260,7 +304,7 @@ export class Room extends DurableObject<Env> {
 		const S = this.state;
 		if (!again) {
 			const most = info.casual ? CASUAL_PLAYERS : MAX_PLAYERS;
-			if (S.seats.length >= most) return fail(info.casual ? "Someone else got that match first. Try again." : "That room is full (three players).");
+			if (S.seats.length >= most) return fail(info.casual ? "Someone else got that match first. Try again." : "That room is full (eight players).");
 			if (S.match) return fail("A match is on in that room. Try again when it ends.");
 			S.seats.push({ id, name: displayName(msg.name), kind: null, variant: null, ready: false, away: null });
 		} else {
@@ -306,9 +350,24 @@ export class Room extends DurableObject<Env> {
 			case "lives":
 				if (!isHost || S.match || ![1, 2, 3, 5].includes(msg.n)) return;
 				S.lives = msg.n; this.save(); this.lobby(); return;
+			case "format":      // the host: everyone in one match, or a bracket (not while one is running)
+				if (!isHost || S.match || this.info?.casual || (S.bracket && champion(S.bracket) === null) || !["ffa", "bracket"].includes(msg.f)) return;
+				S.format = msg.f; S.bracket = null; this.save(); this.lobby(); return;
 			case "start":
-				if (isHost && this.allReady()) this.begin();
+				if (!isHost || S.match) return;
+				if (S.format !== "bracket") { if (this.allReady()) this.begin(); return; }
+				// a bracket: made from everyone ready when it starts, then its matches one at a time
+				if (!S.bracket || champion(S.bracket) !== null) {
+					if (!this.allReady() || S.seats.length < 3) return;
+					const list = S.seats.map(p => ({ id: p.id, name: p.name, gone: false }));
+					for (let i = list.length - 1; i > 0; i--) { const j = Math.floor(Math.random() * (i + 1)); [list[i], list[j]] = [list[j], list[i]]; }
+					S.bracket = makeBracket(list);
+				}
+				this.beginBracketMatch();
 				return;
+			case "endBracket":  // the host stops a bracket part way
+				if (!isHost || S.match || !S.bracket) return;
+				S.bracket = null; for (const p of S.seats) p.ready = false; this.save(); this.lobby(); return;
 			case "in":         // a player's controls, for everyone else
 				if (!S.match || !S.match.players.includes(me.id) || !Number.isInteger(msg.b)) return;
 				this.send(me.id, { t: "in", id: me.id, b: msg.b & 0xffff }); return;
@@ -326,8 +385,22 @@ export class Room extends DurableObject<Env> {
 	}
 
 	allReady() {
-		const seats = this.state.seats;
-		return !this.state.match && seats.length >= 2 && seats.every(p => p.kind && p.ready && p.away === null);
+		const S = this.state, seats = S.seats;
+		return !S.match && seats.length >= 2 && (S.format === "bracket" || seats.length <= MAX_FFA) && seats.every(p => p.kind && p.ready && p.away === null);
+	}
+	// the bracket's next match, with its two entrants (both here, with a fighter); everyone else in the room watches
+	beginBracketMatch() {
+		const S = this.state, B = S.bracket!;
+		advance(B);
+		const nx = nextMatch(B);
+		if (!nx) { this.save(); this.lobby(); return; }
+		const pair = [B.entrants[nx.m.a!], B.entrants[nx.m.b!]].map(e => this.seat(e.id));
+		if (pair.some(p => !p || !p.kind || p.away !== null)) return;
+		S.match = { id: randomToken(9), players: pair.map(p => p!.id), names: pair.map(p => [p!.id, p!.name] as [string, string]), at: [nx.r, nx.i] };
+		this.save();
+		this.send(null, { t: "start", mid: S.match.id, lives: S.lives, host: S.host, bracket: true,
+			players: pair.map(p => ({ id: p!.id, name: p!.name, kind: p!.kind, variant: p!.variant })) });
+		this.lobby();
 	}
 	begin() {
 		const S = this.state;
@@ -340,9 +413,14 @@ export class Room extends DurableObject<Env> {
 
 	// the host reports how the match went; it goes on the leaderboard once
 	async finish(msg: any) {
-		const m = this.state.match!;
+		const m = this.state.match!, B = this.state.bracket;
 		this.state.match = null;
-		for (const p of this.state.seats) p.ready = false;
+		if (B && m.at) {        // a bracket match: its winner goes through (a draw is played again)
+			const k = m.players.indexOf(msg.winner), slot = B.rounds[m.at[0]][m.at[1]];
+			if (k >= 0 && slot.bo && slot.s) slot.s[k]++;
+			if (k >= 0 && (!slot.bo || slot.s![k] >= Math.ceil(slot.bo / 2))) { slot.w = k === 0 ? slot.a : slot.b; advance(B); }
+			if (champion(B) !== null) for (const p of this.state.seats) p.ready = false;      // over: ready up for the next one
+		} else for (const p of this.state.seats) p.ready = false;
 		await this.save();
 		this.lobby();
 		if (!Array.isArray(msg.stats)) return;
@@ -363,12 +441,14 @@ export class Room extends DurableObject<Env> {
 		const S = this.state;
 		if (!S.seats.includes(me)) return;
 		S.seats = S.seats.filter(p => p !== me);
+		const gone = S.bracket?.entrants.find(e => e.id === me.id);
+		if (gone) { gone.gone = true; if (!S.match?.players.includes(me.id)) advance(S.bracket!); }
 		if (S.match?.players.includes(me.id)) {
-			if (me.id === S.host) { S.match = null; this.send(null, { t: "abort", reason: "The host left, so the match ended." }); }
+			if (me.id === S.host) { S.match = null; if (S.bracket) advance(S.bracket); this.send(null, { t: "abort", reason: "The host left, so the match ended." }); }
 			else this.send(null, { t: "left", id: me.id });
 		}
 		if (S.host === me.id) S.host = S.seats.find(p => p.away === null)?.id ?? S.seats[0]?.id ?? null;
-		if (!S.seats.length) { S.match = null; S.emptySince = Date.now(); }
+		if (!S.seats.length) { S.match = null; S.bracket = null; S.emptySince = Date.now(); }
 		await this.save();
 		await this.wake();
 		this.lobby();
@@ -395,7 +475,9 @@ export class Room extends DurableObject<Env> {
 
 	lobby() {
 		const S = this.state;
-		this.send(null, { t: "lobby", host: S.host, lives: S.lives, playing: !!S.match,
+		const B = S.bracket, nx = B && nextMatch(B);
+		this.send(null, { t: "lobby", host: S.host, lives: S.lives, playing: !!S.match, format: S.format ?? "ffa",
+			bracket: B ? { entrants: B.entrants, rounds: B.rounds, champion: champion(B), next: nx ? [nx.r, nx.i] : null } : null,
 			players: S.seats.map(p => ({ id: p.id, name: p.name, kind: p.kind, variant: p.variant, ready: p.ready, away: p.away !== null })) });
 	}
 	// to everyone signed in, except one player
