@@ -57,7 +57,7 @@ button[aria-pressed="true"] { background: var(--ink); color: var(--paper); }
 .bar { height: 12px; border: 2px solid var(--ink); background: var(--paper-2); position: relative; overflow: hidden; align-self: end; }
 .bar-fill { position: absolute; inset: 0; transform-origin: left; background: var(--c); transition: transform 0.12s linear; }
 .bar-lag { position: absolute; inset: 0; transform-origin: left; background: var(--hurt); opacity: 0.45; transition: transform 0.6s ease-out 0.15s; }
-.ctx { height: 5px; border: 1.5px solid var(--ink); background: var(--paper-2); position: relative; overflow: hidden; align-self: center; }
+.ctx { height: 5px; border: 2px solid var(--ink); background: var(--paper-2); position: relative; overflow: hidden; align-self: center; }
 .ctx i { position: absolute; inset: 0; transform-origin: left; background: var(--gpt); }
 .plate.out .stock, .plate.out .badge { color: var(--ink-soft); }
 
@@ -72,7 +72,7 @@ button[aria-pressed="true"] { background: var(--ink); color: var(--paper); }
   position: relative; overflow: hidden; display: flex; gap: 8px; align-items: center;
   border: 2px solid var(--ink); background: var(--paper); padding: 6px 10px 6px 6px; font-size: 11px;
 }
-.move kbd { font: 600 11px/1 var(--mono); border: 1.5px solid var(--ink); padding: 4px 6px; background: var(--paper-2); }
+.move kbd { font: 600 11px/1 var(--mono); border: 2px solid var(--ink); padding: 4px 6px; background: var(--paper-2); }
 .move .cool { position: absolute; left: 0; bottom: 0; height: 3px; background: var(--ink); width: 100%; transform: scaleX(0); transform-origin: left; }
 .move.wait { color: var(--ink-soft); }
 .move.static { color: var(--ink-soft); }
@@ -85,7 +85,7 @@ body.two-players .move { padding: 4px 7px 4px 4px; gap: 6px; font-size: 10px; }
 body.two-players .move kbd { font-size: 10px; padding: 3px 5px; }
 body.two-players .corner { left: 50%; right: auto; transform: translateX(-50%); }
 .pips { display: inline-flex; gap: 2px; margin-left: 2px; }
-.pips i { width: 7px; height: 7px; border: 1px solid var(--ink); background: transparent; }
+.pips i { width: 7px; height: 7px; border: 2px solid var(--ink); background: transparent; }
 .pips i.on { background: var(--so); }
 .count { font-variant-numeric: tabular-nums; color: var(--ink-soft); }
 .status {
@@ -187,7 +187,7 @@ body.two-players .corner { left: 50%; right: auto; transform: translateX(-50%); 
 .say { position: absolute; right: 14px; top: 12px; max-width: 58%; background: var(--paper); border: 2px solid var(--ink); padding: 6px 8px; font-size: 11px; line-height: 1.35; }
 .say b { font-family: var(--display); font-weight: 400; display: block; font-size: 10px; color: var(--so); }
 .ringdots { display: flex; gap: 6px; }
-.ringdots i { width: 9px; height: 9px; border: 1.5px solid var(--ink); }
+.ringdots i { width: 9px; height: 9px; border: 2px solid var(--ink); }
 .ringdots i.on { background: var(--ink); }
 .mode, .card {
   display: grid; gap: 8px; align-content: start; text-align: left; text-transform: none; letter-spacing: 0;
@@ -203,7 +203,7 @@ body.two-players .corner { left: 50%; right: auto; transform: translateX(-50%); 
 .card:disabled { opacity: 0.35; cursor: default; transform: none; }
 .toprow { display: flex; gap: 10px; align-items: center; }
 .keys { font-size: 12px; color: var(--ink-soft); line-height: 1.9; }
-.keys kbd { font: 600 11px var(--mono); color: var(--ink); border: 1.5px solid var(--ink); padding: 1px 5px; background: var(--paper); }
+.keys kbd { font: 600 11px var(--mono); color: var(--ink); border: 2px solid var(--ink); padding: 1px 5px; background: var(--paper); }
 .result { text-align: center; justify-items: center; }
 /* results as a benchmark table: winner column outlined, best score per row tinted */
 .bench-wrap { width: 100%; overflow-x: auto; }
@@ -215,7 +215,7 @@ body.two-players .corner { left: 50%; right: auto; transform: translateX(-50%); 
 .bench th, .bench td { padding: 9px 16px; border-bottom: 1px solid #ddd9d0; }
 .bench thead th { font-family: var(--display); font-weight: 400; font-size: 13px; padding-top: 14px; vertical-align: bottom; }
 .bench thead th small { display: block; font-family: var(--mono); font-size: 10px; letter-spacing: 0.06em; color: var(--ink-soft); margin-top: 2px; }
-.bench thead th .sw { display: inline-block; width: 9px; height: 9px; border: 1.5px solid var(--ink); background: var(--c); margin-right: 6px; vertical-align: 1px; }
+.bench thead th .sw { display: inline-block; width: 9px; height: 9px; border: 2px solid var(--ink); background: var(--c); margin-right: 6px; vertical-align: 1px; }
 .bench tbody th { text-align: left; font: 600 12px/1.3 var(--mono); padding-left: 4px; }
 .bench tbody th small { display: block; font-weight: 400; font-size: 10px; color: var(--ink-soft); }
 .bench td { font-size: 13px; min-width: 92px; }
@@ -262,7 +262,7 @@ body.two-players .corner { left: 50%; right: auto; transform: translateX(-50%); 
   .plate-logo { width: var(--sq); box-sizing: border-box; border: 2px solid var(--ink); }
   .plate .badge {
     display: block; position: absolute; top: -8px; right: -12px; z-index: 1;
-    font: 400 12px/1 var(--display); padding: 2px 3px; background: var(--paper); border: 1.5px solid var(--ink);
+    font: 400 12px/1 var(--display); padding: 2px 3px; background: var(--paper); border: 2px solid var(--ink);
   }
   .plate-info { display: flex; flex-direction: column; gap: 2px; background: none; padding: 5px 0 0; }
   .plate-info .plate-top { display: none; }
@@ -338,7 +338,7 @@ body.two-players .corner { left: 50%; right: auto; transform: translateX(-50%); 
 .versus { position: fixed; inset: 0; z-index: 40; display: flex; overflow: hidden; background: var(--paper); transition: opacity .4s ease; }
 .versus.leaving { opacity: 0; }
 .vs-panel {
-  position: relative; flex: 1 1 0; min-width: 0; border-left: 3px solid var(--ink);
+  position: relative; flex: 1 1 0; min-width: 0; border-left: 2px solid var(--ink);
   background: color-mix(in srgb, var(--c) 13%, var(--paper));
   animation: vsIn .42s cubic-bezier(.2, .9, .3, 1.15) both; animation-delay: calc(var(--i) * 80ms);
 }
@@ -346,7 +346,7 @@ body.two-players .corner { left: 50%; right: auto; transform: translateX(-50%); 
 .vs-panel:nth-child(odd) { --from: -100%; }
 .vs-panel:nth-child(even) { --from: 100%; }
 @keyframes vsIn { from { transform: translateY(var(--from)); } }
-.vs-floor { position: absolute; left: 14%; right: 14%; top: 74%; border-top: 3px solid var(--ink); }
+.vs-floor { position: absolute; left: 14%; right: 14%; top: 74%; border-top: 2px solid var(--ink); }
 .vs-tag { position: absolute; top: 14px; left: 14px; font: 600 11px/1 var(--mono); letter-spacing: .08em; text-transform: uppercase; background: var(--ink); color: var(--paper); padding: 5px 8px; }
 .vs-caption { position: absolute; top: calc(74% + 16px); left: 8px; right: 8px; display: grid; gap: 8px; justify-items: center; text-align: center; }
 .vs-name { margin: 0; font: 400 clamp(15px, 2.6vw, 34px)/1.05 var(--display); text-wrap: balance; }
@@ -374,10 +374,10 @@ body.two-players .corner { left: 50%; right: auto; transform: translateX(-50%); 
 .seat-remove { position: absolute; top: -14px; right: -14px; width: 32px; height: 32px; padding: 0; font: 400 20px/1 var(--display); z-index: 3; }
 .seat-add { width: 64px; height: 84px; padding: 0; font: 400 32px/1 var(--display); align-self: center; }
 .play-keys { margin: 0; font-size: 12px; color: var(--ink-soft); line-height: 2; }
-.play-keys kbd, .moves-b kbd { font: 600 11px var(--mono); color: var(--ink); border: 1.5px solid var(--ink); padding: 1px 5px; margin-right: 2px; background: var(--paper); }
+.play-keys kbd, .moves-b kbd { font: 600 11px var(--mono); color: var(--ink); border: 2px solid var(--ink); padding: 1px 5px; margin-right: 2px; background: var(--paper); }
 .variants { display: flex; gap: 6px; align-items: center; }
 .variants button { width: 30px; height: 30px; padding: 0; background: var(--sw); }
-.variants button[aria-pressed="true"] { outline: 3px solid var(--ink); outline-offset: 2px; }
+.variants button[aria-pressed="true"] { outline: 2px solid var(--ink); outline-offset: 2px; }
 @media (max-width: 640px) { .seat { flex: 0 0 calc(50% - 9px); box-sizing: border-box; max-width: none; min-height: 230px; }   /* half a row each: one alone on a row doesn't grow */ .seat-logo, .seat-q { width: 72px; height: 72px; font-size: 64px; line-height: 72px; } }
 
 /* online: sign in, rooms, the lobby, the leaderboard */
