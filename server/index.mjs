@@ -95,8 +95,10 @@ const leaving = code => code === 1001 || code >= 4000;     // the page went away
 // a worker stays warm while anyone sits in a room with no match on. They're there a good while before one can start:
 // everyone has to join, pick a fighter and get ready
 function reserve() {
-  for (const room of rooms.values()) if (room.seats.length && !room.match) { sims.warm(); return; }
-  sims.cool();
+  try {
+    for (const room of rooms.values()) if (room.seats.length && !room.match) { sims.warm(); return; }
+    sims.cool();
+  } catch (err) { console.error('no worker in reserve:', err); }   // a match that starts will load its own
 }
 
 class Room {
