@@ -320,6 +320,14 @@ npm start                        # http://127.0.0.1:8080/games/botbattle/
 ./deploy/deploy.sh               # build, copy to the GCP test box (the test box), restart
 ```
 
+### The sandbox
+
+`deploy/sandbox.sh` runs the server shut in with [bubblewrap](https://github.com/containers/bubblewrap), on the assumption that a bug could one day give an attacker code running inside it (`deploy/install-sandbox.sh` sets a machine up, once). Inside there's node and the libraries it loads, the app read-only, and one writable folder for the leaderboard: no shell, no tools, no other process, no secrets, and **no network at all**. Players reach it through a Unix socket from the web server outside (`SOCKET`), and Clerk's public keys arrive as a file (`JWKS_FILE`) kept fresh by a job outside (`deploy/fetch-jwks.sh`). On top, a system call filter (`deploy/seccomp-filter.c`, built on the machine it runs on) refuses new namespaces, debugging other processes, kernel modules, keyrings, BPF, io_uring and any socket but a Unix one.
+
+`deploy/sandbox-probe.mjs` and `deploy/sandbox-probe-native.c` try from inside what an attacker would want (reading secrets, reaching the cloud's metadata service, the web server's admin port, the internet, running a shell, asking the kernel for what the filter refuses), and report what worked. Run them plainly and in the sandbox to compare.
+
+It doesn't help with what the server is there to do: code running inside still handles every connected player's messages, so it could read their sign-in tokens and room passwords, cheat, wreck the leaderboard, or send players' browsers a bad page. It can't carry any of that out to anywhere else except through those players' own connections. And a system call filter that refuses a list, rather than allowing one, leaves most of the kernel still reachable.
+
 `tests/dedicated_test.py` plays against a deployed server with real browsers (`BOTBATTLE_URL` its page, `BOTBATTLE_DEVKEY` its test key, and optionally `BOTBATTLE_LAG_CMD` to add network lag on the box): your fighter answering without waiting for the network, both screens agreeing on positions and health, a punch, a grab, the same result on both, and the host leaving mid-match. The other online tests (`online_bracket_test.py`, `casual_test.py`, `invite_test.py`, ...) run against it the same way.
 
 ## Tuning the touch pad

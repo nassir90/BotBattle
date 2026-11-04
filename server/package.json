@@ -6,7 +6,7 @@
   "scripts": {
     "build": "node build-sim.mjs",
     "start": "node build-sim.mjs && node --optimize-for-size index.mjs",
-    "test": "node build-sim.mjs && node --test --test-timeout=120000 test/server.test.mjs test/same-rules.test.mjs",
+    "test": "node build-sim.mjs && node --test --test-timeout=120000 test/server.test.mjs test/same-rules.test.mjs test/sandbox-settings.test.mjs",
     "bench": "node build-sim.mjs && node bench.mjs"
   },
   "dependencies": {
