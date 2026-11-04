@@ -1,8 +1,11 @@
-// The workers that run matches: one per match on, and one warm in reserve so a match needn't wait for one to load.
+// The workers that run matches: one per match on, and one warm in reserve while a match could start, so it needn't wait
+// for one to load. With nobody around there are none at all.
 import { Worker } from 'node:worker_threads';
 
 const WORKER = new URL('./sim-worker.mjs', import.meta.url);
+const COOL_MS = Number(process.env.COOL_MS) || 60 * 1000;      // the reserve outlasts the last lobby by this long: comings and goings don't each load a worker
 const idle = [];
+let coolTimer = null;
 export const live = new Set();
 export const last = { steps: 0, meanMs: 0, worstMs: 0 };
 
@@ -20,12 +23,19 @@ function spawn() {
   return w;
 }
 // the reserve, kept topped up
-export function warm() { if (!idle.length) idle.push(spawn()); }
+export function warm() {
+  clearTimeout(coolTimer); coolTimer = null;
+  if (!idle.length) idle.push(spawn());
+}
+export function cool() {
+  coolTimer ??= setTimeout(() => { coolTimer = null; for (const w of idle.splice(0)) w.terminate(); }, COOL_MS);
+  coolTimer.unref?.();
+}
+export const warmCount = () => idle.length;
 export function acquire(handlers) {
   const w = idle.pop() || spawn();
   w.handlers = handlers;
   live.add(w);
-  warm();
   return w;
 }
 export function release(w) {

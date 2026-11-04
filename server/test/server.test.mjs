@@ -217,3 +217,26 @@ test('the server is still healthy, with no match left running', async () => {
   assert.equal(h.ok, true);
   assert.equal(srv.log().match(/error/i), null, srv.log());
 });
+
+test('a worker is warm only while a match could start, and a server nobody is on has none', async () => {
+  const quiet = await startServer({ COOL_MS: '200' });
+  const warm = async () => (await quiet.api('health')).body.warm;
+  try {
+    assert.equal(await warm(), 0);
+    const made = (await quiet.api('rooms', { name: 'Reserve' }, 'r1')).body;
+    assert.equal(await warm(), 0);
+    const a = new Bot(quiet, 'r1'), b = new Bot(quiet, 'r2');
+    await a.connect(made.key, { invite: made.invite }); await b.connect(made.key, { invite: made.invite });
+    assert.equal(await warm(), 1);
+    a.pick('so'); b.pick('claude');
+    await a.until(x => x.lobby?.players.length === 2 && x.lobby.players.every(p => p.kind), 5000, 'picks');
+    a.ready(); b.ready();
+    await a.until(x => x.lobby.players.every(p => p.ready), 5000, 'ready');
+    a.send({ t: 'start' });
+    await a.until(x => x.snaps.length > 3, 8000, 'snapshots');
+    assert.deepEqual([(await quiet.api('health')).body.matches, await warm()], [1, 0]);
+    a.close(); b.close();
+    await sleep(600);
+    assert.deepEqual([(await quiet.api('health')).body.matches, await warm()], [0, 0]);
+  } finally { quiet.stop(); }
+});

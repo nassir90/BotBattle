@@ -92,6 +92,12 @@ const topPlayers = () => Object.values(board)
 // ---------- rooms ----------
 const rooms = new Map();
 const leaving = code => code === 1001 || code >= 4000;     // the page went away, they left, or the room refused them
+// a worker stays warm while anyone sits in a room with no match on. They're there a good while before one can start:
+// everyone has to join, pick a fighter and get ready
+function reserve() {
+  for (const room of rooms.values()) if (room.seats.length && !room.match) { sims.warm(); return; }
+  sims.cool();
+}
 
 class Room {
   constructor(name, key, password, casual = false) {
@@ -128,6 +134,7 @@ class Room {
     this.sockets.set(id, ws);
     this.host ??= id;
     clearTimeout(this.idleTimer);
+    reserve();
     ws.send(JSON.stringify({ t: 'welcome', id, room: info.name, key: info.key, invite: info.invite, casual: !!info.casual, again: !!again }));
     this.lobby();
   }
@@ -232,6 +239,7 @@ class Room {
     this.match.sim.postMessage({ t: 'begin', match });
     this.send(null, { t: 'start', ...match, bracket: !!at });
     this.lobby();
+    reserve();
   }
   toSim(m) { this.match?.sim?.postMessage({ t: 'net', m }); }
   stopSim() { if (this.match?.sim) { sims.release(this.match.sim); this.match.sim = null; } }
@@ -240,6 +248,7 @@ class Room {
     this.match = null;
     this.send(null, { t: 'abort', reason });
     this.lobby();
+    reserve();
   }
 
   finish(msg) {
@@ -247,6 +256,7 @@ class Room {
     if (!m || msg.mid !== m.id) return;
     this.stopSim();
     this.match = null;
+    reserve();
     if (B && m.at) {        // a bracket match: its winner goes through (a draw is played again)
       const k = m.players.indexOf(msg.winner), slot = B.rounds[m.at[0]][m.at[1]];
       if (k >= 0 && slot.bo && slot.s) slot.s[k]++;
@@ -278,6 +288,7 @@ class Room {
     if (this.match?.players.includes(me.id)) { this.send(null, { t: 'left', id: me.id }); this.toSim({ t: 'left', id: me.id }); }
     if (this.host === me.id) this.host = this.seats.find(p => p.away === null)?.id ?? this.seats[0]?.id ?? null;
     if (!this.seats.length) { this.stopSim(); this.match = null; this.bracket = null; this.idle(); }
+    reserve();
     this.lobby();
   }
 
@@ -363,7 +374,7 @@ const server = createServer(async (req, res) => {
       if (path === '/leaderboard' && req.method === 'GET') return json(res, { players: topPlayers() });
       if (path === '/health' && req.method === 'GET') {
         const mem = process.memoryUsage();
-        return json(res, { ok: true, rooms: rooms.size, matches: sims.live.size, rssMb: Math.round(mem.rss / 1048576), heapMb: Math.round(mem.heapUsed / 1048576), step: sims.last });
+        return json(res, { ok: true, rooms: rooms.size, matches: sims.live.size, warm: sims.warmCount(), rssMb: Math.round(mem.rss / 1048576), heapMb: Math.round(mem.heapUsed / 1048576), step: sims.last });
       }
       res.writeHead(404); res.end('Not found'); return;
     }
@@ -417,6 +428,5 @@ const sweep = setInterval(() => {
 }, 15000);
 sweep.unref();
 
-sims.warm();
 server.listen(PORT, HOST, () => console.log(`bot battle server on http://${HOST}:${PORT}${GAME}/`));
 for (const sig of ['SIGTERM', 'SIGINT']) process.on(sig, () => { sims.shutdown(); server.close(); process.exit(0); });
