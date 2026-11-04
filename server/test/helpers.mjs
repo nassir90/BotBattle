@@ -68,5 +68,14 @@ export async function hold(bot, bits, ms) {
   while (Date.now() < end) { bot.input(bits); await sleep(33); }
   bot.input(0);
 }
+// holds a control until something's true. It gives up in the end: a socket the server has dropped takes controls without
+// complaint, so a fighter that will never get there would otherwise keep a test, and the whole run, going for ever
+export async function holdUntil(bot, bits, done, ms = 15000) {
+  const end = Date.now() + ms;
+  while (!done()) {
+    if (Date.now() > end) throw new Error(`${bot.user} never got there`);
+    bot.input(bits); await sleep(33);
+  }
+}
 export const VERSUS_MS = 4000;
 export const underWay = (bot, ms = 20000) => sleep(0).then(() => new Promise(r => setTimeout(r, Math.min(ms, VERSUS_MS))));

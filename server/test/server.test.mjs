@@ -1,6 +1,6 @@
 import test, { before, after } from 'node:test';
 import assert from 'node:assert/strict';
-import { startServer, Bot, IN, hold, sleep, underWay } from './helpers.mjs';
+import { startServer, Bot, IN, hold, holdUntil, sleep, underWay } from './helpers.mjs';
 
 let srv;
 before(async () => { srv = await startServer(); });
@@ -67,7 +67,7 @@ test('a match: the server hosts, moves fighters, lands hits, knocks out, ends an
   assert.ok(relayed < 10, `only changes are relayed, not every send (${relayed})`);
 
   // close the distance, then punch: a hit, as the server reports it, on both screens
-  while (b.snaps.at(-1).f[1][0] - b.snaps.at(-1).f[0][0] > 1.1) { a.input(IN.right); await sleep(33); }
+  await holdUntil(a, IN.right, () => b.snaps.at(-1).f[1][0] - b.snaps.at(-1).f[0][0] <= 1.1);
   a.input(0); await sleep(150);
   for (let i = 0; i < 4 && !b.events.some(e => e[0] === 'hit'); i++) { a.input(IN.strike); await sleep(40); a.input(0); await sleep(500); }
   const hit = b.events.find(e => e[0] === 'hit');
@@ -92,7 +92,7 @@ test('a grab stays held between the controls a page sends, then a throw lands', 
   a.send({ t: 'start' });
   await a.until(x => x.start, 5000, 'start');
   await underWay(a);
-  while (a.snaps.at(-1).f[1][0] - a.snaps.at(-1).f[0][0] > 1.25) { a.input(IN.right | IN.down); await sleep(33); }
+  await holdUntil(a, IN.right | IN.down, () => a.snaps.at(-1).f[1][0] - a.snaps.at(-1).f[0][0] <= 1.25);
   a.input(0); await sleep(200);
   const end = Date.now() + 700;
   while (Date.now() < end) { a.input(IN.grab); await sleep(33); }
