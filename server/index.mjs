@@ -151,7 +151,7 @@ class Room {
     me.away = Date.now();
     me.graceTimer = setTimeout(() => this.leave(me), GRACE_MS);
     me.graceTimer.unref?.();
-    if (this.match?.players.includes(id)) { this.send(id, { t: 'away', id }); this.toSim({ t: 'away', id }); }
+    if (this.match?.players.includes(id)) { this.send(id, { t: 'away', id }); sims.keysUp(this.match.keys, this.match.players.indexOf(id)); this.toSim({ t: 'away', id }); }
     this.lobby();
   }
 
@@ -163,7 +163,7 @@ class Room {
       case 'in': {       // a player's controls: for the match, and for everyone else's screens when they've changed
         if (!this.match?.players.includes(me.id) || !Number.isInteger(msg.b)) return;
         const b = msg.b & 0xffff, HELD = 31 | 16384 | 32768;
-        this.toSim({ t: 'in', id: me.id, b, s: Number.isInteger(msg.s) ? msg.s : 0 });
+        sims.keyIn(this.match.keys, this.match.players.indexOf(me.id), b, Number.isInteger(msg.s) ? msg.s : 0);
         if (b !== this.lastIn.get(me.id) || b & ~HELD) { this.lastIn.set(me.id, b); this.send(me.id, { t: 'in', id: me.id, b }); }
         return;
       }
@@ -238,7 +238,8 @@ class Room {
       },
       crash: () => this.abort('The match stopped on the server. Sorry.'),
     });
-    this.match.sim.postMessage({ t: 'begin', match });
+    this.match.keys = sims.makeKeys(list.length);
+    this.match.sim.postMessage({ t: 'begin', match, keys: this.match.keys });
     this.send(null, { t: 'start', ...match, bracket: !!at });
     this.lobby();
     reserve();

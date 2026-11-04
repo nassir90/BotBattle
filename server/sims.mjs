@@ -4,6 +4,7 @@ import { Worker } from 'node:worker_threads';
 
 const WORKER = new URL('./sim-worker.mjs', import.meta.url);
 const COOL_MS = Number(process.env.COOL_MS) || 60 * 1000;      // the reserve outlasts the last lobby by this long: comings and goings don't each load a worker
+const HELD = 31 | 16384 | 32768;                               // the controls that are held down, not pressed once
 const STEP_LOG = !!process.env.STEP_LOG;                       // every worker's figures on stdout, for bench.mjs
 const idle = [];
 let coolTimer = null;
@@ -23,6 +24,16 @@ function spawn() {
   w.on('error', err => { console.error('worker error:', err); idle.splice(idle.indexOf(w) >>> 0, 1); live.delete(w); w.handlers?.crash(); });
   return w;
 }
+// A player's controls reach the match through memory they share. They come 30 times a second from every player, and as
+// messages each would have woken both threads and been copied across, only to wait for the next step anyway. Three
+// numbers a player: what's held, what's been pressed since the worker last looked, and the number of the last message
+export const makeKeys = players => new Int32Array(new SharedArrayBuffer(players * 3 * 4));
+export function keyIn(keys, i, bits, seq) {
+  Atomics.store(keys, i * 3, bits & HELD);
+  Atomics.or(keys, i * 3 + 1, bits & ~HELD);
+  if (seq) Atomics.store(keys, i * 3 + 2, seq);
+}
+export function keysUp(keys, i) { Atomics.store(keys, i * 3, 0); Atomics.store(keys, i * 3 + 1, 0); }
 // the reserve, kept topped up
 export function warm() {
   clearTimeout(coolTimer); coolTimer = null;
