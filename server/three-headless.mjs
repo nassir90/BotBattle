@@ -2,8 +2,8 @@
 // does nothing, and shapes without vertices. Only drawing reads a vertex, and building them is most of what a worker
 // allocates while it loads: 190 MB of garbage, and buffers it would hold on to for good.
 import { blank } from './dom-shim.mjs';
-import { BufferGeometry, Float32BufferAttribute } from 'three';
-export * from 'three';
+import { BufferGeometry, Float32BufferAttribute } from './generated/three.core.mjs';
+export * from './generated/three.core.mjs';
 
 export class WebGLRenderer {
   constructor(opts = {}) {
