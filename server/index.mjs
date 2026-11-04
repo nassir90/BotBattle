@@ -10,12 +10,12 @@
 // ends them); the leaderboard is kept in a file.
 import { createServer } from 'node:http';
 import { readFile, writeFile, rename, mkdir } from 'node:fs/promises';
-import { readFileSync } from 'node:fs';
+import { readFileSync, rmSync, chmodSync } from 'node:fs';
 import { randomBytes, pbkdf2Sync, timingSafeEqual } from 'node:crypto';
 import { extname, join, normalize } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { WebSocketServer } from 'ws';
-import { base64url, createRemoteJWKSet, jwtVerify } from 'jose';
+import { base64url, createLocalJWKSet, createRemoteJWKSet, errors as joseErrors, jwtVerify } from 'jose';
 import { RegExpMatcher, englishDataset, englishRecommendedTransformers } from 'obscenity';
 import { makeBracket, advance, nextMatch, champion } from './bracket.mjs';
 import * as sims from './sims.mjs';
@@ -23,13 +23,31 @@ import * as sims from './sims.mjs';
 const HERE = fileURLToPath(new URL('.', import.meta.url));
 const PORT = Number(process.env.PORT) || 8080;
 const HOST = process.env.HOST || '127.0.0.1';
+const SOCKET = process.env.SOCKET || '';     // a Unix socket to listen on instead, for a web server outside a sandbox
 const PAGE_DIR = process.env.PAGE_DIR || join(HERE, '../public/games/botbattle');
 const DATA_DIR = process.env.DATA_DIR || join(HERE, 'data');
 // test players without Clerk: tokens "dev:<key>:<name>". Unset, as it must be in production, there are none
 const DEV_KEY = process.env.DEV_KEY || '';
 const API = '/games/botbattle/api', GAME = '/games/botbattle';
 const CLERK = 'https://merry-filly-2600.clerk.accounts.dev';
-const JWKS = createRemoteJWKSet(new URL(`${CLERK}/.well-known/jwks.json`));
+// Clerk's public signing keys: from Clerk, or in a sandbox with no network (deploy/sandbox.sh), from a file something
+// outside it keeps fresh. A key the file doesn't have yet means reading the file again, at most every 30 seconds
+const JWKS_FILE = process.env.JWKS_FILE || '';
+function keysFromFile(path) {
+  let keys = null, readAt = 0;
+  const read = () => { keys = createLocalJWKSet(JSON.parse(readFileSync(path, 'utf8'))); readAt = Date.now(); };
+  return async (...args) => {
+    if (!keys) read();
+    try {
+      return await keys(...args);
+    } catch (err) {
+      if (!(err instanceof joseErrors.JWKSNoMatchingKey) || Date.now() - readAt < 30000) throw err;
+      read();
+      return keys(...args);
+    }
+  };
+}
+const JWKS = JWKS_FILE ? keysFromFile(JWKS_FILE) : createRemoteJWKSet(new URL(`${CLERK}/.well-known/jwks.json`));
 const ORIGINS = new Set(['https://mpts.ie', ...(process.env.ORIGINS || '').split(',').filter(Boolean)]);
 const KINDS = ['so', 'gpt', 'claude'];
 const VARIANTS = { so: ['orange', 'blue'], gpt: ['green', 'white'], claude: ['orange', 'black'] };
@@ -431,5 +449,8 @@ const sweep = setInterval(() => {
 }, 15000);
 sweep.unref();
 
-server.listen(PORT, HOST, () => console.log(`bot battle server on http://${HOST}:${PORT}${GAME}/`));
+if (SOCKET) {
+  rmSync(SOCKET, { force: true });
+  server.listen(SOCKET, () => { chmodSync(SOCKET, 0o660); console.log(`bot battle server on ${SOCKET}`); });
+} else server.listen(PORT, HOST, () => console.log(`bot battle server on http://${HOST}:${PORT}${GAME}/`));
 for (const sig of ['SIGTERM', 'SIGINT']) process.on(sig, () => { sims.shutdown(); server.close(); process.exit(0); });
