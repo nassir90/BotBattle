@@ -22,11 +22,21 @@ const cpuS = () => {
   const cpu = execSync(`ps -o cputime= -p ${srv.child.pid}`).toString().trim();
   return cpu.split(':').map(Number).reduce((t, v) => t * 60 + v, 0);
 };
-// a stretch of time and the CPU spent in it, as a percentage of one core
+// the main thread's alone, the one every match's sockets share
+function mainCpuS() {
+  if (process.platform === 'linux') {
+    const f = readFileSync(`/proc/${srv.child.pid}/task/${srv.child.pid}/stat`, 'utf8').split(') ')[1].split(' ');
+    return (Number(f[11]) + Number(f[12])) / 100;
+  }
+  const row = execSync(`ps -M -p ${srv.child.pid}`).toString().split('\n')[1];
+  return [...row.matchAll(/\b(\d+):(\d+\.\d+)\b/g)].reduce((t, m) => t + Number(m[1]) * 60 + Number(m[2]), 0);
+}
+// a stretch of time and the CPU spent in it, as percentages of one core
 async function cpuOver(seconds) {
-  const c0 = cpuS(), t0 = performance.now();
+  const c0 = cpuS(), m0 = mainCpuS(), t0 = performance.now();
   await sleep(seconds * 1000);
-  return (cpuS() - c0) / ((performance.now() - t0) / 1000) * 100;
+  const wall = (performance.now() - t0) / 1000;
+  return { all: (cpuS() - c0) / wall * 100, main: (mainCpuS() - m0) / wall * 100 };
 }
 const memory = () => ({ rssMb: Math.round(execSync(`ps -o rss= -p ${srv.child.pid}`).toString().trim() / 1024), privateMb: privateMb(srv.child.pid) });
 // each worker's figures every 5 seconds, when they arrive
@@ -78,7 +88,7 @@ console.log(JSON.stringify({
   idlePrivateMb: idle.privateMb, loadedPrivateMb: loaded.privateMb, afterPrivateMb: done.privateMb, perMatchPrivateMb: Math.round((loaded.privateMb - idle.privateMb) / MATCHES),
   // as percentages of one core: with nobody on, with the matches on, and once they've gone. startCpuS is seconds, over
   // the matches' first 10 seconds
-  idleCpu: +idleCpu.toFixed(2), cpuPercentOfOneCore: +loadedCpu.toFixed(1), perMatchCpu: +((loadedCpu - idleCpu) / MATCHES).toFixed(2), afterCpu: +afterCpu.toFixed(2), startCpuS: +startCpuS.toFixed(2),
+  idleCpu: +idleCpu.all.toFixed(2), cpuPercentOfOneCore: +loadedCpu.all.toFixed(1), perMatchCpu: +((loadedCpu.all - idleCpu.all) / MATCHES).toFixed(2), mainThreadCpu: +loadedCpu.main.toFixed(2), afterCpu: +afterCpu.all.toFixed(2), startCpuS: +startCpuS.toFixed(2),
   step: { steps: stepCount, meanMs: +(steps.reduce((t, r) => t + r.steps * r.meanMs, 0) / stepCount).toFixed(3), worstMs: Math.max(...steps.map(r => r.worstMs)), overMs: steps.reduce((t, r) => t + (r.over || 0), 0) },
   serverHealth: health,
   snapGapMs: { p50: Math.round(seen[seen.length >> 1]), p99: Math.round(seen[Math.floor(seen.length * 0.99)]), max: Math.round(seen.at(-1) || 0) },
