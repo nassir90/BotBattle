@@ -35,13 +35,15 @@ for (let i = 0; i < MATCHES; i++) {
   bots.push(a, b);
 }
 const gaps = [];
-for (const b of bots) { let last = 0; b.ws.on('message', raw => { if (raw.toString().startsWith('{"t":"snap"')) { const now = performance.now(); if (last) gaps.push(now - last); last = now; } }); }
+let windowFrom = Infinity;
+for (const b of bots) { let last = 0; b.ws.on('message', raw => { if (raw.toString().startsWith('{"t":"snap"')) { const now = performance.now(); if (last && last >= windowFrom) gaps.push(now - last); last = now; } }); }
 // play: walk back and forth, jump and press the moves, as a steady 30 sends a second
 const BITS = [2, 1, 2, 1, 32, 512, 1024, 2048, 4096, 8192, 32768, 16384];
 let t = 0;
 const play = setInterval(() => { t++; for (const [i, b] of bots.entries()) { const phase = Math.floor((t + i * 7) / 20) % BITS.length; b.input(t % 2 ? BITS[phase] : BITS[phase] & (31 | 16384)); } }, 33);
 await sleep(10000);          // past the versus wait
-const c0 = sample(), t0 = performance.now(); gaps.length = 0;
+// only gaps that start from here on count: this first sample holds up the bench itself, and the bots with it
+const c0 = sample(), t0 = windowFrom = performance.now();
 await sleep(SECONDS * 1000);
 // (the gaps stop here: taking the memory figures on a Mac stops the server for a moment, which no player would see)
 const wall = (performance.now() - t0) / 1000, seen = [...gaps].sort((x, y) => x - y), c1 = sample();
