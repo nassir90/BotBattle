@@ -1,6 +1,7 @@
 // Load on the server: N matches of two bots each, walking and attacking as players would, for a while. Prints the
 // server's memory and CPU use (of the whole process, workers included), how long each game step takes, and how late
 // snapshots reach the bots.   node bench.mjs [matches=4] [seconds=30]
+// SERVER_NODE_ARGS in the environment adds flags to the server's node, to try one or to profile it.
 // Each memory figure comes twice. rss counts the pages of the node binary and its libraries, which other processes
 // share and which barely change here. private is what this process alone holds, and is the one to compare: RssAnon on
 // Linux, the physical footprint on a Mac.
@@ -9,19 +10,32 @@ import { readFileSync } from 'node:fs';
 import { startServer, Bot, sleep } from './test/helpers.mjs';
 
 const MATCHES = Number(process.argv[2]) || 4, SECONDS = Number(process.argv[3]) || 30;
-const srv = await startServer({ GRACE_MS: '30000' });
+const srv = await startServer({ GRACE_MS: '30000', STEP_LOG: '1' });
 function privateMb(pid) {
   if (process.platform === 'linux') return Math.round(readFileSync(`/proc/${pid}/status`, 'utf8').match(/RssAnon:\s+(\d+)/)[1] / 1024);
   const m = execSync(`vmmap -summary ${pid}`, { stdio: ['ignore', 'pipe', 'ignore'] }).toString().match(/Physical footprint:\s+([\d.]+)([KMG])/);
   return Math.round(m[1] * { K: 1 / 1024, M: 1, G: 1024 }[m[2]]);
 }
-const sample = () => {
-  const [rss, cpu] = execSync(`ps -o rss=,cputime= -p ${srv.child.pid}`).toString().trim().split(/\s+/);
-  const parts = cpu.split(':').map(Number);
-  return { rssMb: Math.round(rss / 1024), privateMb: privateMb(srv.child.pid), cpuS: parts.reduce((t, v) => t * 60 + v, 0) };
+// CPU and memory are read apart: on a Mac, reading memory stops the server for most of a second, so none of it may
+// happen inside a timed window
+const cpuS = () => {
+  const cpu = execSync(`ps -o cputime= -p ${srv.child.pid}`).toString().trim();
+  return cpu.split(':').map(Number).reduce((t, v) => t * 60 + v, 0);
 };
+// a stretch of time and the CPU spent in it, as a percentage of one core
+async function cpuOver(seconds) {
+  const c0 = cpuS(), t0 = performance.now();
+  await sleep(seconds * 1000);
+  return (cpuS() - c0) / ((performance.now() - t0) / 1000) * 100;
+}
+const memory = () => ({ rssMb: Math.round(execSync(`ps -o rss= -p ${srv.child.pid}`).toString().trim() / 1024), privateMb: privateMb(srv.child.pid) });
+// each worker's figures every 5 seconds, when they arrive
+const stepReports = [];
+srv.child.stdout.on('data', d => { for (const m of String(d).matchAll(/^step (.*)$/gm)) stepReports.push({ at: performance.now(), ...JSON.parse(m[1]) }); });
 await sleep(5000);           // whatever the server loads at start has finished loading
-const idle = sample();
+const idleCpu = await cpuOver(10);
+const idle = memory();
+const cpuBeforeMatches = cpuS();
 const bots = [];
 for (let i = 0; i < MATCHES; i++) {
   const made = (await srv.api('rooms', { name: `Bench ${i}` }, `h${i}`)).body;
@@ -42,22 +56,31 @@ const BITS = [2, 1, 2, 1, 32, 512, 1024, 2048, 4096, 8192, 32768, 16384];
 let t = 0;
 const play = setInterval(() => { t++; for (const [i, b] of bots.entries()) { const phase = Math.floor((t + i * 7) / 20) % BITS.length; b.input(t % 2 ? BITS[phase] : BITS[phase] & (31 | 16384)); } }, 33);
 await sleep(10000);          // past the versus wait
-// only gaps that start from here on count: this first sample holds up the bench itself, and the bots with it
-const c0 = sample(), t0 = windowFrom = performance.now();
-await sleep(SECONDS * 1000);
-// (the gaps stop here: taking the memory figures on a Mac stops the server for a moment, which no player would see)
-const wall = (performance.now() - t0) / 1000, seen = [...gaps].sort((x, y) => x - y), c1 = sample();
+// what getting the matches going cost: their workers loading, and the code warming up
+const startCpuS = cpuS() - cpuBeforeMatches;
+windowFrom = performance.now();
+const loadedCpu = await cpuOver(SECONDS);
+const windowTo = performance.now(), seen = [...gaps].sort((x, y) => x - y);
+await sleep(100);            // (a report from inside the window may still be on its way)
+const steps = stepReports.filter(r => r.at > windowFrom + 5000 && r.at < windowTo + 100);
+const stepCount = steps.reduce((n, r) => n + r.steps, 0);
+const loaded = memory();
 clearInterval(play);
 const health = (await srv.api('health')).body;
 // everyone leaves: what the server keeps once the matches have stopped (the rooms stay until they time out)
 for (const b of bots) b.close();
 await sleep(5000);
-const done = sample();
+const afterCpu = await cpuOver(10);
+const done = memory();
 console.log(JSON.stringify({
   matches: MATCHES, matchesStillOn: health.matches,
-  idleRssMb: idle.rssMb, loadedRssMb: c1.rssMb, afterRssMb: done.rssMb, perMatchRssMb: Math.round((c1.rssMb - idle.rssMb) / MATCHES),
-  idlePrivateMb: idle.privateMb, loadedPrivateMb: c1.privateMb, afterPrivateMb: done.privateMb, perMatchPrivateMb: Math.round((c1.privateMb - idle.privateMb) / MATCHES),
-  cpuPercentOfOneCore: Math.round((c1.cpuS - c0.cpuS) / wall * 100), serverHealth: health,
+  idleRssMb: idle.rssMb, loadedRssMb: loaded.rssMb, afterRssMb: done.rssMb, perMatchRssMb: Math.round((loaded.rssMb - idle.rssMb) / MATCHES),
+  idlePrivateMb: idle.privateMb, loadedPrivateMb: loaded.privateMb, afterPrivateMb: done.privateMb, perMatchPrivateMb: Math.round((loaded.privateMb - idle.privateMb) / MATCHES),
+  // as percentages of one core: with nobody on, with the matches on, and once they've gone. startCpuS is seconds, over
+  // the matches' first 10 seconds
+  idleCpu: +idleCpu.toFixed(2), cpuPercentOfOneCore: +loadedCpu.toFixed(1), perMatchCpu: +((loadedCpu - idleCpu) / MATCHES).toFixed(2), afterCpu: +afterCpu.toFixed(2), startCpuS: +startCpuS.toFixed(2),
+  step: { steps: stepCount, meanMs: +(steps.reduce((t, r) => t + r.steps * r.meanMs, 0) / stepCount).toFixed(3), worstMs: Math.max(...steps.map(r => r.worstMs)), overMs: steps.reduce((t, r) => t + (r.over || 0), 0) },
+  serverHealth: health,
   snapGapMs: { p50: Math.round(seen[seen.length >> 1]), p99: Math.round(seen[Math.floor(seen.length * 0.99)]), max: Math.round(seen.at(-1) || 0) },
 }, null, 1));
 srv.stop();

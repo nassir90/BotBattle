@@ -4,6 +4,7 @@ import { Worker } from 'node:worker_threads';
 
 const WORKER = new URL('./sim-worker.mjs', import.meta.url);
 const COOL_MS = Number(process.env.COOL_MS) || 60 * 1000;      // the reserve outlasts the last lobby by this long: comings and goings don't each load a worker
+const STEP_LOG = !!process.env.STEP_LOG;                       // every worker's figures on stdout, for bench.mjs
 const idle = [];
 let coolTimer = null;
 export const live = new Set();
@@ -16,7 +17,7 @@ function spawn() {
   w.handlers = null;
   w.on('message', msg => {
     if (typeof msg === 'string') { w.handlers?.out(msg); return; }
-    if (msg.t === 'stats') Object.assign(last, msg);
+    if (msg.t === 'stats') { Object.assign(last, msg); if (STEP_LOG) console.log('step', JSON.stringify(msg)); }
     else if (msg.t === 'error') { console.error('match error:', msg.error); w.handlers?.crash(); }
   });
   w.on('error', err => { console.error('worker error:', err); idle.splice(idle.indexOf(w) >>> 0, 1); live.delete(w); w.handlers?.crash(); });
