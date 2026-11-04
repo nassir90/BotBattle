@@ -118,6 +118,23 @@ test('the host leaving does not end the match: nobody has to keep a tab open', a
   guest.close();
 });
 
+test('a dropped connection lets go of the keys it was holding', async () => {
+  const { bots: [a, b] } = await seated('Keys Up', ['ka', 'kb']);
+  await readyAll([a, b]);
+  a.send({ t: 'start' });
+  await b.until(x => x.snaps.length > 5, 8000, 'snapshots');
+  await underWay(b);
+  const moves = () => Math.abs(b.snaps.at(-1).f[0][2]) > 0;
+  const walk = a.id === b.start.players[0].id ? IN.right : IN.left;
+  await holdUntil(a, walk, moves, 3000);
+  a.input(walk);                 // (still held, and not a word more from it)
+  a.ws.terminate();
+  await b.until(x => x.lobby.players.find(p => p.id === a.id)?.away === true, 2000, 'away');
+  await sleep(300);
+  assert.ok(!moves(), 'it stops walking while it is away');
+  b.close();
+});
+
 test('a dropped connection keeps the seat for the grace period, then it is gone', async () => {
   const { bots: [a, b] } = await seated('Drop Room', ['da', 'db']);
   b.ws.terminate();
