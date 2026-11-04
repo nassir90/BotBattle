@@ -5153,6 +5153,13 @@ import ReconnectingWebSocket from 'partysocket/ws';
   const snapOf = f => [r2(f.x), r2(f.y), r2(f.vx), r2(f.vy), f.facing, Math.round(f.hp * 10) / 10, Number.isFinite(f.stocks) ? f.stocks : 0,
     f.dead ? 1 : 0, f.out ? 1 : 0, Math.round(f.context || 0)];
   // every frame: my controls out (30 times a second at most, and only when they change), and the host's state
+  // the dedicated server, once a step has run: the state of the match, with the controls it has just acted on
+  function serverSend(dt) {
+    const m = net.match;
+    if (!isHost() || !m.dedicated || !net.ws || matchOver) return;
+    m.snapT += dt;
+    if (m.snapT >= 1 / 30 || m.ev.length) { m.snapT = 0; sendNet(serverSnap()); }
+  }
   function netTick(pin, dt) {
     net.frame++;
     updatePops(dt);
@@ -5173,11 +5180,7 @@ import ReconnectingWebSocket from 'partysocket/ws';
       }
       return;
     }
-    if (m.dedicated) {             // the server itself: nobody's controls here, just the state of the match
-      m.snapT += dt;
-      if (m.snapT >= 1 / 30 || m.ev.length) { m.snapT = 0; sendNet(serverSnap()); }
-      return;
-    }
+    if (m.dedicated) return;       // the server itself: nobody's controls here, and it sends at the end of the step (serverSend)
     if (m.sendT >= 1 / 30 && (bits !== m.lastSent || m.pend || m.sendT > 0.5)) {
       sendNet({ t: 'in', b: bits }); m.lastSent = bits; m.pend = 0; m.sendT = 0;
     }
@@ -6141,7 +6144,7 @@ import ReconnectingWebSocket from 'partysocket/ws';
   function frame(dt) {
     if (hitstop > 0) {            // parry freeze: everything holds still for a moment
       hitstop -= dt;
-      if (isHost() && net.match.dedicated) netTick(NO_INPUT, dt);     // (the server still tells everyone it happened)
+      if (isHost() && net.match.dedicated) { netTick(NO_INPUT, dt); serverSend(dt); }     // (the server still tells everyone it happened)
       if (DRAWN) { renderScene(); renderHudLogos(0); }
       return;
     }
@@ -6175,6 +6178,7 @@ import ReconnectingWebSocket from 'partysocket/ws';
       updateVersus(dt);
       updateBubble(dt);
       checkResult(dt);
+      serverSend(dt);
       return;
     }
     updateCamera(dt);
@@ -6187,6 +6191,7 @@ import ReconnectingWebSocket from 'partysocket/ws';
     updateBubble(dt);
     updateMoves();
     checkResult(dt);
+    serverSend(dt);
     if (trackLog && fighters[trackLog.i]) {
       const f = fighters[trackLog.i];
       trackLog.rows.push({ dt, x: f.x, y: f.y, vx: f.vx, facing: f.facing, back: backing(f), ground: f.onGround, dash: f.passT > 0,
