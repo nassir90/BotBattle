@@ -54,6 +54,8 @@ export function release(w) {
   w.handlers = null;
   w.postMessage({ t: 'stop' });
   live.delete(w);
-  if (idle.length) w.terminate(); else idle.push(w);
+  // it stays and any fresher one goes: its code has warmed up, and the next match needn't warm it again
+  for (const other of idle.splice(0)) other.terminate();
+  idle.push(w);
 }
 export function shutdown() { for (const w of [...idle, ...live]) w.terminate(); idle.length = 0; live.clear(); }
