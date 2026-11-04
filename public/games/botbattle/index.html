@@ -1055,7 +1055,7 @@ import ReconnectingWebSocket from 'partysocket/ws';
   const svgShapes = d => new SVGLoader().parse(`<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="${d}"/></svg>`)
     .paths.flatMap(p => p.toShapes());
   function logoGeometry(d, size, curveSegments = 24, bevelSegments = 3) {
-    const shapes = svgShapes(d);
+    const shapes = DRAWN ? svgShapes(d) : [];
     const geo = new THREE.ExtrudeGeometry(shapes, {
       depth: 1.4, bevelEnabled: true, bevelThickness: 0.25, bevelSize: 0.12, bevelSegments, curveSegments
     });
@@ -3540,7 +3540,7 @@ import ReconnectingWebSocket from 'partysocket/ws';
     mat.dispose(); r3.dispose(); r3.forceContextLoss();
     document.querySelectorAll('.touch img[data-icon]').forEach(img => { img.src = pics[img.dataset.icon]; });
   }
-  drawPadIcons();
+  if (DRAWN) drawPadIcons();
 
   // ---------- the touch pad's sizes ----------
   // one set for each way the phone is held (upright, on its side, and each shared across a table between two
@@ -4383,7 +4383,8 @@ import ReconnectingWebSocket from 'partysocket/ws';
     cam.position.set(tx, ty + Math.sin(P_TILT) * 30, Math.cos(P_TILT) * 30);
     cam.lookAt(tx, ty, 0);
   }
-  const worlds = ORDER.map((kind, i) => {
+  if (!DRAWN) nextId += ORDER.length;        // (the same fighters' numbers as a browser's, without the cards' fighters)
+  const worlds = (DRAWN ? ORDER : []).map((kind, i) => {
     const w = { ...makeWorld(), slot: slots[i] };
     w.fighters.push(buildFighter(kind, 0, false, w.scene, w.springs));
     w.fighters[0].facing = 1;

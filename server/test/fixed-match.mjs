@@ -8,7 +8,7 @@ const seed = Number(seedArg) || 1;
 const dice = s => () => { s = (Math.imul(s, 1664525) + 1013904223) >>> 0; return s / 4294967296; };
 // the ids three gives its objects have their own dice: how many objects get made isn't a rule. So do the inhale's
 // particles, for the same reason: they're only drawn
-const rules = dice(seed), ids = dice(seed ^ 0x55aa55), drawing = dice(seed ^ 0x33cc33), player = dice(seed * 31 + 7);
+let rules = dice(seed); const ids = dice(seed ^ 0x55aa55), drawing = dice(seed ^ 0x33cc33), player = dice(seed * 31 + 7);
 Error.stackTraceLimit = 4;
 Math.random = () => {
   const at = {}; Error.captureStackTrace(at);
@@ -32,6 +32,7 @@ await import('../dom-shim.mjs');
 let game = null;
 globalThis.__bbHeadless = api => { game = api; };
 await import(simFile);
+rules = dice(seed);                  // (what's rolled while it loads isn't a rule either: only the cards' fighters roll)
 const sent = [], events = {};
 game.net.ws = { readyState: 1, send: data => { sent.push(data); } };
 

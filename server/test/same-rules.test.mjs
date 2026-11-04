@@ -14,10 +14,10 @@ const run = async (sim, seed) => JSON.parse((await promisify(execFile)(process.e
 test('matches come out the same with and without what only drawing needs', async () => {
   const code = readFileSync(here('../generated/sim.mjs'), 'utf8');
   assert.ok(code.includes("'../three-headless.mjs'") && code.includes('const DRAWN = !HEADLESS;'));
-  writeFileSync(here('../generated/sim-with-vertices.mjs'), code.replace("'../three-headless.mjs'", "'../test/three-with-vertices.mjs'").replace('const DRAWN = !HEADLESS;', 'const DRAWN = true;'));
+  writeFileSync(here('../generated/sim-drawn.mjs'), code.replace("'../three-headless.mjs'", "'../test/three-with-vertices.mjs'").replace('const DRAWN = !HEADLESS;', 'const DRAWN = true;'));
   for (const seed of ['1', '2']) {
-    const [without, withThem] = await Promise.all([run(here('../generated/sim.mjs'), seed), run(here('../generated/sim-with-vertices.mjs'), seed)]);
-    assert.deepEqual(without, withThem);
-    assert.ok(without.events.hit > 50 && without.events.die > 5 && without.events.grab > 0, JSON.stringify(without.events));
+    const [left, drawn] = await Promise.all([run(here('../generated/sim.mjs'), seed), run(here('../generated/sim-drawn.mjs'), seed)]);
+    assert.deepEqual(left, drawn);
+    assert.ok(left.events.hit > 50 && left.events.die > 5 && left.events.grab > 0, JSON.stringify(left.events));
   }
 });
