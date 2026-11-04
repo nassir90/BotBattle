@@ -14,7 +14,7 @@ export const sleep = ms => new Promise(r => setTimeout(r, ms));
 
 export async function startServer(env = {}) {
   const PORT = String(20000 + Math.floor(Math.random() * 20000));
-  const child = spawn(process.execPath, [SERVER], { env: { ...process.env, PORT, DEV_KEY, GRACE_MS: '800', DATA_DIR: mkdtempSync(join(tmpdir(), 'bb-')), ...env }, stdio: ['ignore', 'pipe', 'pipe'] });
+  const child = spawn(process.execPath, ['--optimize-for-size', SERVER], { env: { ...process.env, PORT, DEV_KEY, GRACE_MS: '800', DATA_DIR: mkdtempSync(join(tmpdir(), 'bb-')), ...env }, stdio: ['ignore', 'pipe', 'pipe'] });
   let log = '';
   child.stdout.on('data', d => { log += d; }); child.stderr.on('data', d => { log += d; });
   const base = `http://127.0.0.1:${PORT}/games/botbattle/api`;
