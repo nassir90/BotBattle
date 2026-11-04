@@ -43,20 +43,20 @@ const play = setInterval(() => { t++; for (const [i, b] of bots.entries()) { con
 await sleep(10000);          // past the versus wait
 const c0 = sample(), t0 = performance.now(); gaps.length = 0;
 await sleep(SECONDS * 1000);
-const wall = (performance.now() - t0) / 1000, c1 = sample();
+// (the gaps stop here: taking the memory figures on a Mac stops the server for a moment, which no player would see)
+const wall = (performance.now() - t0) / 1000, seen = [...gaps].sort((x, y) => x - y), c1 = sample();
 clearInterval(play);
 const health = (await srv.api('health')).body;
 // everyone leaves: what the server keeps once the matches have stopped (the rooms stay until they time out)
 for (const b of bots) b.close();
 await sleep(5000);
 const done = sample();
-gaps.sort((x, y) => x - y);
 console.log(JSON.stringify({
   matches: MATCHES, matchesStillOn: health.matches,
   idleRssMb: idle.rssMb, loadedRssMb: c1.rssMb, afterRssMb: done.rssMb, perMatchRssMb: Math.round((c1.rssMb - idle.rssMb) / MATCHES),
   idlePrivateMb: idle.privateMb, loadedPrivateMb: c1.privateMb, afterPrivateMb: done.privateMb, perMatchPrivateMb: Math.round((c1.privateMb - idle.privateMb) / MATCHES),
   cpuPercentOfOneCore: Math.round((c1.cpuS - c0.cpuS) / wall * 100), serverHealth: health,
-  snapGapMs: { p50: Math.round(gaps[gaps.length >> 1]), p99: Math.round(gaps[Math.floor(gaps.length * 0.99)]), max: Math.round(gaps.at(-1) || 0) },
+  snapGapMs: { p50: Math.round(seen[seen.length >> 1]), p99: Math.round(seen[Math.floor(seen.length * 0.99)]), max: Math.round(seen.at(-1) || 0) },
 }, null, 1));
 srv.stop();
 process.exit(0);
