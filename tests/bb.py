@@ -3,6 +3,7 @@
 import json, os, urllib.request
 BASE = os.environ.get("BOTBATTLE_URL", "http://localhost:5173/games/botbattle/")   # the local dev server (npm run dev)
 OUT = os.environ.get("BOTBATTLE_SHOTS", "/tmp")
+DEVKEY = os.environ.get("BOTBATTLE_DEVKEY", "")        # a dedicated server's test key (see server/), for test players there
 results = []
 def check(name, ok, detail=""):
     results.append(bool(ok)); print(("PASS " if ok else "FAIL ") + name, detail)
@@ -28,11 +29,12 @@ async def player(browser, user, extra="", online=True, on_frame=None, viewport=(
     for k, v in state.items(): setattr(pg, k, v)
     pg.on("pageerror", lambda e: pg.errors.append(str(e)))
     if on_frame: pg.on("websocket", lambda ws: ws.on("framereceived", lambda m: on_frame(pg, m)))
-    await pg.goto(BASE + f"?dev={user}{extra}", wait_until="domcontentloaded", timeout=300000)
+    await pg.goto(BASE + f"?dev={user}" + (f"&devkey={DEVKEY}" if DEVKEY else "") + extra, wait_until="domcontentloaded", timeout=300000)
     if online:
         await pg.click('.mode[data-mode="online"]'); await pg.wait_for_selector("#rooms:not([hidden])")
     return pg
 def api(path, body=None, token=None):
+    if DEVKEY and token and token.startswith("dev:"): token = f"dev:{DEVKEY}:{token[4:]}"
     req = urllib.request.Request(BASE + "api/" + path, data=json.dumps(body).encode() if body else None,
         headers={"content-type": "application/json", **({"authorization": f"Bearer {token}"} if token else {})})
     try: return json.loads(urllib.request.urlopen(req).read())

@@ -2,12 +2,13 @@
 # signed in, even with nothing in the address (as after some sign-up steps), it joins the room straight away.
 import asyncio
 from playwright.async_api import async_playwright
-from bb import BASE as B, OUT, check, summary, launch, api
+from bb import BASE as B, OUT, DEVKEY, check, summary, launch, api
+DK = f"&devkey={DEVKEY}" if DEVKEY else ""
 async def main():
     async with async_playwright() as p:
         browser = await launch(p)
         host = await (await browser.new_context(viewport={"width": 1100, "height": 760})).new_page()
-        await host.goto(B + "?dev=hostess", wait_until="domcontentloaded", timeout=300000); await host.click('.mode[data-mode="online"]')
+        await host.goto(B + "?dev=hostess" + DK, wait_until="domcontentloaded", timeout=300000); await host.click('.mode[data-mode="online"]')
         await host.wait_for_selector("#rooms:not([hidden])", timeout=8000)
         await host.fill("#createName", "Invite Room"); await host.fill("#createPass", "pw")
         await host.click("#createForm button[type=submit]")
@@ -21,11 +22,11 @@ async def main():
         msg = await phone.text_content("#onlineMsg")
         check("signed out, the invite shows the sign-in form", "invited" in msg, msg)
         # signing up ends with the page coming back to the game with nothing in the address, now signed in
-        await phone.goto(B + "?dev=newbie", wait_until="domcontentloaded", timeout=300000)
+        await phone.goto(B + "?dev=newbie" + DK, wait_until="domcontentloaded", timeout=300000)
         await phone.wait_for_selector("#lobby:not([hidden])", timeout=10000)
         check("back on the game signed in, the invite joins the room", (await phone.text_content("#onlineTitle")) == "Invite Room 2")
         check("the invite is used up", await phone.evaluate("localStorage.getItem('botbattle.join')") is None)
-        await phone.goto(B + "?dev=newbie", wait_until="domcontentloaded", timeout=300000)
+        await phone.goto(B + "?dev=newbie" + DK, wait_until="domcontentloaded", timeout=300000)
         await phone.wait_for_timeout(2500)
         check("a later visit opens the main menu as usual", await phone.locator("#menu").is_visible())
         # the lobby's 3D logos

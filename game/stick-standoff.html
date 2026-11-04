@@ -1649,13 +1649,20 @@ import ReconnectingWebSocket from 'partysocket/ws';
   let hitstop = 0;
   let trainDamage = 0;
   function hurt(h, dmg, kbx, kby, from, opts = {}) {
-    if (h.dead || h.invuln > 0) return 'none';
+    if (h.dead || (h.invuln > 0 && !netSays)) return 'none';
     const src = from && from !== h ? (from.possessedBy || from) : null;
     // a successful parry also turns away the rest of that attacker's hits for a moment (a beam's later pulses)
-    if (h.parryGrace > 0 && src && src === h.parryFrom && !opts.throw) return 'parry';
+    if (h.parryGrace > 0 && src && src === h.parryFrom && !opts.throw && !netSays) return 'parry';
     const dir = opts.dir ? V(opts.dir.x, opts.dir.y, 0).normalize() : V(Math.sign(kbx) || 1, 0, 0);
-    if (!opts.throw && guarding(h, dir)) {
-      h.guard.t = Math.max(h.guard.t, GUARD_IN + GUARD_SHINE + GUARD_OUT * 0.5);   // skip most of the loosening
+    // on a dedicated server's match a browser changes nothing here until the server's word comes (applySnap): it only
+    // guesses the outcome, for what the attack does next (a block's burst, say)
+    if (netGuest() && !netSays) return !opts.throw && (guarding(h, dir) || blocking(h, dir)) ? 'parry' : 'hit';
+    const said = netSays ? opts.out : null;
+    const parried = said ? said === 'p' : !opts.throw && guarding(h, dir);
+    const blocked = said ? said === 'b' : !parried && !opts.throw && blocking(h, dir);
+    netEv('hit', fighters.indexOf(h), parried ? 'p' : blocked ? 'b' : 'h', r2(dmg), r2(kbx), r2(kby), from ? fighters.indexOf(from) : -1, opts.throw ? 1 : 0);
+    if (parried) {
+      if (h.guard) h.guard.t = Math.max(h.guard.t, GUARD_IN + GUARD_SHINE + GUARD_OUT * 0.5);   // skip most of the loosening
       h.parryGrace = 0.45; h.parryFrom = src;
       hitstop = Math.max(hitstop, 0.12);
       const real = from && from !== h ? from : null;
@@ -1666,7 +1673,7 @@ import ReconnectingWebSocket from 'partysocket/ws';
       flashScreen();
       return 'parry';
     }
-    if (!opts.throw && blocking(h, dir)) {      // a held shield: no damage, pushed back a little
+    if (blocked) {                              // a held shield: no damage, pushed back a little
       h.vx = THREE.MathUtils.clamp(h.vx + kbx * 0.3, -KB_MAX, KB_MAX);
       floatText(h.x, h.y + boxH(h) + 0.4, 'Block', 'info');
       ring(h.root.localToWorld(guardCenter(h)), '#141414', 0.7);
@@ -1904,7 +1911,7 @@ import ReconnectingWebSocket from 'partysocket/ws';
           const dir = Math.sign(p.vel.x) || 1;
           const out = hurt(h, p.dmg, dir * p.kb, p.kbUp, p.owner, { dir: p.vel });
           burst(p.pos, out === 'parry' ? '#ffffff' : p.color);
-          if (out === 'hit' && p.onHit) p.onHit(h);
+          if (out === 'hit' && p.onHit && !netGuest()) p.onHit(h);
           p.life = 0;
           break;
         }
@@ -3050,6 +3057,20 @@ import ReconnectingWebSocket from 'partysocket/ws';
     h.struggleDir = dirNow;
     g.left -= presses * GRAB.struggle;
   }
+  function catchHeld(f, g, h) {
+    netEv('grab', fighters.indexOf(f), fighters.indexOf(h));
+    h.heldBy = f; h.guard = null; h.strike = null; h.passT = 0; h.struggleDir = 0; h.ragFly = null;
+    // a double jump's rotor lift ends here: otherwise it carried on once dropped, floating the limp body up,
+    // hips first and head down
+    if (h.lift > 0) { h.lift = 0; if (h.spring && !h.whip && !h.inhale && !h.compaction && !h.beam) h.spring.override = null; }
+    h.vy = 0;
+    startRagdoll(h, true);
+    // the grip starts at its chest, where it stands, and settles into the hands
+    const c = h.rag.pts.sho;
+    Object.assign(g, { phase: 'hold', t: 0, who: h, left: GRAB.hold, lx: (c.x - f.x) * f.facing, ly: c.y - f.y, lz: 0, x0: (c.x - f.x) * f.facing, y0: c.y - f.y });
+    floatText(h.x, h.y + BOX_H + 0.5, 'Grabbed', 'info');
+    cue('grabbed', h.kind);
+  }
   function updateGrab(f, inp, dt) {
     f.grabCd = Math.max(0, (f.grabCd || 0) - dt);
     const g = f.grab;
@@ -3057,24 +3078,11 @@ import ReconnectingWebSocket from 'partysocket/ws';
     g.t += dt;
     if (g.phase === 'reach') {
       g.lx = GRAB.reach * Math.min(1, g.t / GRAB.to); g.ly = 0;
-      if (g.t >= GRAB.from) {
+      if (g.t >= GRAB.from && !netGuest()) {
         const x0 = f.x + f.facing * 0.1, x1 = f.x + f.facing * GRAB.reach;
         const h = enemiesOf(f).filter(h => !h.heldBy && !h.grab && !h.ledge && !(h.invuln > 0) && overlapsBox(h, x0, x1, f.y + 0.4, f.y + 2.6))
           .sort((a, b) => Math.abs(a.x - f.x) - Math.abs(b.x - f.x))[0];
-        if (h) {
-          h.heldBy = f; h.guard = null; h.strike = null; h.passT = 0; h.struggleDir = 0; h.ragFly = null;
-          // a double jump's rotor lift ends here: otherwise it carried on once dropped, floating the limp body up,
-          // hips first and head down
-          if (h.lift > 0) { h.lift = 0; if (h.spring && !h.whip && !h.inhale && !h.compaction && !h.beam) h.spring.override = null; }
-          h.vy = 0;
-          startRagdoll(h, true);
-          // the grip starts at its chest, where it stands, and settles into the hands
-          const c = h.rag.pts.sho;
-          Object.assign(g, { phase: 'hold', t: 0, who: h, left: GRAB.hold, lx: (c.x - f.x) * f.facing, ly: c.y - f.y, lz: 0, x0: (c.x - f.x) * f.facing, y0: c.y - f.y });
-          floatText(h.x, h.y + BOX_H + 0.5, 'Grabbed', 'info');
-          cue('grabbed', h.kind);
-          return;
-        }
+        if (h) { catchHeld(f, g, h); return; }
       }
       if (g.t >= GRAB.to) { g.phase = 'whiff'; g.t = 0; }
     } else if (g.phase === 'whiff') {
@@ -4048,7 +4056,10 @@ import ReconnectingWebSocket from 'partysocket/ws';
     trainEl.hidden = m.kind !== 'training';
     keys.clear(); pressed.clear();
     stopVersus();
-    if ((m.kind === 'play' && !split) || m.kind === 'online') startVersus();
+    if ((m.kind === 'play' && !split) || m.kind === 'online') {
+      if (HEADLESS) versus = { t: 0, panels: [], skipped: false };       // (the same wait, nothing to show)
+      else startVersus();
+    }
     emoteTray.hidden = m.kind !== 'online';
   }
   // back for another life: the body vanishes in a puff, and a fresh fighter drops in from above,
@@ -4575,20 +4586,28 @@ import ReconnectingWebSocket from 'partysocket/ws';
   // only one that decides knockouts, comebacks and the result; everyone's controls go to everyone, so each
   // browser plays the match out too, and the host's state (positions, health, lives) corrects the guests ~20
   // times a second.
+  const HEADLESS = globalThis.__bbHeadless || null;      // set on the dedicated server: the same rules, nothing drawn
   const LOCAL = location.hostname === 'localhost' || location.hostname === '127.0.0.1';
-  const ONLINE = location.hostname === 'mpts.ie' || LOCAL;
+  // (window.__BB_ONLINE: the page as the dedicated game server serves it, on whatever host name that has)
+  const ONLINE = location.hostname === 'mpts.ie' || LOCAL || !!window.__BB_ONLINE;
   const API_BASE = '/games/botbattle/api';
   const CLERK_HOST = 'merry-filly-2600.clerk.accounts.dev';
   const CLERK_KEY = 'pk_test_bWVycnktZmlsbHktMjYwMC5jbGVyay5hY2NvdW50cy5kZXYk';
-  const DEV_USER = LOCAL ? new URLSearchParams(location.search).get('dev') : null;   // local testing without Clerk
+  // test players without Clerk: on localhost, or with the dedicated server's test key (?devkey=), which it checks
+  const DEV_KEY = new URLSearchParams(location.search).get('devkey');
+  const DEV_USER = LOCAL || DEV_KEY ? new URLSearchParams(location.search).get('dev') : null;
   const GAME_URL = `${location.origin}/games/botbattle/`;   // where any sign-in step that leaves the page comes back to
   const EMOTES = [['\u{1F44D}', 'Thumbs up'], ['\u{1F602}', 'Laughing'], ['\u{1F62D}', 'Crying'], ['\u{1F621}', 'Angry'], ['\u{1F525}', 'Fire'], ['\u{1F91D}', 'Good game']];
   // controls as bits: held ones, then ones pressed since the last message
   const IN = { left: 1, right: 2, down: 4, up: 8, fire: 16, jump: 32, parry: 64, dashL: 128, dashR: 256, a1: 512, a2: 1024, a3: 2048, a4: 4096, strike: 8192, guard: 16384, grab: 32768 };
-  const HELD = 31 | 16384;          // the bits that are held down (moving, firing, the guard), not pressed once
+  const HELD = 31 | 16384 | 32768;  // the bits that are held down (moving, firing, the guard, a grab), not pressed once
   const esc = s => String(s).replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' })[c]);
   const net = { ws: null, me: null, room: null, lobby: null, match: null, remote: new Map(), frame: 0, error: null, ping: 0, giveUp: 0, pendingJoin: null, view: null };
   let netSays = false;               // set while a knockout the host reported is played out on a guest
+  const SERVER_ID = '@server';        // the match's host when a dedicated game server runs it (server/ in this repo)
+  const NET_DELAY = 100;              // other fighters are shown this many milliseconds behind, between two snapshots
+  function netGuest() { return guestOnline() && net.match.dedicated; }
+  function netEv(...ev) { if (isHost() && net.match.dedicated) net.match.ev.push(ev); }
   function isHost() { return mode.kind === 'online' && !!net.match && net.match.host === net.me; }
   function guestOnline() { return mode.kind === 'online' && !!net.match && net.match.host !== net.me; }
   function sendNet(msg) { if (net.ws && net.ws.readyState === 1) net.ws.send(JSON.stringify(msg)); }
@@ -4642,7 +4661,7 @@ import ReconnectingWebSocket from 'partysocket/ws';
   }
   // who's playing: a name, and a fresh token that proves it to the server; null when signed out
   async function account() {
-    if (DEV_USER) return { name: DEV_USER, token: async () => 'dev:' + DEV_USER };
+    if (DEV_USER) return { name: DEV_USER, token: async () => DEV_KEY ? `dev:${DEV_KEY}:${DEV_USER}` : 'dev:' + DEV_USER };
     const clerk = await loadClerk();
     const u = clerk.user;
     if (!u) return null;
@@ -4840,7 +4859,7 @@ import ReconnectingWebSocket from 'partysocket/ws';
       }
       case 'lobby': net.lobby = m; if (net.view === 'lobby') renderLobby(); return;
       case 'start': beginOnline(m); return;
-      case 'in': { const r = net.remote.get(m.id); if (r) { r.held = m.b & HELD; r.pend |= m.b & ~HELD; } return; }
+      case 'in': { const r = net.remote.get(m.id); if (r) { r.held = m.b & HELD; r.pend |= m.b & ~HELD; if (m.s) r.seq = m.s; } return; }
       case 'snap': applySnap(m); return;
       case 'emote': showEmote(m.id, m.e); return;
       case 'left': {
@@ -4981,14 +5000,14 @@ import ReconnectingWebSocket from 'partysocket/ws';
       L.playing ? (running ? 'A bracket match is on. Everyone else in the room watches it.' : 'A match is on.') :
       running ? (!nextReady ? 'Waiting for the next match’s players to pick a fighter (and to be connected).' :
         amNext ? 'You’re up next. You can change your fighter before the match starts.' :
-        host ? 'Start the next match when you’re ready. Keep this tab open while you host.' : 'Waiting for the host to start the next match.') :
+        host ? (L.dedicated ? 'Start the next match when you’re ready.' : 'Start the next match when you’re ready. Keep this tab open while you host.') : 'Waiting for the host to start the next match.') :
       bracketMode && L.players.length < 3 ? 'A bracket needs three players or more (up to eight). Share the QR code or the link.' :
       !bracketMode && L.players.length > 4 ? 'A free-for-all takes four players at most. With more, the host can switch to a bracket.' :
       net.room.casual && L.players.length < 2 ? 'Looking for another player… You’ll be matched with the next person who asks for a casual match.' :
       net.room.casual ? 'Matched! Pick a fighter and press Ready. The match starts when you’re both ready.' :
       L.players.length < 2 ? 'Waiting for someone to join. Share the QR code or the link.' :
       !allReady ? 'Pick a fighter and its colour, and press Ready.' :
-      host ? 'Everyone’s ready. Keep this tab open while you host the match.' : 'Everyone’s ready. Waiting for the host to start.';
+      host ? (L.dedicated ? 'Everyone’s ready.' : 'Everyone’s ready. Keep this tab open while you host the match.') : 'Everyone’s ready. Waiting for the host to start.';
   }
 
   // the fighters' logos in a panel (the lobby, the Play screen's seats): the health plates' 3D models, drawn into one
@@ -5079,7 +5098,8 @@ import ReconnectingWebSocket from 'partysocket/ws';
 
   // ---------- a match ----------
   function beginOnline(m) {
-    net.match = { mid: m.mid, host: m.host, held: 0, pend: 0, lastSent: -1, sendT: 0, snapT: 0, ev: [] };
+    net.match = { mid: m.mid, host: m.host, held: 0, pend: 0, lastSent: -1, sendT: 0, snapT: 0, ev: [], dedicated: m.host === SERVER_ID,
+      seq: 0, hist: [], err: { x: 0, y: 0 }, buf: [] };
     net.remote = new Map(m.players.map(p => [p.id, { held: 0, pend: 0, frame: -1, inp: NO_INPUT }]));
     showScreen(null);
     toggleTray(false);
@@ -5120,6 +5140,20 @@ import ReconnectingWebSocket from 'partysocket/ws';
     else m.held = 0;
     m.sendT += dt;
     const bits = m.held | m.pend;
+    if (m.dedicated && m.host !== net.me) {
+      // to the dedicated server: steadily, numbered, so its snapshots can say which of them it has acted on
+      if (player && !matchOver && m.sendT >= 1 / 30) {
+        m.hist.push({ s: ++m.seq, x: player.x, y: player.y, t: performance.now() });
+        if (m.hist.length > 120) m.hist.shift();
+        sendNet({ t: 'in', b: bits, s: m.seq }); m.pend = 0; m.sendT = 0;
+      }
+      return;
+    }
+    if (m.dedicated) {             // the server itself: nobody's controls here, just the state of the match
+      m.snapT += dt;
+      if (m.snapT >= 1 / 30 || m.ev.length) { m.snapT = 0; sendNet(serverSnap()); }
+      return;
+    }
     if (m.sendT >= 1 / 30 && (bits !== m.lastSent || m.pend || m.sendT > 0.5)) {
       sendNet({ t: 'in', b: bits }); m.lastSent = bits; m.pend = 0; m.sendT = 0;
     }
@@ -5127,6 +5161,13 @@ import ReconnectingWebSocket from 'partysocket/ws';
       m.snapT += dt;
       if (m.snapT >= 1 / 20 || m.ev.length) { m.snapT = 0; sendNet({ t: 'snap', f: fighters.map(snapOf), ev: m.ev.splice(0) }); }
     }
+  }
+  // the server's snapshot: what everyone needs, whose grab and possession are whose, and each player's last controls acted on
+  const figIndex = f => f ? fighters.indexOf(f) : -1;
+  function serverSnap() {
+    const a = {};
+    for (const [id, r] of net.remote) if (r.seq) a[id] = r.seq;
+    return { t: 'snap', f: fighters.map(f => [...snapOf(f), figIndex(f.grab && f.grab.who), figIndex(f.possessing)]), ev: net.match.ev.splice(0), a };
   }
   function placeAt(f, x, y, vx, vy) {
     f.x = x; f.y = y; f.vx = vx; f.vy = vy;
@@ -5140,7 +5181,10 @@ import ReconnectingWebSocket from 'partysocket/ws';
       if (ev[0] === 'die' && f && !f.dead) { netSays = true; die(f, !!ev[2]); netSays = false; }
       else if (ev[0] === 'respawn' && f) respawn(f, true);
       else if (ev[0] === 'end') endMatch(ev[1], ev[2]);
+      else if (ev[0] === 'hit' && f) { netSays = true; hurt(f, ev[3], ev[4], ev[5], fighters[ev[6]] || null, { out: ev[2], throw: !!ev[7] }); netSays = false; }
+      else if (ev[0] === 'grab' && f && fighters[ev[2]] && !f.dead) catchHeld(f, f.grab || (f.grab = { phase: 'reach', t: 0, lx: 0, ly: 0 }), fighters[ev[2]]);
     }
+    if (net.match.dedicated) { takeSnap(s); updateHud(); return; }
     (s.f || []).forEach((d, i) => {
       const f = fighters[i];
       if (!f) return;
@@ -5155,13 +5199,64 @@ import ReconnectingWebSocket from 'partysocket/ws';
     });
     updateHud();
   }
+  // A dedicated server's snapshot: health and lives as they are, and positions kept for netBlend, which steers toward them
+  function takeSnap(s) {
+    const m = net.match, now = performance.now();
+    m.buf.push({ t: now, f: s.f });
+    if (m.buf.length > 8) m.buf.shift();
+    s.f.forEach((d, i) => {
+      const f = fighters[i];
+      if (!f) return;
+      f.hp = d[5]; f.stocks = d[6]; f.out = !!d[8];
+      if (f.kind === 'gpt') f.context = d[9];
+      if (f.grab && f.grab.who && f.grab.phase === 'hold' && d[10] < 0) dropHeld(f);       // it has let go there
+      const held = d[11] >= 0 ? fighters[d[11]] : null;
+      if (held && f.possessing !== held && !f.dead && !held.dead) { if (f.possessing) release(f.possessing); if (!held.possessedBy) possess(f, held); }
+      else if (!held && f.possessing) release(f.possessing);
+    });
+    // your own fighter: where the server had it after the last controls it acted on, against where it was here when you
+    // sent them. The difference is what netBlend works off
+    if (!player || player.dead || player.possessedBy || !s.a || !s.a[net.me]) return;
+    const ack = s.a[net.me], then = m.hist.find(h => h.s === ack), d = s.f[fighters.indexOf(player)];
+    if (!then || !d || d[7]) return;
+    m.err.x = d[0] - then.x; m.err.y = d[1] - then.y;
+    m.hist = m.hist.filter(h => h.s >= ack);
+    const st = netStats, e = Math.hypot(m.err.x, m.err.y);
+    st.n++; st.sum += e; st.max = Math.max(st.max, e); st.rtt = Math.round(now - then.t);
+  }
+  const netStats = { n: 0, sum: 0, max: 0, snaps: 0, rtt: 0 };
+  // every frame on a dedicated server's match: your fighter eases onto the server's, and the others follow its snapshots
+  function netBlend(dt) {
+    if (!netGuest() || !net.match.buf.length) return;
+    const m = net.match, buf = m.buf, back = performance.now() - NET_DELAY;
+    let a = buf[0], b = buf[buf.length - 1];
+    for (let i = buf.length - 1; i > 0; i--) if (buf[i - 1].t <= back) { a = buf[i - 1]; b = buf[i]; break; }
+    const u = b.t > a.t ? THREE.MathUtils.clamp((back - a.t) / (b.t - a.t), 0, 1) : 1;
+    fighters.forEach((f, i) => {
+      if (f.dead || f.heldBy || f.rag || f.ledge) return;
+      if (f === player && !f.possessedBy) {
+        const e = m.err, far = Math.hypot(e.x, e.y) > 3;
+        const k = far ? 1 : Math.min(1, dt * 10), dx = e.x * k, dy = f.onGround && Math.abs(e.y) < 0.3 ? 0 : e.y * k;
+        if (far) { placeAt(f, f.x + dx, f.y + dy, f.vx, f.vy); netStats.snaps++; } else { f.x += dx; f.y += dy; }
+        e.x -= dx; e.y -= dy;
+        for (const h of m.hist) { h.x += dx; h.y += dy; }
+        return;
+      }
+      const p = a.f[i], q = b.f[i];
+      if (!p || !q || q[7]) return;
+      const tx = p[0] + (q[0] - p[0]) * u, ty = p[1] + (q[1] - p[1]) * u, k = Math.min(1, dt * 18);
+      f.facing = q[4];
+      if (Math.hypot(tx - f.x, ty - f.y) > 2.5) { placeAt(f, tx, ty, q[2], q[3]); return; }
+      f.x += (tx - f.x) * k; f.y += (ty - f.y) * k; f.vx = p[2] + (q[2] - p[2]) * u;
+    });
+  }
   // the host ends the match: everyone sees the same result, and the room records it
   function finishOnline(w) {
     const m = net.match;
     const title = w ? `${w.netName} wins` : 'Nobody wins';
     const sub = w ? `With ${livesText(w.stocks)} left.` : 'Everyone went down together.';
     m.ev.push(['end', title, sub]);
-    sendNet({ t: 'snap', f: fighters.map(snapOf), ev: m.ev.splice(0) });
+    sendNet(m.dedicated ? serverSnap() : { t: 'snap', f: fighters.map(snapOf), ev: m.ev.splice(0) });
     sendNet({ t: 'result', mid: m.mid, winner: w ? w.netId : null,
       stats: fighters.map(f => ({ id: f.netId, kos: f.stats.kos, parries: f.stats.parries })) });
     endMatch(title, sub);
@@ -5223,7 +5318,11 @@ import ReconnectingWebSocket from 'partysocket/ws';
       grab: f.grab ? f.grab.phase : null, held: !!f.heldBy, guard: !!f.guard, busy: f.busy || 0, ledge: !!f.ledge, crouch: (f.crouch || 0) > 0.5, mine: !!f.isPlayer, guardDir: f.guard ? f.guard.dir : null, limp: f.ragFly ? (f.ragFly.rise !== undefined ? 'rising' : 'down') : null }));
     // puts a fighter at x, standing, facing that way (tests that need somewhere in particular, like an edge)
     window.__bbPlace = (i, x, facing) => { const f = fighters[i]; if (!f) return; Object.assign(f, { x, y: 0, vx: 0, vy: 0, onGround: true, facing: facing || f.facing }); for (const ft of f.feet) { ft.x = x + f.facing * ft.s * FOOT_SPREAD; ft.y = 0; ft.stepping = false; } };
-    window.__bbKO = i => { const f = fighters[i]; if (f && !f.dead) { f.hp = 0; die(f); } };   // knocks a fighter out, as this browser
+    window.__bbKO = i => {       // knocks a fighter out, as this browser (or asks the dedicated server, which obeys only a test key)
+      if (netGuest()) { sendNet({ t: 'devKO', i }); return; }
+      const f = fighters[i]; if (f && !f.dead) { f.hp = 0; die(f); }
+    };
+    window.__bbNetStats = () => ({ ...netStats, mean: netStats.n ? +(netStats.sum / netStats.n).toFixed(3) : 0, dedicated: !!(net.match && net.match.dedicated) });
     // one fighter, frame by frame: speed, facing, walking backwards, the guard, the lean
     window.__bbTrack = (i, on) => { if (on) { trackLog = { i, rows: [] }; return null; } const r = trackLog && trackLog.rows; trackLog = null; return r; };
     window.__bbNet = { drop: () => net.ws && net.ws.reconnect(3000, 'test drop'), cut: () => net.ws && net.ws.close(3000, 'test cut') };
@@ -6018,6 +6117,7 @@ import ReconnectingWebSocket from 'partysocket/ws';
   function frame(dt) {
     if (hitstop > 0) {            // parry freeze: everything holds still for a moment
       hitstop -= dt;
+      if (isHost() && net.match.dedicated) netTick(NO_INPUT, dt);     // (the server still tells everyone it happened)
       renderScene();
       renderHudLogos(0);
       return;
@@ -6041,6 +6141,7 @@ import ReconnectingWebSocket from 'partysocket/ws';
       updateFighter(f, inp, dt);
     }
     separateFighters(dt);
+    netBlend(dt);
     updateProjectiles(dt);
     updateEffects(dt);
     if (pt) pt.push(performance.now());
@@ -6069,6 +6170,11 @@ import ReconnectingWebSocket from 'partysocket/ws';
     if (pt) { pt.push(performance.now()); perfLog.push(pt.slice(1).map((t, i) => +(t - pt[i]).toFixed(3))); }
   }
 
+  if (HEADLESS) {                  // the dedicated server's way in (server/sim-worker.mjs): it runs the frames itself
+    net.me = SERVER_ID;
+    HEADLESS({ net, beginOnline, onNet, frame, ko: i => { const f = fighters[i]; if (f && !f.dead) { f.hp = 0; die(f); } } });
+    return;
+  }
   startMatch({ kind: 'watch' });   // CPUs brawl behind the main menu
   tick();
   warmShaders();

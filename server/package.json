@@ -1,0 +1,18 @@
+{
+  "name": "botbattle-server",
+  "private": true,
+  "type": "module",
+  "engines": { "node": ">=20" },
+  "scripts": {
+    "build": "node build-sim.mjs",
+    "start": "node build-sim.mjs && node index.mjs",
+    "test": "node build-sim.mjs && node --test test/server.test.mjs",
+    "bench": "node build-sim.mjs && node bench.mjs"
+  },
+  "dependencies": {
+    "jose": "^6.2.1",
+    "obscenity": "^0.4.6",
+    "three": "0.186.1",
+    "ws": "^8.18.0"
+  }
+}

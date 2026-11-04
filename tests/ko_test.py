@@ -18,11 +18,13 @@ async def main():
         await host.click('#lobbyLives button[data-lives="2"]')
         await host.wait_for_function("!document.getElementById('startBtn').disabled"); await host.click("#startBtn")
         for pg in (host, guest): await pg.wait_for_function("window.__bb && window.__bb().length === 2 && !window.__bb()[0].versus", timeout=30000)
-        # a guest can't knock anyone out by itself
-        await guest.evaluate("window.__bbKO(0)")
-        await asyncio.sleep(1.0)
-        g, h = await guest.evaluate("window.__bb()"), await host.evaluate("window.__bb()")
-        check("a guest can't knock the host out on its own", not g[0]["dead"] and not h[0]["dead"], f"guest view {g[0]}")
+        # a guest can't knock anyone out by itself (on a dedicated server the hook asks the server, under its test key:
+        # there, server/test checks that only the server decides)
+        if not (await guest.evaluate("window.__bbNetStats()"))["dedicated"]:
+            await guest.evaluate("window.__bbKO(0)")
+            await asyncio.sleep(1.0)
+            g, h = await guest.evaluate("window.__bb()"), await host.evaluate("window.__bb()")
+            check("a guest can't knock the host out on its own", not g[0]["dead"] and not h[0]["dead"], f"guest view {g[0]}")
         # the host knocks the guest out: both screens show it, then it comes back with one life
         await host.evaluate("window.__bbKO(1)")
         await guest.wait_for_function("window.__bb()[1].dead", timeout=5000)

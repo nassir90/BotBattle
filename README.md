@@ -301,6 +301,27 @@ Each match ends with a benchmark-style table, laid out like the ones in AI model
   | Four-CPU match | 5.9 ms | 3.2 ms |
   | Split phone | 3.0 ms | 2.6 ms |
 
+## The dedicated game server
+
+[`server/`](server/) is a Node server that runs online matches itself, instead of the host's browser. It has the same API at the same paths as the Cloudflare worker, plus the page, so the whole game can be played from one host. The live site still uses the worker: nothing points at this server yet.
+
+- **One set of rules:** `build-sim.mjs` takes the game's module script out of `game/stick-standoff.html` and a worker thread runs it for real, with a stand-in for the browser (`dom-shim.mjs`, `three-headless.mjs`) and nothing drawn. One worker runs one match, 60 steps a second, and one more stays warm so a match needn't wait for one to load.
+- **What a browser does on these matches:** your own fighter answers your keys at once. Controls go to the server numbered, 30 times a second; its snapshots (30 a second) say which it has acted on, so the page compares where your fighter was then with where the server had it, and eases the difference away. Other fighters are shown 100 ms behind, between two snapshots. Hits, grabs, knockouts, possession and the result are only ever the server's word: a browser guesses a hit's outcome for what the attack does next, and plays what the server reports. All of this applies only when a match's host is `@server`, so matches hosted on the worker are unchanged.
+- **Nobody has to host:** leaving, or a tab in the background, ends nothing for anyone else. The room's "host" only starts matches and sets the rules, and passes on if they leave.
+- **In memory:** rooms live in memory, so a restart ends them. The leaderboard is a JSON file in `DATA_DIR`, separate from the worker's D1 database.
+- **Settings (environment):** `PORT`, `HOST`, `PAGE_DIR`, `DATA_DIR`, `ORIGINS` (extra sites allowed to sign in), and `DEV_KEY`, which allows test players with tokens `dev:<key>:<name>` and must stay unset in production.
+
+```bash
+cd server
+npm install
+npm test                         # the real server with WebSocket bots as players: no browser needed
+npm run bench                    # memory and CPU under load: node bench.mjs [matches] [seconds]
+npm start                        # http://127.0.0.1:8080/games/botbattle/
+./deploy/deploy.sh               # build, copy to the GCP test box (the test box), restart
+```
+
+`tests/dedicated_test.py` plays against a deployed server with real browsers (`BOTBATTLE_URL` its page, `BOTBATTLE_DEVKEY` its test key, and optionally `BOTBATTLE_LAG_CMD` to add network lag on the box): your fighter answering without waiting for the network, both screens agreeing on positions and health, a punch, a grab, the same result on both, and the host leaving mid-match. The other online tests (`online_bracket_test.py`, `casual_test.py`, `invite_test.py`, ...) run against it the same way.
+
 ## Tuning the touch pad
 
 ```bash
