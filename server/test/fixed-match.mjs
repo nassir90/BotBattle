@@ -6,10 +6,14 @@ const IN = { left: 1, right: 2, down: 4, up: 8, fire: 16, jump: 32, parry: 64, a
 const [simFile, seedArg] = process.argv.slice(2);
 const seed = Number(seedArg) || 1;
 const dice = s => () => { s = (Math.imul(s, 1664525) + 1013904223) >>> 0; return s / 4294967296; };
-// the ids three gives its objects have their own dice: how many objects get made isn't a rule
-const rules = dice(seed), ids = dice(seed ^ 0x55aa55), player = dice(seed * 31 + 7);
+// the ids three gives its objects have their own dice: how many objects get made isn't a rule. So do the inhale's
+// particles, for the same reason: they're only drawn
+const rules = dice(seed), ids = dice(seed ^ 0x55aa55), drawing = dice(seed ^ 0x33cc33), player = dice(seed * 31 + 7);
 Error.stackTraceLimit = 4;
-Math.random = () => { const at = {}; Error.captureStackTrace(at); return at.stack.includes('generateUUID') ? ids() : rules(); };
+Math.random = () => {
+  const at = {}; Error.captureStackTrace(at);
+  return at.stack.includes('generateUUID') ? ids() : /forEach.*\n.*updateInhale/.test(at.stack) ? drawing() : rules();
+};
 let now = 1000, nextTimer = 1;
 const timers = new Map();
 Object.defineProperty(performance, 'now', { value: () => now });
