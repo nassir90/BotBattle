@@ -4,7 +4,7 @@ import { Worker } from 'node:worker_threads';
 
 const WORKER = new URL('./sim-worker.mjs', import.meta.url);
 const COOL_MS = Number(process.env.COOL_MS) || 60 * 1000;      // the reserve outlasts the last lobby by this long: comings and goings don't each load a worker
-const HELD = 31 | 16384 | 32768;                               // the controls that are held down, not pressed once
+export const HELD = 31 | 16384 | 32768;                        // the controls that are held down, not pressed once
 const STEP_LOG = !!process.env.STEP_LOG;                       // every worker's figures on stdout, for bench.mjs
 const idle = [];
 let coolTimer = null;

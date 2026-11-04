@@ -10,8 +10,8 @@ if (!game) throw new Error('the game did not start headless');
 game.net.ws = { readyState: 1, send: data => { parentPort.postMessage(data); } };
 
 const STEP = 1 / 60, STEP_MS = 1000 / 60, MOST_STEPS = 5;
-const LONG_MS = 4;
-let running = false, next = 0, timer = null, busyMs = 0, worstMs = 0, steps = 0, over = 0;
+const LONG_MS = 4;                                 // a step over this long is counted: it's what players would feel first
+let running = false, next = 0, timer = null, busyMs = 0, worstMs = 0, steps = 0, long = 0;
 // the players' controls as they are now (sims.mjs)
 let keys = null, remotes = [];
 function takeKeys() {
@@ -31,7 +31,7 @@ function loop() {
     takeKeys();
     try { game.frame(STEP); } catch (err) { parentPort.postMessage({ t: 'error', error: String(err && err.stack || err) }); running = false; return; }
     const ms = performance.now() - t0;
-    busyMs += ms; worstMs = Math.max(worstMs, ms); steps++; if (ms > LONG_MS) over++;
+    busyMs += ms; worstMs = Math.max(worstMs, ms); steps++; if (ms > LONG_MS) long++;
     next += STEP_MS; n++;
   }
   if (now - next > 250) next = now;                 // fell far behind (a stall): carry on from here, not at speed
@@ -39,8 +39,8 @@ function loop() {
 }
 setInterval(() => {
   if (!steps) return;
-  parentPort.postMessage({ t: 'stats', steps, meanMs: +(busyMs / steps).toFixed(3), worstMs: +worstMs.toFixed(3), over });
-  busyMs = 0; worstMs = 0; steps = 0; over = 0;
+  parentPort.postMessage({ t: 'stats', steps, meanMs: +(busyMs / steps).toFixed(3), worstMs: +worstMs.toFixed(3), long });
+  busyMs = 0; worstMs = 0; steps = 0; long = 0;
 }, 5000).unref();
 
 parentPort.on('message', msg => {

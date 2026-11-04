@@ -89,7 +89,7 @@ console.log(JSON.stringify({
   // as percentages of one core: with nobody on, with the matches on, and once they've gone. startCpuS is seconds, over
   // the matches' first 10 seconds
   idleCpu: +idleCpu.all.toFixed(2), cpuPercentOfOneCore: +loadedCpu.all.toFixed(1), perMatchCpu: +((loadedCpu.all - idleCpu.all) / MATCHES).toFixed(2), mainThreadCpu: +loadedCpu.main.toFixed(2), afterCpu: +afterCpu.all.toFixed(2), startCpuS: +startCpuS.toFixed(2),
-  step: { steps: stepCount, meanMs: +(steps.reduce((t, r) => t + r.steps * r.meanMs, 0) / stepCount).toFixed(3), worstMs: Math.max(...steps.map(r => r.worstMs)), overMs: steps.reduce((t, r) => t + (r.over || 0), 0) },
+  step: { steps: stepCount, meanMs: +(steps.reduce((t, r) => t + r.steps * r.meanMs, 0) / stepCount).toFixed(3), worstMs: Math.max(...steps.map(r => r.worstMs)), longSteps: steps.reduce((t, r) => t + r.long, 0) },
   serverHealth: health,
   snapGapMs: { p50: Math.round(seen[seen.length >> 1]), p99: Math.round(seen[Math.floor(seen.length * 0.99)]), max: Math.round(seen.at(-1) || 0) },
 }, null, 1));

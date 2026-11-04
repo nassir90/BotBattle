@@ -162,9 +162,9 @@ class Room {
     switch (msg.t) {
       case 'in': {       // a player's controls: for the match, and for everyone else's screens when they've changed
         if (!this.match?.players.includes(me.id) || !Number.isInteger(msg.b)) return;
-        const b = msg.b & 0xffff, HELD = 31 | 16384 | 32768;
+        const b = msg.b & 0xffff;
         sims.keyIn(this.match.keys, this.match.players.indexOf(me.id), b, Number.isInteger(msg.s) ? msg.s : 0);
-        if (b !== this.lastIn.get(me.id) || b & ~HELD) { this.lastIn.set(me.id, b); this.send(me.id, { t: 'in', id: me.id, b }); }
+        if (b !== this.lastIn.get(me.id) || b & ~sims.HELD) { this.lastIn.set(me.id, b); this.send(me.id, { t: 'in', id: me.id, b }); }
         return;
       }
       case 'pick':
