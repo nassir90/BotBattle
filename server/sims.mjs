@@ -7,7 +7,9 @@ export const live = new Set();
 export const last = { steps: 0, meanMs: 0, worstMs: 0 };
 
 function spawn() {
-  const w = new Worker(WORKER, { resourceLimits: { maxOldGenerationSizeMb: 128 } });
+  // left alone, a worker's young generation grows to 32 MB of pages it holds on to, and a match makes about 5 MB of
+  // short-lived garbage a second. At 6 MB it's collected twice a second, and each time takes well under a millisecond
+  const w = new Worker(WORKER, { resourceLimits: { maxOldGenerationSizeMb: 128, maxYoungGenerationSizeMb: 6 } });
   w.handlers = null;
   w.on('message', msg => {
     if (typeof msg === 'string') { w.handlers?.out(msg); return; }
