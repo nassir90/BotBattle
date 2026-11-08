@@ -3,8 +3,7 @@
 An experiment, not part of the game. `src/` is the dedicated server's networking and rooms in Rust, with a slice of the
 rules: walking, dashing, jumping, gravity, the stage's edge, punches and kicks, the guard, knockback, knockouts and lives.
 `slice.mjs` is the same code in JavaScript, so a difference between those two is the language. `bench.mjs` runs the same
-bots against either of them and against the real server, `matrix.sh` runs them all in turn on the test box (e2-small,
-Belgium), and `see_test.py` times what real browsers show.
+bots against either of them and against the real server, and `see_test.py` times what real browsers show.
 
 **Verdict: don't rewrite.** Rust uses far less CPU and memory, but players wouldn't feel it, and the server has capacity
 to spare at the size it's for. Almost all of the delay is elsewhere.
